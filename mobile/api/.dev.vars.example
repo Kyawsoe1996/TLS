@@ -1,0 +1,18 @@
+# Copy to .dev.vars for local development (never commit .dev.vars).
+# In production set each of these with: wrangler secret put <NAME>
+
+# Clerk (https://dashboard.clerk.com -> API keys)
+CLERK_SECRET_KEY=sk_test_xxxxxxxxxxxxxxxxxxxxxxxx
+CLERK_PUBLISHABLE_KEY=pk_test_xxxxxxxxxxxxxxxxxxxxxxxx
+
+# Turso (turso db show <name> --url / turso db tokens create <name>)
+TURSO_DATABASE_URL=libsql://your-db-your-org.turso.io
+TURSO_AUTH_TOKEN=eyJhbGciOiJFZERTQSJ9.xxxxx
+
+# Upstash Redis (REST) - optional locally; if missing, AI rate limiting is skipped
+UPSTASH_REDIS_REST_URL=https://your-redis.upstash.io
+UPSTASH_REDIS_REST_TOKEN=AXxxxxxxxxxxxxxxxxxx
+
+# Google Gemini (https://aistudio.google.com/apikey)
+GEMINI_API_KEY=AIzaSyxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+GEMINI_MODEL=gemini-3.1-flash-lite

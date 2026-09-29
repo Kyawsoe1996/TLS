@@ -1,0 +1,19 @@
+# Root-level ignores. Each app (web/, mobile/app/, mobile/api/) has its own .gitignore too.
+
+# dependencies (any depth)
+node_modules/
+
+# env files — NEVER commit real keys
+.env
+.env.local
+.env.production
+.env*.local
+.dev.vars
+
+# build output
+.next/
+dist/
+
+# misc
+.DS_Store
+*.log

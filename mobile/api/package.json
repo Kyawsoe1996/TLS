@@ -1,0 +1,26 @@
+{
+  "name": "tls-api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "TLS mobile backend API (Cloudflare Workers + Hono + Turso + Clerk + Gemini)",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "db:migrate": "node scripts/migrate.mjs"
+  },
+  "dependencies": {
+    "@clerk/backend": "^3.20.1",
+    "@libsql/client": "^0.18.0",
+    "@upstash/ratelimit": "^2.2.0",
+    "@upstash/redis": "^1.39.0",
+    "hono": "^4.13.11",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260929.1",
+    "typescript": "^7.0.2",
+    "wrangler": "^4.143.0"
+  }
+}

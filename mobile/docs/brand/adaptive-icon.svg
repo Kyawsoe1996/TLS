@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <circle cx="512" cy="512" r="300" fill="none" stroke="#D1AC66" stroke-width="12" opacity="1"/>
+  <circle cx="512" cy="512" r="278" fill="none" stroke="#D1AC66" stroke-width="3" opacity="0.6"/>
+  <text x="512" y="591" text-anchor="middle" font-family="Georgia, 'Times New Roman', 'DejaVu Serif', 'Noto Serif', serif" font-size="230" font-weight="bold" letter-spacing="8" fill="#D1AC66">TLS</text>
+</svg>

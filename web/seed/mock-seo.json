@@ -1,0 +1,20 @@
+{
+  "_comment": "Mock keyword-ranking data for the SEO tab. Fictional — safe for a public demo. Lovable can render these as ranking cards/table; the 'Generate SEO blog intro' button calls the real Gemini edge function.",
+  "shop": "Demo Tailor Co.",
+  "city": "Dubai",
+  "last_updated": "2026-06-20",
+  "tracked_keywords": [
+    { "keyword": "bespoke tailor near me",      "rank": 4,  "previous_rank": 7,  "monthly_searches": 2400, "difficulty": 38, "trend": "up" },
+    { "keyword": "wedding sherwani tailoring",   "rank": 2,  "previous_rank": 2,  "monthly_searches": 1300, "difficulty": 31, "trend": "flat" },
+    { "keyword": "custom suit dubai",            "rank": 9,  "previous_rank": 14, "monthly_searches": 1900, "difficulty": 52, "trend": "up" },
+    { "keyword": "trouser alteration near me",   "rank": 6,  "previous_rank": 5,  "monthly_searches": 880,  "difficulty": 22, "trend": "down" },
+    { "keyword": "made to measure shirts",       "rank": 12, "previous_rank": 18, "monthly_searches": 1600, "difficulty": 44, "trend": "up" },
+    { "keyword": "eid kaftan tailor",            "rank": 3,  "previous_rank": 6,  "monthly_searches": 720,  "difficulty": 19, "trend": "up" }
+  ],
+  "summary": {
+    "avg_position": 6.0,
+    "keywords_in_top_3": 2,
+    "keywords_improved": 4,
+    "estimated_organic_traffic": 1450
+  }
+}
