@@ -58,6 +58,13 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "89420201-64c7-4632-ae7a-87e4ffbc3373"
+      }
+    },
+    "owner": "shamubtrs-team"
   }
 }

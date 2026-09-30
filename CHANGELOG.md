@@ -4,7 +4,12 @@ All notable changes to TLS, newest first. Written in plain language so anyone on
 
 ## Unreleased
 
-Planned before the first App Store / Play Store submission (see `mobile/docs/release-checklist.md`):
+### Added
+- Expo account created and the mobile app linked to the EAS project `@shamubtrs-team/tls`
+  (project ID in `mobile/app/app.json`), so store builds can run in the cloud with `eas build`.
+
+### Planned before the first App Store / Play Store submission
+(see `mobile/docs/release-checklist.md`):
 
 - Remove the preview-only social-posting controls from the mobile app (the platform switches, the
   "Shared to N apps" screen and the "coming soon" buttons); keep "Post now" via the phone's share sheet.
