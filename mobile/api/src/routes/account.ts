@@ -14,6 +14,7 @@ accountRoutes.delete("/", async (c) => {
   if (shop) {
     await db.batch(
       [
+        { sql: "DELETE FROM orders WHERE shop_id = ?", args: [shop.id] },
         { sql: "DELETE FROM fittings WHERE shop_id = ?", args: [shop.id] },
         { sql: "DELETE FROM clients WHERE shop_id = ?", args: [shop.id] },
         { sql: "DELETE FROM generations WHERE shop_id = ?", args: [shop.id] },

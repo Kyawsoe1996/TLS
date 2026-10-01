@@ -4,6 +4,7 @@ import { useRouter, type Href } from "expo-router";
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
+import { clientRoutes } from "@/components/clients";
 import { Button, Card, ErrorBanner, Eyebrow, KpiTile, Screen, type IoniconName } from "@/components/ui";
 import { colors, fonts, typography } from "@/constants/theme";
 import { useApi } from "@/lib/api";
@@ -31,6 +32,7 @@ export default function HomeScreen() {
   const home = homeQuery.data;
   const shopName = home?.shopName ?? shopQuery.data?.name ?? "Your shop";
   const inactive = home?.inactiveCount ?? 0;
+  const dueSoon = home?.ordersDueSoon ?? 0;
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -65,6 +67,16 @@ export default function HomeScreen() {
       ) : null}
 
       <View style={styles.kpiRow}>
+        <KpiTile label="Orders in progress" value={kpi(home?.ordersOpen)} onPress={() => router.push(clientRoutes.orders)} />
+        <KpiTile
+          label="Due this week"
+          value={kpi(home?.ordersDueSoon)}
+          note={dueSoon > 0 ? "Check the workshop" : undefined}
+          onPress={() => router.push(clientRoutes.orders)}
+        />
+      </View>
+
+      <View style={styles.kpiRow}>
         <KpiTile label="Clients" value={kpi(home?.clientsCount)} onPress={() => router.push("/(tabs)/clients")} />
         <KpiTile label="Fittings this month" value={kpi(home?.fittingsThisMonth)} />
         <KpiTile
@@ -75,21 +87,31 @@ export default function HomeScreen() {
         />
       </View>
 
-      <Card variant="dark" style={styles.aiCard}>
-        <Eyebrow tone="onDark">AI suggestion</Eyebrow>
-        <Text style={styles.aiText}>
-          {inactive > 0
-            ? `${inactive} ${inactive === 1 ? "client hasn't" : "clients haven't"} been back in 90+ days. A win-back email with their saved fit profile could bring a few home.`
-            : "Everyone on your book has visited in the last 90 days. Log fittings as you go and the AI will flag clients worth a nudge."}
-        </Text>
-        <Button
-          variant="gold"
-          size="sm"
-          icon={inactive > 0 ? "mail-outline" : "people-outline"}
-          title={inactive > 0 ? "Draft win-back emails" : "Open clients"}
-          onPress={() => router.push(inactive > 0 ? INACTIVE_CLIENTS : "/(tabs)/clients")}
-        />
-      </Card>
+      {dueSoon > 0 ? (
+        <Card variant="dark" style={styles.aiCard}>
+          <Eyebrow tone="onDark">AI suggestion</Eyebrow>
+          <Text style={styles.aiText}>
+            {dueSoon} {dueSoon === 1 ? "order is" : "orders are"} due this week. Check the cutting table and confirm fittings with those clients.
+          </Text>
+          <Button variant="gold" size="sm" icon="cube-outline" title="See orders" onPress={() => router.push(clientRoutes.orders)} />
+        </Card>
+      ) : (
+        <Card variant="dark" style={styles.aiCard}>
+          <Eyebrow tone="onDark">AI suggestion</Eyebrow>
+          <Text style={styles.aiText}>
+            {inactive > 0
+              ? `${inactive} ${inactive === 1 ? "client hasn't" : "clients haven't"} been back in 90+ days. A win-back email with their saved fit profile could bring a few home.`
+              : "Everyone on your book has visited in the last 90 days. Log fittings as you go and the AI will flag clients worth a nudge."}
+          </Text>
+          <Button
+            variant="gold"
+            size="sm"
+            icon={inactive > 0 ? "mail-outline" : "people-outline"}
+            title={inactive > 0 ? "Draft win-back emails" : "Open clients"}
+            onPress={() => router.push(inactive > 0 ? INACTIVE_CLIENTS : "/(tabs)/clients")}
+          />
+        </Card>
+      )}
 
       <View style={styles.grid}>
         {TILES.map((tile) => (

@@ -82,6 +82,14 @@ export default function FittingDetailScreen() {
           <Text style={fitting.postureNote ? typography.body : typography.small}>{fitting.postureNote || "No posture note"}</Text>
         </Card>
 
+        <Button
+          title="Create order from this fitting"
+          variant="ghost"
+          icon="cube-outline"
+          onPress={() => router.push(clientRoutes.newOrder(id, fittingId))}
+          style={styles.createOrder}
+        />
+
         {analyse.isPending ? <LoadingAI label="Analysing the fit — about 10 seconds…" /> : null}
 
         {!analysis ? (
@@ -146,4 +154,5 @@ const styles = StyleSheet.create({
   results: { gap: 12 },
   sectionTitle: { marginBottom: 0 },
   rerun: { alignSelf: "center" },
+  createOrder: { alignSelf: "center", marginTop: -4 },
 });

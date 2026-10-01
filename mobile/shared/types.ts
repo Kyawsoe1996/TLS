@@ -43,6 +43,8 @@ export interface HomeResponse {
   clientsCount: number;
   fittingsThisMonth: number;
   inactiveCount: number; // clients whose lastOrderAt (or createdAt) is 90+ days ago
+  ordersOpen: number; // orders with status != "delivered"
+  ordersDueSoon: number; // open orders that are overdue or due within the next 7 days
 }
 
 // ---------- Clients ----------
@@ -121,6 +123,47 @@ export interface CreateFittingRequest {
 export interface FittingResponse {
   fitting: Fitting;
 }
+
+// ---------- Orders (a garment for a client, moving through the workshop) ----------
+/** In workflow sequence. The app shows them as a stepper in this order. */
+export const ORDER_STATUSES = ["measured", "cutting", "fitting", "ready", "delivered"] as const;
+export type OrderStatus = (typeof ORDER_STATUSES)[number];
+
+export interface Order {
+  id: string;
+  clientId: string;
+  fittingId: string | null; // the fitting this order is cut from, if any
+  garment: string; // e.g. "Two-piece suit"
+  fabric: string | null;
+  status: OrderStatus;
+  dueAt: ISODate | null; // promised delivery date (date-only semantics, stored as ISO)
+  deliveredAt: ISODate | null; // set when status becomes "delivered"
+  notes: string | null;
+  createdAt: ISODate;
+  updatedAt: ISODate;
+  overdue: boolean; // computed: dueAt is before today and status != "delivered"
+  clientName?: string; // only on the shop-wide list (GET /orders)
+}
+
+/** GET /clients/:id/orders (newest first) and GET /orders?open=true (shop-wide, overdue → due date → no date) */
+export interface ListOrdersResponse {
+  orders: Order[];
+}
+/** POST /clients/:id/orders → 201; also sets the client's lastOrderAt to now */
+export interface CreateOrderRequest {
+  garment: string;
+  fabric?: string;
+  fittingId?: string; // must belong to the same client
+  dueAt?: ISODate;
+  notes?: string;
+}
+/** PATCH /clients/:id/orders/:orderId — any subset; status "delivered" stamps deliveredAt */
+export type UpdateOrderRequest = Partial<CreateOrderRequest> & { status?: OrderStatus };
+/** GET/POST/PATCH single order */
+export interface OrderResponse {
+  order: Order;
+}
+/** DELETE /clients/:id/orders/:orderId → 204 */
 
 // ---------- AI ----------
 // All AI routes are rate limited per user (429 rate_limited) and may return 502 ai_failed.

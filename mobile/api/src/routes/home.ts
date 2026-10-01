@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import type { HomeResponse } from "../../../shared/types";
-import { countOf, inactiveCutoff, startOfMonthUtc } from "../db";
+import { countOf, dueSoonCutoff, inactiveCutoff, startOfMonthUtc } from "../db";
 import type { AppEnv } from "../env";
 
 const homeRoutes = new Hono<AppEnv>();
@@ -10,7 +10,7 @@ homeRoutes.get("/", async (c) => {
   const db = c.get("db");
   const shop = c.get("shop");
 
-  const [clients, fittings, inactive] = await db.batch(
+  const [clients, fittings, inactive, ordersOpen, ordersDueSoon] = await db.batch(
     [
       { sql: "SELECT count(*) AS n FROM clients WHERE shop_id = ?", args: [shop.id] },
       {
@@ -21,6 +21,11 @@ homeRoutes.get("/", async (c) => {
         sql: "SELECT count(*) AS n FROM clients WHERE shop_id = ? AND coalesce(last_order_at, created_at) < ?",
         args: [shop.id, inactiveCutoff()],
       },
+      { sql: "SELECT count(*) AS n FROM orders WHERE shop_id = ? AND status != 'delivered'", args: [shop.id] },
+      {
+        sql: "SELECT count(*) AS n FROM orders WHERE shop_id = ? AND status != 'delivered' AND due_at IS NOT NULL AND due_at < ?",
+        args: [shop.id, dueSoonCutoff()],
+      },
     ],
     "read",
   );
@@ -30,6 +35,8 @@ homeRoutes.get("/", async (c) => {
     clientsCount: countOf(clients),
     fittingsThisMonth: countOf(fittings),
     inactiveCount: countOf(inactive),
+    ordersOpen: countOf(ordersOpen),
+    ordersDueSoon: countOf(ordersDueSoon),
   };
   return c.json(body);
 });

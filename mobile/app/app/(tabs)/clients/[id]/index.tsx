@@ -10,21 +10,24 @@ import {
   InactiveTag,
   LoadingBlock,
   Monogram,
+  OrderRow,
   clientRoutes,
   isNotFoundError,
   useClient,
   useFittings,
+  useOrders,
 } from "@/components/clients";
 import { Button, Card, EmptyState, Eyebrow, Screen, SectionTitle, type IoniconName } from "@/components/ui";
 import { colors, fonts, typography } from "@/constants/theme";
 import { formatDate, formatMonthsSince, monthsSince } from "@/lib/format";
 import { showError } from "@/lib/toast";
 
-/** Client file: contact details, actions, and the list of fittings (newest first). */
+/** Client file: contact details, actions, orders and fittings (both newest first). */
 export default function ClientDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const clientQuery = useClient(id);
+  const ordersQuery = useOrders(id);
   const fittingsQuery = useFittings(id);
   const [refreshing, setRefreshing] = useState(false);
   const client = clientQuery.data;
@@ -32,7 +35,7 @@ export default function ClientDetailScreen() {
   const onRefresh = async () => {
     setRefreshing(true);
     try {
-      await Promise.all([clientQuery.refetch(), fittingsQuery.refetch()]);
+      await Promise.all([clientQuery.refetch(), ordersQuery.refetch(), fittingsQuery.refetch()]);
     } finally {
       setRefreshing(false);
     }
@@ -74,6 +77,7 @@ export default function ClientDetailScreen() {
   const firstName = client.name.trim().split(/\s+/)[0] || client.name;
   const quietMonths = monthsSince(client.lastOrderAt ?? client.createdAt);
   const hasContact = !!(client.phone || client.email || client.lineId);
+  const orders = ordersQuery.data ?? [];
   const fittings = fittingsQuery.data ?? [];
 
   return (
@@ -134,11 +138,34 @@ export default function ClientDetailScreen() {
       ) : null}
 
       <View style={styles.actions}>
-        <Button variant="gold" icon="body-outline" title="New fitting" fullWidth onPress={() => router.push(clientRoutes.newFitting(id))} />
+        <Button variant="gold" icon="cube-outline" title="New order" fullWidth onPress={() => router.push(clientRoutes.newOrder(id))} />
+        <Button variant="secondary" icon="body-outline" title="New fitting" fullWidth onPress={() => router.push(clientRoutes.newFitting(id))} />
         <View style={styles.actionRow}>
           <Button variant="secondary" icon="mail-outline" title="Win-back email" style={styles.grow} onPress={() => router.push(clientRoutes.winback(id))} />
           <Button variant="ghost" icon="pencil-outline" title="Edit" onPress={() => router.push(clientRoutes.edit(id))} />
         </View>
+      </View>
+
+      <View>
+        <SectionTitle title="Orders" right={orders.length > 0 ? <Text style={typography.small}>{orders.length}</Text> : undefined} />
+        {ordersQuery.isPending ? (
+          <LoadingBlock />
+        ) : ordersQuery.isError ? (
+          <ErrorBlock error={ordersQuery.error} onRetry={() => void ordersQuery.refetch()} retrying={ordersQuery.isFetching} />
+        ) : orders.length === 0 ? (
+          <EmptyState
+            icon="cube-outline"
+            title="No orders yet"
+            body="Open an order to track the garment through the workshop."
+            action={<Button size="sm" variant="secondary" icon="add" title="New order" onPress={() => router.push(clientRoutes.newOrder(id))} />}
+          />
+        ) : (
+          <View style={styles.list}>
+            {orders.map((order) => (
+              <OrderRow key={order.id} order={order} onPress={() => router.push(clientRoutes.order(id, order.id))} />
+            ))}
+          </View>
+        )}
       </View>
 
       <View>

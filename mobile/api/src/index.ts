@@ -11,6 +11,7 @@ import aiRoutes from "./routes/ai";
 import clientRoutes from "./routes/clients";
 import fittingRoutes from "./routes/fittings";
 import homeRoutes from "./routes/home";
+import orderRoutes, { shopOrderRoutes } from "./routes/orders";
 import publicRoutes from "./routes/public";
 import shopRoutes from "./routes/shop";
 
@@ -44,11 +45,15 @@ app.route("/account", accountRoutes);
 app.use("/home", requireShop);
 app.use("/clients", requireShop);
 app.use("/clients/*", requireShop);
+app.use("/orders", requireShop);
+app.use("/orders/*", requireShop);
 app.use("/ai/*", requireShop);
 
 app.route("/home", homeRoutes);
 app.route("/clients", clientRoutes);
 app.route("/clients", fittingRoutes); // /clients/:clientId/fittings
+app.route("/clients", orderRoutes); // /clients/:clientId/orders[/:orderId]
+app.route("/orders", shopOrderRoutes); // shop-wide list
 app.route("/ai", aiRoutes);
 
 app.notFound((c) => {

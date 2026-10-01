@@ -1,5 +1,5 @@
 import { createClient, type Client as DbClient, type ResultSet, type Row } from "@libsql/client/web";
-import type { Client, FitAnalysis, Fitting, Shop, BrandTone } from "../../shared/types";
+import type { Client, FitAnalysis, Fitting, Order, OrderStatus, Shop, BrandTone } from "../../shared/types";
 import type { Bindings } from "./env";
 import { serverError } from "./errors";
 
@@ -28,6 +28,18 @@ export function inactiveCutoff(now: number = Date.now()): string {
 /** First instant of the current calendar month (UTC). */
 export function startOfMonthUtc(now: Date = new Date()): string {
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
+}
+
+export const DUE_SOON_DAYS = 7;
+
+/** First instant of the current calendar day (UTC). Open orders with due_at before this are overdue. */
+export function startOfTodayUtc(now: Date = new Date()): string {
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())).toISOString();
+}
+
+/** Start of today + 7 days (UTC). Open orders with due_at before this are "due soon" (includes overdue). */
+export function dueSoonCutoff(now: Date = new Date()): string {
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + DUE_SOON_DAYS)).toISOString();
 }
 
 // ---------- Row readers ----------
@@ -126,6 +138,32 @@ export function rowToFitting(row: Row): Fitting {
   };
 }
 
+/**
+ * `clientName` is only attached on the shop-wide list (GET /orders).
+ * `today` lets list mappers compute startOfTodayUtc() once instead of per row.
+ */
+export function rowToOrder(row: Row, opts: { clientName?: string; today?: string } = {}): Order {
+  const status = text(row, "status") as OrderStatus;
+  const dueAt = textOrNull(row, "due_at");
+  const today = opts.today ?? startOfTodayUtc();
+  const order: Order = {
+    id: text(row, "id"),
+    clientId: text(row, "client_id"),
+    fittingId: textOrNull(row, "fitting_id"),
+    garment: text(row, "garment"),
+    fabric: textOrNull(row, "fabric"),
+    status,
+    dueAt,
+    deliveredAt: textOrNull(row, "delivered_at"),
+    notes: textOrNull(row, "notes"),
+    createdAt: text(row, "created_at"),
+    updatedAt: text(row, "updated_at"),
+    overdue: status !== "delivered" && dueAt != null && dueAt < today,
+  };
+  if (opts.clientName !== undefined) order.clientName = opts.clientName;
+  return order;
+}
+
 // ---------- Common lookups ----------
 
 export async function getShopByOwner(db: Db, userId: string): Promise<Shop | null> {
@@ -146,6 +184,14 @@ export async function getFittingRow(db: Db, shopId: string, fittingId: string): 
   const rs = await db.execute({
     sql: "SELECT * FROM fittings WHERE id = ? AND shop_id = ?",
     args: [fittingId, shopId],
+  });
+  return rs.rows[0] ?? null;
+}
+
+export async function getOrderRow(db: Db, shopId: string, orderId: string): Promise<Row | null> {
+  const rs = await db.execute({
+    sql: "SELECT * FROM orders WHERE id = ? AND shop_id = ?",
+    args: [orderId, shopId],
   });
   return rs.rows[0] ?? null;
 }

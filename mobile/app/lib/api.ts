@@ -15,12 +15,16 @@ import type {
   ClientResponse,
   CreateClientRequest,
   CreateFittingRequest,
+  CreateOrderRequest,
   FittingResponse,
   GetShopResponse,
   HomeResponse,
   ListClientsResponse,
   ListFittingsResponse,
+  ListOrdersResponse,
+  OrderResponse,
   UpdateClientRequest,
+  UpdateOrderRequest,
   UpsertShopRequest,
   UpsertShopResponse,
 } from "@shared/types";
@@ -154,6 +158,7 @@ export function createApi(getToken: GetToken) {
   }
 
   const clientPath = (id: string) => `/clients/${encodeURIComponent(id)}`;
+  const orderPath = (clientId: string, orderId: string) => `${clientPath(clientId)}/orders/${encodeURIComponent(orderId)}`;
 
   return {
     /** Raw typed request — for routes not covered by the helpers below. */
@@ -181,6 +186,18 @@ export function createApi(getToken: GetToken) {
     listFittings: (clientId: string) => request<ListFittingsResponse>(`${clientPath(clientId)}/fittings`),
     createFitting: (clientId: string, body: CreateFittingRequest) =>
       request<FittingResponse>(`${clientPath(clientId)}/fittings`, { method: "POST", body }),
+
+    // ---- Orders ----
+    listOrders: (clientId: string) => request<ListOrdersResponse>(`${clientPath(clientId)}/orders`),
+    createOrder: (clientId: string, body: CreateOrderRequest) =>
+      request<OrderResponse>(`${clientPath(clientId)}/orders`, { method: "POST", body }),
+    getOrder: (clientId: string, orderId: string) => request<OrderResponse>(orderPath(clientId, orderId)),
+    updateOrder: (clientId: string, orderId: string, body: UpdateOrderRequest) =>
+      request<OrderResponse>(orderPath(clientId, orderId), { method: "PATCH", body }),
+    deleteOrder: (clientId: string, orderId: string) => request<void>(orderPath(clientId, orderId), { method: "DELETE" }),
+    /** Shop-wide: open orders (overdue first, then by due date, no date last) or, with `status: "delivered"`, the delivered ones. */
+    listShopOrders: (params?: { status?: "delivered" }) =>
+      request<ListOrdersResponse>("/orders", { query: { status: params?.status } }),
 
     // ---- AI ----
     aiFit: (body: AiFitRequest) => request<AiFitResponse>("/ai/fit", { method: "POST", body }),

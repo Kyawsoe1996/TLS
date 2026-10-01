@@ -5,6 +5,13 @@ All notable changes to TLS, newest first. Written in plain language so anyone on
 ## Unreleased
 
 ### Added
+- **Order tracking** in the mobile app. Each client can have orders (a garment, fabric, due date,
+  notes, optionally linked to a fitting) that move through *Measured → Cutting → Fitting → Ready →
+  Delivered*. Orders show in the client's file, a fitting can be turned into an order in one tap, and
+  a shop-wide **Orders** screen groups open orders by Overdue / Due this week / Later / No due date.
+  Home now shows **Orders in progress** and **Due this week**, and its AI suggestion points to orders
+  due soon. Deleting a client or the account also deletes its orders. (New `orders` table; API routes
+  `/clients/:id/orders` and `/orders`.)
 - Expo account created and the mobile app linked to the EAS project `@shamubtrs-team/tls`
   (project ID in `mobile/app/app.json`), so store builds can run in the cloud with `eas build`.
 
