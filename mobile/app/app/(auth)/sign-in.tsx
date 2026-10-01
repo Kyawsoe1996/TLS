@@ -140,7 +140,7 @@ export default function SignInScreen() {
       )}
 
       <View style={styles.footer}>
-        <Text style={typography.bodyMuted}>New to TLS?</Text>
+        <Text style={typography.bodyMuted}>New to Magick TLS?</Text>
         <Link href="/(auth)/sign-up" asChild>
           <Pressable hitSlop={6}>
             <Text style={styles.link}>Create an account</Text>

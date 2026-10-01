@@ -126,7 +126,7 @@ export default function SettingsScreen() {
         fullWidth
       />
 
-      <Text style={styles.version}>TLS v{version}</Text>
+      <Text style={styles.version}>Magick TLS v{version}</Text>
     </Screen>
   );
 }

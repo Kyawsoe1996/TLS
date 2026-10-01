@@ -6,7 +6,7 @@ Copy for App Store Connect and Google Play Console. Character limits are noted; 
 
 | Field | Limit | Value |
 |---|---|---|
-| App name (both stores) | 30 | `TLS – Tailor Growth` |
+| App name (both stores) | 30 | `Magick TLS – Tailor Growth` |
 | Subtitle (Apple) | 30 | `AI growth for bespoke tailors` |
 | Short description (Google) | 80 | `Fittings, AI cutter notes, local SEO and win-back emails for bespoke tailors` |
 | Promotional text (Apple, editable without a new build) | 170 | `Keep every client's measurements and cutter notes in one place, publish local content that gets found, and bring quiet clients back. Built for bespoke tailor shops.` |
@@ -109,7 +109,7 @@ Privacy policy: https://[WORKER]/privacy
 ## Character counts
 
 ```bash
-printf '%s' 'TLS – Tailor Growth' | wc -m                                   # 19
+printf '%s' 'Magick TLS – Tailor Growth' | wc -m                            # 26
 printf '%s' 'AI growth for bespoke tailors' | wc -m                          # 29
 printf '%s' 'Fittings, AI cutter notes, local SEO and win-back emails for bespoke tailors' | wc -m   # 76
 printf '%s' 'bespoke,suit,fitting,measurements,clients,CRM,marketing,SEO,Bangkok,atelier,menswear,shirt' | wc -m   # 90

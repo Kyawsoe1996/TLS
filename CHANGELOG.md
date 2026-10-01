@@ -16,6 +16,9 @@ All notable changes to TLS, newest first. Written in plain language so anyone on
   (project ID in `mobile/app/app.json`), so store builds can run in the cloud with `eas build`.
 
 ### Changed
+- The mobile app is now named **Magick TLS** (store listing: "Magick TLS – Tailor Growth"). Updated the
+  name under the icon, the sign-in and settings screens, the privacy and support pages, and the store
+  docs. The technical app ID and the repository name are unchanged.
 - Mobile Local SEO now looks up real tailor shops near the district on Google Maps (through Gemini,
   which works on the free tier) and bases its keyword ideas on them. The shops are listed under the
   results with their rating, review count and a link to Google Maps. If the lookup is unavailable,

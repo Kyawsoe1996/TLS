@@ -1,4 +1,4 @@
-# Privacy Policy – TLS
+# Privacy Policy – Magick TLS
 
 **Effective date:** [DATE]
 **Operator:** [COMPANY NAME], [COMPANY ADDRESS] ("we", "us")

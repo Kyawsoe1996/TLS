@@ -22,7 +22,7 @@ function page(title: string, body: string): string {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${title} - TLS</title>
+<title>${title} - Magick TLS</title>
 <style>
   :root { color-scheme: light dark; }
   body { margin: 0; padding: 32px 16px 64px; font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #fff; color: #1a1a1a; }
@@ -45,9 +45,9 @@ ${body}
 
 const PRIVACY_HTML = `
 <h1>Privacy Policy</h1>
-<p class="meta">TLS - the app for bespoke tailor shops. Provided by [COMPANY NAME]. Last updated: [DATE].</p>
+<p class="meta">Magick TLS - the app for bespoke tailor shops. Provided by [COMPANY NAME]. Last updated: [DATE].</p>
 
-<p>This policy explains, in plain English, what information the TLS app stores, who helps us process it, and how you stay in control of it.</p>
+<p>This policy explains, in plain English, what information the Magick TLS app stores, who helps us process it, and how you stay in control of it.</p>
 
 <h2>What we store</h2>
 <ul>
@@ -89,7 +89,7 @@ const PRIVACY_HTML = `
 
 const SUPPORT_HTML = `
 <h1>Support</h1>
-<p class="meta">TLS - the app for bespoke tailor shops. Provided by [COMPANY NAME].</p>
+<p class="meta">Magick TLS - the app for bespoke tailor shops. Provided by [COMPANY NAME].</p>
 
 <h2>Get help</h2>
 <p>Email us at <a href="mailto:[SUPPORT EMAIL]">[SUPPORT EMAIL]</a>. We reply within [RESPONSE TIME].</p>
