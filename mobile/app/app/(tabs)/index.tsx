@@ -5,7 +5,7 @@ import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { clientRoutes } from "@/components/clients";
-import { Button, Card, ErrorBanner, Eyebrow, KpiTile, Screen, type IoniconName } from "@/components/ui";
+import { Button, Card, ErrorBanner, Eyebrow, KpiList, Screen, type IoniconName } from "@/components/ui";
 import { colors, fonts, typography } from "@/constants/theme";
 import { useApi } from "@/lib/api";
 import { greeting, initials } from "@/lib/format";
@@ -66,26 +66,31 @@ export default function HomeScreen() {
         </View>
       ) : null}
 
-      <View style={styles.kpiRow}>
-        <KpiTile label="Orders in progress" value={kpi(home?.ordersOpen)} onPress={() => router.push(clientRoutes.orders)} />
-        <KpiTile
-          label="Due this week"
-          value={kpi(home?.ordersDueSoon)}
-          note={dueSoon > 0 ? "Check the workshop" : undefined}
-          onPress={() => router.push(clientRoutes.orders)}
-        />
-      </View>
-
-      <View style={styles.kpiRow}>
-        <KpiTile label="Clients" value={kpi(home?.clientsCount)} onPress={() => router.push("/(tabs)/clients")} />
-        <KpiTile label="Fittings this month" value={kpi(home?.fittingsThisMonth)} />
-        <KpiTile
-          label="Inactive 90+ days"
-          value={kpi(home?.inactiveCount)}
-          note={inactive > 0 ? "Win-back ready" : undefined}
-          onPress={() => router.push(INACTIVE_CLIENTS)}
-        />
-      </View>
+      {/* One card of rows instead of a tile grid: labels never wrap or truncate. */}
+      <KpiList
+        items={[
+          { key: "open", icon: "cube-outline", label: "Orders in progress", value: kpi(home?.ordersOpen), onPress: () => router.push(clientRoutes.orders) },
+          {
+            key: "due",
+            icon: "time-outline",
+            label: "Due this week",
+            value: kpi(home?.ordersDueSoon),
+            note: dueSoon > 0 ? "Check the workshop" : undefined,
+            accent: dueSoon > 0,
+            onPress: () => router.push(clientRoutes.orders),
+          },
+          { key: "clients", icon: "people-outline", label: "Clients", value: kpi(home?.clientsCount), onPress: () => router.push("/(tabs)/clients") },
+          { key: "fittings", icon: "body-outline", label: "Fittings this month", value: kpi(home?.fittingsThisMonth) },
+          {
+            key: "inactive",
+            icon: "mail-outline",
+            label: "Inactive 90+ days",
+            value: kpi(home?.inactiveCount),
+            note: inactive > 0 ? "Win-back ready" : undefined,
+            onPress: () => router.push(INACTIVE_CLIENTS),
+          },
+        ]}
+      />
 
       {dueSoon > 0 ? (
         <Card variant="dark" style={styles.aiCard}>
@@ -143,7 +148,6 @@ const styles = StyleSheet.create({
   },
   avatarText: { fontFamily: fonts.serif, fontSize: 20, color: colors.ivory },
   errorBlock: { gap: 10 },
-  kpiRow: { flexDirection: "row", gap: 10 },
   aiCard: { gap: 12 },
   aiText: { fontFamily: fonts.body, fontSize: 15, lineHeight: 23, color: colors.ivorySoft },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },

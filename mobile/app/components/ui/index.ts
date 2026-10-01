@@ -6,6 +6,7 @@ export { EmptyState, type EmptyStateProps } from "./EmptyState";
 export { ErrorBanner, type ErrorBannerProps } from "./ErrorBanner";
 export { Eyebrow, type EyebrowProps, type EyebrowTone } from "./Eyebrow";
 export { Field, type FieldProps } from "./Field";
+export { KpiList, type KpiListItem, type KpiListProps } from "./KpiList";
 export { KpiTile, type KpiTileProps } from "./KpiTile";
 export { LoadingAI, type LoadingAIProps } from "./LoadingAI";
 export { NumberField, type NumberFieldProps } from "./NumberField";
