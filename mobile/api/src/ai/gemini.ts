@@ -7,13 +7,36 @@ export const DEFAULT_GEMINI_MODEL = "gemini-3.1-flash-lite";
 const TIMEOUT_MS = 25_000;
 const MAX_ATTEMPTS = 2; // one retry
 
+/** The part of Gemini's grounding metadata we read (Google Maps sources). */
+export interface GroundingMetadata {
+  groundingChunks?: Array<{
+    maps?: { uri?: string; title?: string; text?: string; placeId?: string };
+  }>;
+}
+
 interface GeminiResponse {
   candidates?: Array<{
     content?: { parts?: Array<{ text?: string }> };
     finishReason?: string;
+    groundingMetadata?: GroundingMetadata;
   }>;
   promptFeedback?: { blockReason?: string };
   error?: { message?: string };
+}
+
+export interface GeminiRequest {
+  /** System instruction; left out when not given. */
+  system?: string;
+  user: string;
+  /** Force a JSON reply. Don't combine with `tools`: this model doesn't support both together. */
+  json?: boolean;
+  tools?: Array<Record<string, unknown>>;
+  temperature: number;
+}
+
+export interface GeminiReply {
+  text: string;
+  grounding: GroundingMetadata | undefined;
 }
 
 /**
@@ -36,7 +59,12 @@ export async function runPipeline<S extends z.ZodType>(
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     try {
-      const text = await callGemini(env, payload);
+      const { text } = await callGemini(env, {
+        system: AI_ENGINE_PROMPT,
+        user: JSON.stringify(payload),
+        json: true,
+        temperature: 0.7,
+      });
       const json = parseJsonLoose(text);
       const result = schema.safeParse(json);
       if (result.success) return result.data as z.infer<S>;
@@ -57,16 +85,21 @@ export async function runPipeline<S extends z.ZodType>(
   throw aiFailed();
 }
 
-async function callGemini(env: Bindings, payload: Record<string, unknown>): Promise<string> {
+/** One generateContent call. Throws on HTTP errors, blocked prompts, empty replies and timeouts. */
+export async function callGemini(env: Bindings, req: GeminiRequest): Promise<GeminiReply> {
   const model = env.GEMINI_MODEL?.trim() || DEFAULT_GEMINI_MODEL;
   const url =
     `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent` +
     `?key=${encodeURIComponent(env.GEMINI_API_KEY)}`;
 
   const body = {
-    systemInstruction: { parts: [{ text: AI_ENGINE_PROMPT }] },
-    contents: [{ role: "user", parts: [{ text: JSON.stringify(payload) }] }],
-    generationConfig: { responseMimeType: "application/json", temperature: 0.7 },
+    ...(req.system ? { systemInstruction: { parts: [{ text: req.system }] } } : {}),
+    contents: [{ role: "user", parts: [{ text: req.user }] }],
+    ...(req.tools ? { tools: req.tools } : {}),
+    generationConfig: {
+      ...(req.json ? { responseMimeType: "application/json" } : {}),
+      temperature: req.temperature,
+    },
   };
 
   const controller = new AbortController();
@@ -87,12 +120,12 @@ async function callGemini(env: Bindings, payload: Record<string, unknown>): Prom
       throw new Error(`Gemini blocked the prompt: ${data.promptFeedback.blockReason}`);
     }
 
-    const parts = data.candidates?.[0]?.content?.parts ?? [];
-    const text = parts.map((p) => p.text ?? "").join("");
+    const candidate = data.candidates?.[0];
+    const text = (candidate?.content?.parts ?? []).map((p) => p.text ?? "").join("");
     if (!text.trim()) {
-      throw new Error(`Gemini returned no text (finishReason=${data.candidates?.[0]?.finishReason ?? "none"})`);
+      throw new Error(`Gemini returned no text (finishReason=${candidate?.finishReason ?? "none"})`);
     }
-    return text;
+    return { text, grounding: candidate?.groundingMetadata };
   } finally {
     clearTimeout(timer);
   }
@@ -113,6 +146,6 @@ export function parseJsonLoose(text: string): unknown {
   }
 }
 
-function describe(err: unknown): string {
+export function describe(err: unknown): string {
   return err instanceof Error ? `${err.name}: ${err.message}` : String(err);
 }

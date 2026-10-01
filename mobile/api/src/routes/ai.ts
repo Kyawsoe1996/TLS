@@ -15,6 +15,7 @@ import type {
   SearchConsoleStatus,
 } from "../../../shared/types";
 import { runPipeline } from "../ai/gemini";
+import { findNearbyTailors } from "../ai/maps";
 import { fitAnalysisSchema, postSchema, seoSchema, winbackSchema } from "../ai/schemas";
 import { type Db, getClientRow, newId, nowIso, rowToClient, rowToFitting } from "../db";
 import type { AppEnv } from "../env";
@@ -130,7 +131,7 @@ aiRoutes.post("/fit", async (c) => {
   return c.json(body);
 });
 
-/** POST /ai/seo -> pipeline 2 -> { target_market, keywords } */
+/** POST /ai/seo -> Google Maps lookup, then pipeline 2 -> { target_market, keywords, places } */
 aiRoutes.post("/seo", async (c) => {
   const db = c.get("db");
   const shop = c.get("shop");
@@ -138,16 +139,26 @@ aiRoutes.post("/seo", async (c) => {
 
   await enforceAiRateLimit(c);
 
+  const nearby = await findNearbyTailors(c.env, input.district);
   const payload = {
     ACTION: "GENERATE_LOCAL_SEO_MAP",
     target_district: input.district,
     competitor_tier: input.competitorTier,
     search_console_status: input.searchConsoleStatus,
   };
-  const result = await runPipeline(c.env, payload, seoSchema);
-  await saveGeneration(db, shop.id, "seo", payload, result);
+  const result = await runPipeline(
+    c.env,
+    nearby ? { ...payload, nearby_competitors: nearby.findings } : payload,
+    seoSchema,
+  );
+  // The Maps findings and places are not stored (Google's terms limit keeping Maps content), only whether they were used.
+  await saveGeneration(db, shop.id, "seo", { ...payload, maps_grounded: nearby !== null }, result);
 
-  const body: AiSeoResponse = { target_market: result.target_market, keywords: result.keywords };
+  const body: AiSeoResponse = {
+    target_market: result.target_market,
+    keywords: result.keywords,
+    places: nearby?.places ?? null,
+  };
   return c.json(body);
 });
 

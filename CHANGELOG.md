@@ -8,6 +8,14 @@ All notable changes to TLS, newest first. Written in plain language so anyone on
 - Expo account created and the mobile app linked to the EAS project `@shamubtrs-team/tls`
   (project ID in `mobile/app/app.json`), so store builds can run in the cloud with `eas build`.
 
+### Changed
+- Mobile Local SEO now looks up real tailor shops near the district on Google Maps (through Gemini,
+  which works on the free tier) and bases its keyword ideas on them. The shops are listed under the
+  results with their rating, review count and a link to Google Maps. If the lookup is unavailable,
+  the screen says the ideas were written without live Google data.
+- Local SEO keywords are labelled as AI suggestions, and the AI is told not to quote search volumes
+  or rankings it cannot know. (API changes take effect on the live API after the next deploy.)
+
 ### Planned before the first App Store / Play Store submission
 (see `mobile/docs/release-checklist.md`):
 

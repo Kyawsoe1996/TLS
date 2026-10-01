@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { Linking, StyleSheet, Text, View } from "react-native";
 import type { AiSeoRequest, CompetitorTier, SearchConsoleStatus, SeoKeyword } from "@shared/types";
 
-import { ChoiceChips, KeywordCard } from "@/components/grow";
+import { ChoiceChips, KeywordCard, NearbyPlaces } from "@/components/grow";
 import { AiResultCard, Button, Card, Eyebrow, Field, LoadingAI, Screen } from "@/components/ui";
 import { colors, fonts, typography } from "@/constants/theme";
 import { useApi } from "@/lib/api";
@@ -69,7 +69,7 @@ export default function LocalSeoScreen() {
       back
       eyebrow="Grow"
       title="Local SEO"
-      subtitle="A keyword map for your neighbourhood: what nearby customers search for and the angle to win each one."
+      subtitle="AI-suggested search phrases for your neighbourhood, with a content angle for each one."
       keyboard
     >
       <Field
@@ -85,7 +85,7 @@ export default function LocalSeoScreen() {
         editable={!mutation.isPending}
       />
       <ChoiceChips label="Competitor tier" hint="Who you're up against for the same searches." options={TIERS} value={tier} onChange={setTier} disabled={mutation.isPending} />
-      <ChoiceChips label="Where are you on Google today?" options={STATUSES} value={status} onChange={setStatus} disabled={mutation.isPending} />
+      <ChoiceChips label="Where are you on Google today?" hint="Your best guess. TLS doesn't check Google for you." options={STATUSES} value={status} onChange={setStatus} disabled={mutation.isPending} />
 
       <Card variant="soft" style={styles.infoCard}>
         <View style={styles.infoRow}>
@@ -108,16 +108,25 @@ export default function LocalSeoScreen() {
         disabled={!district.trim()}
       />
 
-      {mutation.isPending ? <LoadingAI label="Mapping your district…" /> : null}
+      {mutation.isPending ? <LoadingAI label="Checking Google Maps for your district…" /> : null}
 
       {result ? (
         <View style={styles.results}>
           <AiResultCard eyebrow="Local SEO" title="Target market" body={result.target_market} copyText={result.target_market} />
 
           <View style={styles.keywordsHeader}>
-            <Eyebrow>Low-competition keywords</Eyebrow>
+            <Eyebrow>Suggested keywords</Eyebrow>
             <Text style={styles.keywordsCount}>
               {result.keywords.length === 1 ? "1 keyword" : `${result.keywords.length} keywords`}
+            </Text>
+          </View>
+
+          <View style={styles.note}>
+            <Ionicons name="information-circle-outline" size={16} color={colors.muted} />
+            <Text style={styles.noteText}>
+              {result.places
+                ? "Written by AI from the tailors Google Maps shows near you, listed below. It has no search-volume data, so check a phrase before you build on it."
+                : "Written by AI from what you entered, not from live Google data. Check a phrase before you build on it."}
             </Text>
           </View>
 
@@ -126,6 +135,8 @@ export default function LocalSeoScreen() {
           ) : (
             <Text style={typography.bodyMuted}>No keywords came back this time. Try a broader district or another competitor tier.</Text>
           )}
+
+          {result.places ? <NearbyPlaces places={result.places} /> : null}
         </View>
       ) : null}
     </Screen>
@@ -140,4 +151,6 @@ const styles = StyleSheet.create({
   results: { gap: 14 },
   keywordsHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 4 },
   keywordsCount: { fontFamily: fonts.bodyMedium, fontSize: 12, lineHeight: 16, color: colors.muted },
+  note: { flexDirection: "row", alignItems: "flex-start", gap: 8, paddingHorizontal: 4 },
+  noteText: { ...typography.small, flex: 1 },
 });

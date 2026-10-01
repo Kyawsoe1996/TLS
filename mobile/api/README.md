@@ -113,7 +113,7 @@ All routes except `GET /health`, `GET /privacy`, `GET /support` require `Authori
 | GET | `/clients/:id/fittings` | - | `{ fittings }` newest first |
 | POST | `/clients/:id/fittings` | `CreateFittingRequest` | 201 `{ fitting }`; sets `client.lastOrderAt = now` |
 | POST | `/ai/fit` | `{ fittingId }` | `{ fitting }` with `analysis` filled (pipeline 1, saved on the fitting) |
-| POST | `/ai/seo` | `AiSeoRequest` | `AiSeoResponse` (pipeline 2, saved as generation `seo`) |
+| POST | `/ai/seo` | `AiSeoRequest` | `AiSeoResponse` (Google Maps lookup, then pipeline 2; saved as generation `seo`) |
 | POST | `/ai/post` | `AiPostRequest` | `AiPostResponse` (pipeline 3, saved as generation `post`) |
 | POST | `/ai/winback` | `AiWinbackRequest` | `AiWinbackResponse` (pipeline 4, saved as generation `winback`) |
 | DELETE | `/account` | - | 204; deletes fittings, clients, generations, shop and the Clerk user |
@@ -124,3 +124,4 @@ Notes:
 - A client is `inactive` when `coalesce(lastOrderAt, createdAt)` is 90+ days ago. `fittingsThisMonth` counts fittings created in the current calendar month (UTC).
 - `/ai/*` routes are limited to 30 requests per user per rolling day (429 `rate_limited`); the limit is checked after validation so bad requests don't consume quota. Responses carry `X-RateLimit-*` headers.
 - Gemini output is validated against a zod schema per pipeline; on failure the call is retried once, then 502 `ai_failed`. Each call times out after 25s.
+- `/ai/seo` makes two Gemini calls. The first (`ai/maps.ts`) uses Gemini's Google Maps grounding to find tailor shops near the district; its summary is passed to pipeline 2 as `nearby_competitors` and the shops are returned as `places`. If that lookup fails or returns no Maps sources, pipeline 2 runs without it and `places` is `null`. The Maps findings and places are not stored in `generations`. Google's terms require showing each place with its Maps link and the text "Google Maps", only to the user who asked.

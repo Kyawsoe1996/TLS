@@ -16,7 +16,7 @@ const INACTIVE_CLIENTS: Href = { pathname: "/(tabs)/clients", params: { inactive
 
 const TILES: { key: string; title: string; hint: string; icon: IoniconName; href: Href }[] = [
   { key: "fit", title: "Smart Fitting", hint: "Open a client to log a fitting", icon: "body-outline", href: "/(tabs)/clients" },
-  { key: "seo", title: "Local SEO", hint: "Keyword map for your district", icon: "location-outline", href: "/(tabs)/grow/seo" },
+  { key: "seo", title: "Local SEO", hint: "Keyword ideas for your district", icon: "location-outline", href: "/(tabs)/grow/seo" },
   { key: "content", title: "Content Studio", hint: "Blog + social post in your tone", icon: "create-outline", href: "/(tabs)/grow/content" },
   { key: "winback", title: "Win-back", hint: "Email clients who drifted", icon: "mail-outline", href: INACTIVE_CLIENTS },
 ];

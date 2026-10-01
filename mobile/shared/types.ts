@@ -149,9 +149,17 @@ export interface SeoKeyword {
   search_intent: string;
   content_angle: string;
 }
+/** A tailor shop found on Google Maps for the district. Show it with its Maps link. */
+export interface SeoPlace {
+  name: string;
+  mapsUrl: string;
+  rating: number | null;
+  reviewCount: number | null;
+}
 export interface AiSeoResponse {
   target_market: string;
   keywords: SeoKeyword[];
+  places: SeoPlace[] | null; // null = written without Google Maps data (lookup unavailable)
 }
 
 /** Pipeline 3 — GENERATE_DASHBOARD_POST */

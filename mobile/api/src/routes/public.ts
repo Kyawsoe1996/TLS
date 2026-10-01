@@ -64,7 +64,7 @@ const PRIVACY_HTML = `
   <li><strong>Clerk</strong> - sign-in and account security.</li>
   <li><strong>Turso</strong> - the database where your shop, client, fitting and AI data is stored.</li>
   <li><strong>Cloudflare</strong> - hosting for the API that the app talks to.</li>
-  <li><strong>Google Gemini</strong> - AI generation. When you tap an AI feature, the relevant inputs (for example a client's first name, style, fabric and measurements, or your district and brand tone) are sent to Google to produce the result.</li>
+  <li><strong>Google Gemini</strong> - AI generation. When you tap an AI feature, the relevant inputs (for example a client's first name, style, fabric and measurements, or your district and brand tone) are sent to Google to produce the result. For Local SEO, Google also looks up tailor shops near the district you enter on Google Maps.</li>
   <li><strong>Upstash</strong> - counts your AI requests so we can apply the daily usage limit. It only sees an anonymous user identifier, not your data.</li>
 </ul>
 

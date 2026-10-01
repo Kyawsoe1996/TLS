@@ -51,6 +51,7 @@ npx wrangler deploy
 - Fill in `docs/privacy-policy.md` and make sure the worker serves it at `/privacy` and a support page at `/support`. Both are required by the stores. Open them in a browser.
 - Run the database migrations against the production Turso DB (whatever the API README says, e.g. `turso db shell tls < schema.sql`).
 - Use a **billing-enabled** Gemini key in production. On the free tier Google may use prompts to improve its models, which is inconsistent with the privacy policy.
+- Local SEO uses Gemini's **Google Maps grounding**. Before submitting, read the "Grounding with Google Maps" section of the Gemini API terms (ai.google.dev/gemini-api/terms): check the monthly usage allowance for your tier, and exclude the terms' prohibited territories from the store availability lists.
 
 ## 3. Clerk production instance
 

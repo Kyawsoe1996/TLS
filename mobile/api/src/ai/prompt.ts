@@ -23,7 +23,8 @@ Input Variables:
 - target_district: [String] (e.g., Thonglor, Bangkok)
 - competitor_tier: [String]
 - search_console_status: [String] (e.g., Ranking page 3 for core terms)
-Task: Act as a hyper-localized B2B SEO Strategy Expert. Map the regional organic search environment for this specific storefront location. Identify low-competition, high-buying-intent local long-tail keywords that the merchant can exploit to bypass enterprise competitors.
+- nearby_competitors: [String] (optional; tailor shops found on Google Maps in the district, with ratings and what each emphasises)
+Task: Act as a hyper-localized B2B SEO Strategy Expert. Map the regional organic search environment for this specific storefront location. When nearby_competitors is provided, base the analysis on it: who is there, how they are rated and what they emphasise. Suggest local long-tail keywords that are likely to be lower-competition and high-buying-intent, which the merchant can use to stand out from those competitors. You never have search-volume data: do not state or imply search volumes, the merchant's ranking position or other statistics that are not in the input. Describe search habits as likely, not measured.
 JSON Output Schema:
 { "status": "success", "data_type": "seo_strategy", "target_market": "[Analysis of consumer search habits in the specified district]", "keywords": [ { "keyword": "[High-intent long-tail search phrase]", "search_intent": "[Why customers use this term]", "content_angle": "[1-sentence localized content strategy the tailor can publish this week to capture traffic]" } ] }
 

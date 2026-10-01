@@ -12,7 +12,7 @@ export interface KeywordCardProps {
   style?: StyleProp<ViewStyle>;
 }
 
-/** One low-competition keyword from the Local SEO map: intent, this week's angle, and a shortcut to Content Studio. */
+/** One suggested keyword from the Local SEO map: intent, this week's angle, and a shortcut to Content Studio. */
 export function KeywordCard({ keyword, onWrite, style }: KeywordCardProps) {
   return (
     <Card style={[styles.card, style]}>
@@ -24,7 +24,7 @@ export function KeywordCard({ keyword, onWrite, style }: KeywordCardProps) {
       </View>
 
       <Text style={styles.intent} selectable>
-        <Text style={styles.intentLabel}>Why they search</Text>
+        <Text style={styles.intentLabel}>Likely intent</Text>
         {"  ·  "}
         {keyword.search_intent}
       </Text>

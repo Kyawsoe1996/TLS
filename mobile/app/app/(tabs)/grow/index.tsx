@@ -16,7 +16,7 @@ const TILES: { key: string; title: string; body: string; icon: IoniconName; href
   {
     key: "seo",
     title: "Local SEO",
-    body: "A keyword map for your district: what nearby customers search for and the angle to win each one.",
+    body: "AI-suggested search phrases for your district, with a content angle for each one.",
     icon: "location-outline",
     href: "/(tabs)/grow/seo",
   },
