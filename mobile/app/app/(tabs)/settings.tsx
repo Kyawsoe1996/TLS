@@ -7,11 +7,12 @@ import * as WebBrowser from "expo-web-browser";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { Tag } from "@/components/clients";
 import { Button, Card, Eyebrow, Screen } from "@/components/ui";
 import { colors, fonts, typography } from "@/constants/theme";
 import { API_URL, useApi } from "@/lib/api";
 import { confirm, showError } from "@/lib/toast";
-import { useShop } from "@/lib/useShop";
+import { useEmailStatus, useShop } from "@/lib/useShop";
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -21,11 +22,19 @@ export default function SettingsScreen() {
   const { user } = useUser();
   const shopQuery = useShop();
   const shop = shopQuery.data ?? null;
+  const emailStatus = useEmailStatus().data ?? null;
   const [deleting, setDeleting] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
 
   const version = Constants.expoConfig?.version ?? "1.0.0";
   const email = user?.primaryEmailAddress?.emailAddress ?? user?.emailAddresses?.[0]?.emailAddress ?? "";
+  // "address · phone · hours · reply-to" (address flattened to one line), or nothing when none are set.
+  const detailsSummary = shop
+    ? [shop.address?.replace(/\s*\n+\s*/g, ", "), shop.phone, shop.openingHours, shop.replyToEmail]
+        .map((v) => v?.trim())
+        .filter(Boolean)
+        .join(" · ")
+    : "";
 
   const openLink = async (path: "/privacy" | "/support") => {
     try {
@@ -103,6 +112,41 @@ export default function SettingsScreen() {
         ) : null}
       </Card>
 
+      <Card onPress={() => router.push("/shop-details")} disabled={!shop} style={styles.detailsCard} testID="shop-details-card">
+        <View style={styles.detailsRow}>
+          <View style={styles.detailsText}>
+            <Eyebrow>Shop details</Eyebrow>
+            <Text style={detailsSummary ? typography.body : typography.bodyMuted} numberOfLines={2}>
+              {detailsSummary || (shopQuery.isPending ? "Loading…" : "Not added yet")}
+            </Text>
+            <Text style={typography.small}>Address, phone, hours and reply-to — shown at the bottom of every email you send.</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+        </View>
+      </Card>
+
+      <Card style={styles.emailCard} testID="email-sending-card">
+        <View style={styles.emailHeader}>
+          <Eyebrow>Email sending</Eyebrow>
+          {emailStatus ? (
+            emailStatus.configured ? (
+              <Tag label="Connected" tone="success" icon="checkmark" />
+            ) : (
+              <Tag label="Not set up" tone="warning" icon="alert-circle-outline" />
+            )
+          ) : null}
+        </View>
+        <Text style={typography.body}>
+          {emailStatus
+            ? emailStatus.configured
+              ? `Emails are sent from ${emailStatus.from}`
+              : "Emails are saved as Simulated until a Resend API key is added to the API. See mobile/api/README.md."
+            : shopQuery.isPending
+              ? "Checking…"
+              : "—"}
+        </Text>
+      </Card>
+
       <Card padding={0}>
         <SettingsRow icon="shield-checkmark-outline" label="Privacy policy" onPress={() => void openLink("/privacy")} />
         <View style={styles.divider} />
@@ -160,6 +204,11 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   toneText: { fontFamily: fonts.bodyMedium, fontSize: 13, color: colors.goldDark },
+  detailsCard: { gap: 0 },
+  detailsRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+  detailsText: { flex: 1, minWidth: 0, gap: 4 },
+  emailCard: { gap: 8 },
+  emailHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
   row: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, minHeight: 52 },
   rowPressed: { backgroundColor: colors.cardSoft },
   rowLabel: { flex: 1, fontFamily: fonts.bodyMedium, fontSize: 15, color: colors.ink },

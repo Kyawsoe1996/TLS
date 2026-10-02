@@ -1,11 +1,26 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import type { CreateFittingRequest, FittingResponse, ListFittingsResponse } from "../../../shared/types";
-import { getClientRow, getFittingRow, newId, nowIso, rowToFitting } from "../db";
+import {
+  type CreateFittingRequest,
+  type FittingResponse,
+  GARMENT_TYPES,
+  type ListFittingsResponse,
+} from "../../../shared/types";
+import {
+  DEFAULT_GARMENT_TYPE,
+  getClientRow,
+  getFittingRow,
+  MEASUREMENT_COLUMNS,
+  MEASUREMENT_KEYS,
+  newId,
+  nowIso,
+  rowToFitting,
+} from "../db";
 import type { AppEnv } from "../env";
 import { notFound } from "../errors";
 import { type AssertAccepts, centimetres, optionalText, parseBody, requiredText } from "../validate";
 
+/** Every key of `Measurements`; missing keys are stored as NULL (which set matters depends on garmentType). */
 const measurementsSchema = z.object({
   chest: centimetres,
   waist: centimetres,
@@ -13,15 +28,27 @@ const measurementsSchema = z.object({
   shoulder: centimetres,
   sleeve: centimetres,
   jacketLength: centimetres,
+  hip: centimetres,
+  inseam: centimetres,
+  outseam: centimetres,
+  thigh: centimetres,
+  hem: centimetres,
+  neck: centimetres,
+  cuff: centimetres,
+  shirtLength: centimetres,
 });
 
 const createFittingSchema = z.object({
+  garmentType: z.enum(GARMENT_TYPES, { error: `must be one of: ${GARMENT_TYPES.join(", ")}` }).optional(),
   style: requiredText(120),
   fabric: requiredText(120),
   measurements: measurementsSchema,
   postureNote: optionalText(500),
 });
 type _CreateAccepted = AssertAccepts<typeof createFittingSchema, CreateFittingRequest>;
+
+const MEASUREMENT_COLUMN_LIST = MEASUREMENT_KEYS.map((key) => MEASUREMENT_COLUMNS[key]).join(", ");
+const MEASUREMENT_PLACEHOLDERS = MEASUREMENT_KEYS.map(() => "?").join(", ");
 
 // Mounted at /clients, so paths are /clients/:clientId/fittings
 const fittingRoutes = new Hono<AppEnv>();
@@ -60,20 +87,16 @@ fittingRoutes.post("/:clientId/fittings", async (c) => {
     [
       {
         sql: `INSERT INTO fittings
-                (id, shop_id, client_id, style, fabric, chest, waist, over_arm, shoulder, sleeve, jacket_length, posture_note, ai_json, created_at)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)`,
+                (id, shop_id, client_id, garment_type, style, fabric, ${MEASUREMENT_COLUMN_LIST}, posture_note, ai_json, created_at)
+              VALUES (?, ?, ?, ?, ?, ?, ${MEASUREMENT_PLACEHOLDERS}, ?, NULL, ?)`,
         args: [
           id,
           shop.id,
           clientId,
+          input.garmentType ?? DEFAULT_GARMENT_TYPE,
           input.style,
           input.fabric,
-          m.chest,
-          m.waist,
-          m.overArm,
-          m.shoulder,
-          m.sleeve,
-          m.jacketLength,
+          ...MEASUREMENT_KEYS.map((key) => m[key]),
           input.postureNote ?? null,
           now,
         ],

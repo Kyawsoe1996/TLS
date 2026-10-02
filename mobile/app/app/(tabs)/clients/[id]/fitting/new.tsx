@@ -3,16 +3,20 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
-import type { CreateFittingRequest, Fitting, Measurements } from "@shared/types";
+import { GARMENT_TYPES, type CreateFittingRequest, type Fitting, type GarmentType, type Measurements } from "@shared/types";
 
 import {
-  ANALYSE_REQUIREMENT,
   EMPTY_MEASUREMENTS,
-  MEASUREMENT_FIELDS,
+  GARMENT_LABELS,
   afterFittingCreated,
+  analyseKeysLabel,
+  analyseRequirement,
   cacheFitting,
   canAnalyse,
   clientRoutes,
+  fieldsFor,
+  measurementsTitle,
+  pickMeasurements,
   showAiError,
   useClient,
   type MeasurementKey,
@@ -28,7 +32,7 @@ const FABRIC_SUGGESTIONS = ["Super 130s navy wool", "Irish linen", "Charcoal fla
 
 type Phase = "idle" | "saving" | "analysing";
 
-/** Manual fitting entry. "Save & analyse" runs POST /ai/fit right after the fitting is stored. */
+/** Manual fitting entry. The garment picks the measurement set; "Save & analyse" runs POST /ai/fit right after saving. */
 export default function NewFittingScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -36,15 +40,19 @@ export default function NewFittingScreen() {
   const queryClient = useQueryClient();
   const clientQuery = useClient(id);
 
+  const [garmentType, setGarmentType] = useState<GarmentType>("jacket");
   const [styleChoice, setStyleChoice] = useState<string>(STYLE_PRESETS[0]);
   const [customStyle, setCustomStyle] = useState("");
   const [fabric, setFabric] = useState("");
+  // Every key is kept while the user switches garments; only the chosen garment's keys are sent.
   const [measurements, setMeasurements] = useState<Measurements>(EMPTY_MEASUREMENTS);
   const [postureNote, setPostureNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [phase, setPhase] = useState<Phase>("idle");
 
-  const analysable = canAnalyse(measurements);
+  const fields = fieldsFor(garmentType);
+  const analysable = canAnalyse(garmentType, measurements);
+  const requirement = analyseRequirement(garmentType);
 
   const setMeasurement = (key: MeasurementKey, value: number | null) => setMeasurements((m) => ({ ...m, [key]: value }));
 
@@ -76,10 +84,16 @@ export default function NewFittingScreen() {
     const fabricText = fabric.trim();
     if (!style) return setError("Name the style — pick one above or describe your own.");
     if (!fabricText) return setError("Add the fabric so the cutter knows what they're working with.");
-    if (analyse && !analysable) return setError(ANALYSE_REQUIREMENT);
+    if (analyse && !analysable) return setError(requirement);
     setError(null);
     mutation.mutate({
-      body: { style, fabric: fabricText, measurements, postureNote: postureNote.trim() || undefined },
+      body: {
+        garmentType,
+        style,
+        fabric: fabricText,
+        measurements: pickMeasurements(garmentType, measurements),
+        postureNote: postureNote.trim() || undefined,
+      },
       analyse,
     });
   };
@@ -93,7 +107,7 @@ export default function NewFittingScreen() {
       eyebrow={clientQuery.data?.name ?? "Client"}
       title="New fitting"
       keyboard
-      // Pinned below the form so both actions stay reachable without scrolling past six fields.
+      // Pinned below the form so both actions stay reachable without scrolling past the measurement grid.
       footer={
         <View style={styles.actions}>
           <Button
@@ -104,12 +118,22 @@ export default function NewFittingScreen() {
             loading={analyseIntent}
             disabled={busy || !analysable}
           />
-          {!analysable ? <Text style={styles.hint}>{ANALYSE_REQUIREMENT}</Text> : null}
+          {!analysable ? <Text style={styles.hint}>{requirement}</Text> : null}
           <Button title="Save fitting" variant="secondary" fullWidth onPress={() => submit(false)} loading={busy && !analyseIntent} disabled={busy} />
         </View>
       }
     >
       <ErrorBanner message={error} />
+
+      <View style={styles.block}>
+        <Eyebrow>Garment</Eyebrow>
+        <View style={styles.chips}>
+          {GARMENT_TYPES.map((g) => (
+            <Chip key={g} label={GARMENT_LABELS[g]} selected={garmentType === g} onPress={() => setGarmentType(g)} disabled={busy} testID={`garment-${g}`} />
+          ))}
+        </View>
+        <Text style={typography.small}>The measurement fields change with the garment. Full suit shows jacket and trouser fields together.</Text>
+      </View>
 
       <View style={styles.block}>
         <Eyebrow>Style</Eyebrow>
@@ -149,9 +173,9 @@ export default function NewFittingScreen() {
       </View>
 
       <View style={styles.block}>
-        <SectionTitle title="Measurements" right={<Text style={typography.small}>centimetres</Text>} style={styles.sectionTitle} />
+        <SectionTitle title={measurementsTitle(garmentType)} right={<Text style={typography.small}>centimetres</Text>} style={styles.sectionTitle} />
         <View style={styles.grid}>
-          {MEASUREMENT_FIELDS.map((field) => (
+          {fields.map((field) => (
             <NumberField
               key={field.key}
               label={field.label}
@@ -163,7 +187,7 @@ export default function NewFittingScreen() {
             />
           ))}
         </View>
-        <Text style={typography.small}>All optional — chest and waist unlock the AI analysis.</Text>
+        <Text style={typography.small}>All optional — {analyseKeysLabel(garmentType)} unlock the AI analysis.</Text>
       </View>
 
       <Field

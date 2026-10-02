@@ -17,6 +17,9 @@ export const colors = {
   // Extras used by the kit (not in the palette brief, chosen to sit with it)
   danger: "#A93F32",
   dangerBg: "#F5E5E1",
+  // Deeper red on a paler pink for small labels (tags, badges, KPI discs): ~5:1 so 12px text stays readable.
+  dangerDeep: "#8A2E24",
+  dangerSoft: "#F3E1DD",
   ivorySoft: "rgba(244, 239, 230, 0.72)",
   ivoryLine: "rgba(244, 239, 230, 0.28)",
 } as const;

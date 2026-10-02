@@ -20,12 +20,18 @@ export interface Shop {
   district: string; // e.g. "Thonglor"
   city: string; // e.g. "Bangkok"
   tone: BrandTone;
+  // Shop details: shown in the footer of every email sent from the app (all optional).
+  address: string | null;
+  phone: string | null;
+  openingHours: string | null; // free text, e.g. "Mon–Sat 10:00–19:00"; used in the order-ready email
+  replyToEmail: string | null; // Reply-To on outgoing emails so client replies reach the shop
   createdAt: ISODate;
 }
 
-/** GET /shop → 200 { shop } or 404 (not onboarded yet) */
+/** GET /shop → 200 { shop, email } or 404 (not onboarded yet) */
 export interface GetShopResponse {
   shop: Shop;
+  email: EmailStatus; // see Messages section below
 }
 /** PUT /shop — creates the shop on first call (onboarding), updates afterwards */
 export interface UpsertShopRequest {
@@ -33,6 +39,11 @@ export interface UpsertShopRequest {
   district: string;
   city: string;
   tone?: BrandTone; // default "Sophisticated"
+  // Shop details; omit to leave unchanged, send "" to clear.
+  address?: string;
+  phone?: string;
+  openingHours?: string;
+  replyToEmail?: string; // validated as an email when non-empty
 }
 export type UpsertShopResponse = GetShopResponse;
 
@@ -45,6 +56,7 @@ export interface HomeResponse {
   inactiveCount: number; // clients whose lastOrderAt (or createdAt) is 90+ days ago
   ordersOpen: number; // orders with status != "delivered"
   ordersDueSoon: number; // open orders that are overdue or due within the next 7 days
+  ordersOverdue: number; // open orders whose due date is before today (shown as the Clients tab badge)
 }
 
 // ---------- Clients ----------
@@ -82,6 +94,17 @@ export interface ClientResponse {
 /** DELETE /clients/:id → 204 (also deletes its fittings) */
 
 // ---------- Fittings (manual measurements, cm) ----------
+/** Which measurement set a fitting uses. "suit" = jacket + trousers fields. */
+export const GARMENT_TYPES = ["jacket", "trousers", "shirt", "suit"] as const;
+export type GarmentType = (typeof GARMENT_TYPES)[number];
+
+/**
+ * All measurements in cm, null when not taken. Which keys matter depends on the fitting's garmentType:
+ * jacket: chest, waist, overArm, shoulder, sleeve, jacketLength
+ * trousers: waist, hip, inseam, outseam, thigh, hem
+ * shirt: neck, chest, waist, shoulder, sleeve, cuff, shirtLength
+ * suit: jacket + trousers keys
+ */
 export interface Measurements {
   chest: number | null;
   waist: number | null;
@@ -89,6 +112,14 @@ export interface Measurements {
   shoulder: number | null;
   sleeve: number | null;
   jacketLength: number | null;
+  hip: number | null;
+  inseam: number | null;
+  outseam: number | null;
+  thigh: number | null;
+  hem: number | null;
+  neck: number | null;
+  cuff: number | null;
+  shirtLength: number | null;
 }
 
 /** Pipeline 1 output — PROCESS_IOT_MEASUREMENTS */
@@ -101,6 +132,7 @@ export interface FitAnalysis {
 export interface Fitting {
   id: string;
   clientId: string;
+  garmentType: GarmentType; // default "jacket" for fittings created before this field existed
   style: string; // e.g. "Slim-cut corporate"
   fabric: string; // e.g. "Super 130s navy wool"
   measurements: Measurements;
@@ -115,9 +147,10 @@ export interface ListFittingsResponse {
 }
 /** POST /clients/:id/fittings — also sets the client's lastOrderAt to now */
 export interface CreateFittingRequest {
+  garmentType?: GarmentType; // default "jacket"
   style: string;
   fabric: string;
-  measurements: Measurements;
+  measurements: Partial<Measurements>; // missing keys are stored as null
   postureNote?: string;
 }
 export interface FittingResponse {
@@ -139,6 +172,10 @@ export interface Order {
   dueAt: ISODate | null; // promised delivery date (date-only semantics, stored as ISO)
   deliveredAt: ISODate | null; // set when status becomes "delivered"
   notes: string | null;
+  // Price tracking, in Thai baht, for the shop's records only (payments are taken outside the app).
+  price: number | null;
+  deposit: number | null; // total paid so far
+  balance: number | null; // computed: price - deposit when price is set (never below 0)
   createdAt: ISODate;
   updatedAt: ISODate;
   overdue: boolean; // computed: dueAt is before today and status != "delivered"
@@ -156,6 +193,8 @@ export interface CreateOrderRequest {
   fittingId?: string; // must belong to the same client
   dueAt?: ISODate;
   notes?: string;
+  price?: number; // THB, >= 0; null clears on PATCH
+  deposit?: number; // THB, >= 0; null clears on PATCH
 }
 /** PATCH /clients/:id/orders/:orderId — any subset; status "delivered" stamps deliveredAt */
 export type UpdateOrderRequest = Partial<CreateOrderRequest> & { status?: OrderStatus };
@@ -164,6 +203,55 @@ export interface OrderResponse {
   order: Order;
 }
 /** DELETE /clients/:id/orders/:orderId → 204 */
+
+// ---------- Messages (emails sent to a client from the app) ----------
+/** What prompted the email. */
+export type MessageKind = "winback" | "order_ready" | "followup";
+/** Email only for now; kept as a field so LINE/WhatsApp can be added later. */
+export type MessageChannel = "email";
+/**
+ * sent: delivered to the email provider · simulated: logged but not sent because email sending
+ * isn't configured on the API (no RESEND_API_KEY) · failed: the provider rejected it.
+ */
+export type MessageStatus = "sent" | "simulated" | "failed";
+
+export interface Message {
+  id: string;
+  clientId: string;
+  orderId: string | null; // set for order_ready
+  kind: MessageKind;
+  channel: MessageChannel;
+  to: string; // the email address it was sent to
+  subject: string;
+  body: string; // plain text; line breaks preserved
+  status: MessageStatus;
+  error: string | null; // provider message when status is "failed"
+  createdAt: ISODate;
+}
+
+/** GET /clients/:id/messages (newest first) */
+export interface ListMessagesResponse {
+  messages: Message[];
+}
+/**
+ * POST /clients/:id/messages → 201 { message }. Sends right away to the client's email address;
+ * 400 bad_request when the client has none. Does not touch the client's lastOrderAt.
+ */
+export interface SendMessageRequest {
+  kind: MessageKind;
+  subject: string;
+  body: string;
+  orderId?: string; // must belong to the same client when given
+}
+export interface MessageResponse {
+  message: Message;
+}
+
+/** Part of GET /shop: whether the API can really send email (RESEND_API_KEY set) and the sender it uses. */
+export interface EmailStatus {
+  configured: boolean;
+  from: string; // e.g. "Shamu via Magick TLS <onboarding@resend.dev>"
+}
 
 // ---------- AI ----------
 // All AI routes are rate limited per user (429 rate_limited) and may return 502 ai_failed.

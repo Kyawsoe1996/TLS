@@ -11,10 +11,10 @@ export interface KpiListItem {
   icon: IoniconName;
   label: string;
   value: string | number;
-  /** Small gold note under the label, e.g. "Check the workshop". */
+  /** Small note under the label, e.g. "Check the workshop" (gold, or red with the "danger" accent). */
   note?: string;
-  /** Tints the icon disc sand instead of soft when the row needs attention. */
-  accent?: boolean;
+  /** `true` tints the icon disc sand when the row needs attention; "danger" turns it red (e.g. overdue orders). */
+  accent?: boolean | "danger";
   onPress?: () => void;
 }
 
@@ -32,17 +32,18 @@ export function KpiList({ items, style }: KpiListProps) {
     <Card padding={0} style={[styles.card, style]}>
       {items.map((item, index) => {
         const last = index === items.length - 1;
+        const danger = item.accent === "danger";
         const body = (
           <>
-            <View style={[styles.disc, item.accent && styles.discAccent]}>
-              <Ionicons name={item.icon} size={20} color={colors.goldDark} />
+            <View style={[styles.disc, item.accent === true && styles.discAccent, danger && styles.discDanger]}>
+              <Ionicons name={item.icon} size={20} color={danger ? colors.dangerDeep : colors.goldDark} />
             </View>
             <View style={styles.text}>
               <Text style={styles.label} numberOfLines={1}>
                 {item.label}
               </Text>
               {item.note ? (
-                <Text style={styles.note} numberOfLines={1}>
+                <Text style={[styles.note, danger && styles.noteDanger]} numberOfLines={1}>
                   {item.note}
                 </Text>
               ) : null}
@@ -88,9 +89,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   discAccent: { backgroundColor: colors.sand },
+  discDanger: { backgroundColor: colors.dangerSoft },
   text: { flex: 1, gap: 2, minWidth: 0 },
   label: { fontFamily: fonts.bodySemi, fontSize: 15, lineHeight: 20, color: colors.ink },
   note: { fontFamily: fonts.bodySemi, fontSize: 12, lineHeight: 16, color: colors.goldDark },
+  noteDanger: { color: colors.dangerDeep },
   value: { ...typography.kpi, fontSize: 26, lineHeight: 30, textAlign: "right" },
   chevronGap: { width: 18 },
 });

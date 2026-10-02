@@ -51,6 +51,10 @@ export const optionalText = (max: number) =>
     .optional()
     .transform((v) => (v === undefined ? undefined : v ? v : null));
 
+/** Optional email address: same `undefined` / `null` / "" semantics as optionalText; validated when non-empty. */
+export const optionalEmail = (max: number) =>
+  optionalText(max).refine((v) => !v || z.email().safeParse(v).success, "must be a valid email address");
+
 /** Any Date-parseable string, normalised to a UTC ISO 8601 string so DB comparisons stay lexicographic. */
 export const isoDate = z
   .string({ error: "must be an ISO 8601 date string" })
@@ -65,3 +69,11 @@ export const centimetres = z
   .nullable()
   .optional()
   .transform((v) => v ?? null);
+
+/** Amount in Thai baht. Like optionalText: `undefined` = not sent (leave unchanged on PATCH), `null` = clear. */
+export const baht = z
+  .number({ error: "must be a number (THB)" })
+  .min(0, "must be 0 or more")
+  .max(10_000_000, "must be at most 10,000,000")
+  .nullable()
+  .optional();

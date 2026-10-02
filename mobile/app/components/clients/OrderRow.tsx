@@ -4,7 +4,7 @@ import type { Order } from "@shared/types";
 
 import { Card } from "@/components/ui";
 import { colors, fonts, typography } from "@/constants/theme";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatThb } from "@/lib/format";
 
 import { OrderStatusTag, OverdueTag } from "./Tag";
 
@@ -20,8 +20,16 @@ export function orderDueLine(order: Order): string {
   return order.overdue ? `Overdue · due ${formatDate(order.dueAt)}` : `Due ${formatDate(order.dueAt)}`;
 }
 
-/** One order on the client file or the shop-wide list: garment · fabric, client (shop-wide), status tags, due line. */
+/** What's still owed: the API's `balance`, or price − deposit (never below 0) if it's missing. `null` when no price is set. */
+export function orderBalance(order: Order): number | null {
+  if (order.price === null || order.price === undefined) return null;
+  if (typeof order.balance === "number") return order.balance;
+  return Math.max(0, order.price - (order.deposit ?? 0));
+}
+
+/** One order on the client file or the shop-wide list: garment · fabric, client (shop-wide), status tags, due line, balance. */
 export function OrderRow({ order, onPress }: OrderRowProps) {
+  const balance = orderBalance(order);
   return (
     <Card onPress={onPress} style={styles.card} testID={`order-row-${order.id}`}>
       <View style={styles.top}>
@@ -43,6 +51,11 @@ export function OrderRow({ order, onPress }: OrderRowProps) {
         {order.overdue ? <OverdueTag /> : null}
       </View>
       <Text style={[typography.small, order.overdue && styles.overdueLine]}>{orderDueLine(order)}</Text>
+      {balance === null ? null : balance > 0 ? (
+        <Text style={styles.balanceDue}>Balance due {formatThb(balance)}</Text>
+      ) : (
+        <Text style={typography.small}>Paid in full</Text>
+      )}
     </Card>
   );
 }
@@ -55,4 +68,5 @@ const styles = StyleSheet.create({
   client: { fontFamily: fonts.bodyMedium, fontSize: 14, lineHeight: 20, color: colors.ink },
   tags: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   overdueLine: { color: colors.danger },
+  balanceDue: { fontFamily: fonts.bodySemi, fontSize: 13, lineHeight: 18, color: colors.goldDark, marginTop: -4 },
 });

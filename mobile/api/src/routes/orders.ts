@@ -20,7 +20,7 @@ import {
 } from "../db";
 import type { AppEnv } from "../env";
 import { badRequest, notFound } from "../errors";
-import { type AssertAccepts, isoDate, optionalText, parseBody, requiredText } from "../validate";
+import { type AssertAccepts, baht, isoDate, optionalText, parseBody, requiredText } from "../validate";
 
 const INITIAL_STATUS: OrderStatus = "measured";
 
@@ -30,6 +30,8 @@ const createOrderSchema = z.object({
   fittingId: optionalText(64), // uuid; `null`/"" unlinks on PATCH
   dueAt: isoDate.nullable().optional(),
   notes: optionalText(2000),
+  price: baht, // THB; `null` clears on PATCH
+  deposit: baht,
 });
 type _CreateAccepted = AssertAccepts<typeof createOrderSchema, CreateOrderRequest>;
 
@@ -93,8 +95,8 @@ orderRoutes.post("/:clientId/orders", async (c) => {
     [
       {
         sql: `INSERT INTO orders
-                (id, shop_id, client_id, fitting_id, garment, fabric, status, due_at, delivered_at, notes, created_at, updated_at)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?)`,
+                (id, shop_id, client_id, fitting_id, garment, fabric, status, due_at, delivered_at, notes, price, deposit, created_at, updated_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?)`,
         args: [
           id,
           shop.id,
@@ -105,6 +107,8 @@ orderRoutes.post("/:clientId/orders", async (c) => {
           INITIAL_STATUS,
           input.dueAt ?? null,
           input.notes ?? null,
+          input.price ?? null,
+          input.deposit ?? null,
           now,
           now,
         ],
@@ -151,9 +155,11 @@ orderRoutes.patch("/:clientId/orders/:orderId", async (c) => {
     dueAt: "due_at",
     notes: "notes",
     status: "status",
+    price: "price",
+    deposit: "deposit",
   };
   const sets: string[] = [];
-  const args: (string | null)[] = [];
+  const args: (string | number | null)[] = [];
   for (const key of Object.keys(columns) as (keyof UpdateOrderRequest)[]) {
     const value = input[key];
     if (value === undefined) continue; // not sent -> leave unchanged
@@ -162,7 +168,7 @@ orderRoutes.patch("/:clientId/orders/:orderId", async (c) => {
   }
 
   const now = nowIso();
-  const statements: { sql: string; args: (string | null)[] }[] = [];
+  const statements: { sql: string; args: (string | number | null)[] }[] = [];
   if (input.status === "delivered" && existing["delivered_at"] == null) {
     sets.push("delivered_at = ?");
     args.push(now);

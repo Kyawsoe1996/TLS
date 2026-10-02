@@ -4,24 +4,29 @@ import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import {
-  ANALYSE_REQUIREMENT,
   ErrorBlock,
   LoadingBlock,
-  MEASUREMENT_FIELDS,
+  analyseRequirement,
   cacheFitting,
   canAnalyse,
   clientRoutes,
+  fieldsFor,
   formatCm,
+  garmentLabel,
+  measurementsTitle,
+  messageStatusLabel,
   showAiError,
   useClient,
   useFittings,
+  useSendEmail,
 } from "@/components/clients";
 import { AiResultCard, Button, Card, EmptyState, Eyebrow, LoadingAI, Screen, SectionTitle } from "@/components/ui";
 import { colors, typography } from "@/constants/theme";
 import { useApi } from "@/lib/api";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatDateTime } from "@/lib/format";
+import { useShop } from "@/lib/useShop";
 
-/** Fitting detail: measurements, posture note, and the three AI outputs (or a button to generate them). */
+/** Fitting detail: the garment's measurements, posture note, and the three AI outputs (or a button to generate them). */
 export default function FittingDetailScreen() {
   const { id, fittingId } = useLocalSearchParams<{ id: string; fittingId: string }>();
   const router = useRouter();
@@ -30,6 +35,9 @@ export default function FittingDetailScreen() {
   const clientQuery = useClient(id);
   const fittingsQuery = useFittings(id);
   const [refreshing, setRefreshing] = useState(false);
+  const client = clientQuery.data;
+  const shop = useShop().data ?? null;
+  const { send, sending, sent } = useSendEmail(client);
 
   const fitting = fittingsQuery.data?.find((f) => f.id === fittingId);
 
@@ -64,13 +72,14 @@ export default function FittingDetailScreen() {
     );
   } else {
     const analysis = fitting.analysis;
-    const analysable = canAnalyse(fitting.measurements);
+    const analysable = canAnalyse(fitting.garmentType, fitting.measurements);
+    const requirement = analyseRequirement(fitting.garmentType);
     body = (
       <>
         <Card style={styles.measureCard}>
-          <Eyebrow>Measurements · cm</Eyebrow>
+          <Eyebrow>{measurementsTitle(fitting.garmentType)} · cm</Eyebrow>
           <View style={styles.grid}>
-            {MEASUREMENT_FIELDS.map((field) => (
+            {fieldsFor(fitting.garmentType).map((field) => (
               <View key={field.key} style={styles.cell}>
                 <Text style={typography.small}>{field.label}</Text>
                 <Text style={styles.value}>{formatCm(fitting.measurements[field.key])}</Text>
@@ -97,9 +106,7 @@ export default function FittingDetailScreen() {
             <View style={styles.analyseBlock}>
               <Button title="Analyse with AI" icon="sparkles" fullWidth onPress={() => analyse.mutate()} disabled={!analysable} />
               <Text style={styles.hint}>
-                {analysable
-                  ? "Pattern adjustments for the cutter, a fit profile for the file and a follow-up message."
-                  : ANALYSE_REQUIREMENT}
+                {analysable ? "Pattern adjustments for the cutter, a fit profile for the file and a follow-up message." : requirement}
               </Text>
             </View>
           ) : null
@@ -108,13 +115,41 @@ export default function FittingDetailScreen() {
             <SectionTitle title="AI analysis" style={styles.sectionTitle} />
             <AiResultCard eyebrow="For the cutter" title="Pattern adjustments" body={analysis.pattern_adjustments} />
             <AiResultCard eyebrow="Saved to client file" title="Fit profile" body={analysis.fit_profile} />
-            <AiResultCard
-              eyebrow="Ready to send"
-              title="Follow-up message"
-              body={analysis.automated_marketing_hook}
-              copyText={analysis.automated_marketing_hook}
-              shareText={analysis.automated_marketing_hook}
-            />
+            <View style={styles.followup}>
+              <AiResultCard
+                eyebrow="Ready to send"
+                title="Follow-up message"
+                body={analysis.automated_marketing_hook}
+                copyText={analysis.automated_marketing_hook}
+                shareText={analysis.automated_marketing_hook}
+                actions={
+                  <Button
+                    size="sm"
+                    variant="onDark"
+                    icon="send-outline"
+                    title="Send by email"
+                    onPress={() =>
+                      void send({
+                        kind: "followup",
+                        subject: `A note from ${shop?.name ?? "your tailor"}`,
+                        body: analysis.automated_marketing_hook,
+                      })
+                    }
+                    loading={sending}
+                    disabled={!client?.email}
+                    testID="fitting-send-followup"
+                  />
+                }
+              />
+              {sent ? (
+                <Text style={[styles.sentLine, sent.status === "failed" && styles.sentFailed]}>
+                  {sent.status === "sent" ? "Sent by email" : messageStatusLabel(sent.status)} · {formatDateTime(sent.createdAt)}
+                  {sent.status === "failed" && sent.error ? ` · ${sent.error}` : ""}
+                </Text>
+              ) : client && !client.email ? (
+                <Text style={styles.sentLine}>Add an email address to {client.name}&apos;s file to send this by email.</Text>
+              ) : null}
+            </View>
             <Button
               title="Re-run analysis"
               variant="ghost"
@@ -132,7 +167,7 @@ export default function FittingDetailScreen() {
   return (
     <Screen
       back
-      eyebrow={fitting ? `Fitting · ${formatDate(fitting.createdAt)}` : "Fitting"}
+      eyebrow={fitting ? `${garmentLabel(fitting.garmentType)} fitting · ${formatDate(fitting.createdAt)}` : "Fitting"}
       title={clientQuery.data?.name}
       subtitle={fitting ? `${fitting.style} · ${fitting.fabric}` : undefined}
       refreshing={refreshing}
@@ -152,6 +187,9 @@ const styles = StyleSheet.create({
   analyseBlock: { gap: 8 },
   hint: { ...typography.small, textAlign: "center" },
   results: { gap: 12 },
+  followup: { gap: 6 },
+  sentLine: { ...typography.small, textAlign: "center" },
+  sentFailed: { color: colors.danger },
   sectionTitle: { marginBottom: 0 },
   rerun: { alignSelf: "center" },
   createOrder: { alignSelf: "center", marginTop: -4 },

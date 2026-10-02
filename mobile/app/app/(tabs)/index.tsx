@@ -33,6 +33,7 @@ export default function HomeScreen() {
   const shopName = home?.shopName ?? shopQuery.data?.name ?? "Your shop";
   const inactive = home?.inactiveCount ?? 0;
   const dueSoon = home?.ordersDueSoon ?? 0;
+  const overdue = home?.ordersOverdue ?? 0;
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -70,6 +71,14 @@ export default function HomeScreen() {
       <KpiList
         items={[
           { key: "open", icon: "cube-outline", label: "Orders in progress", value: kpi(home?.ordersOpen), onPress: () => router.push(clientRoutes.orders) },
+          {
+            key: "overdue",
+            icon: "alert-circle-outline",
+            label: "Overdue",
+            value: kpi(home?.ordersOverdue),
+            accent: overdue > 0 ? "danger" : false,
+            onPress: () => router.push(clientRoutes.orders),
+          },
           {
             key: "due",
             icon: "time-outline",

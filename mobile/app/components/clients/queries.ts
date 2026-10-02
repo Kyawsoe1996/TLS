@@ -2,9 +2,9 @@
 import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import type { Href } from "expo-router";
 import { useEffect, useState } from "react";
-import type { Client, Fitting, Order } from "@shared/types";
+import type { Client, Fitting, Message, Order } from "@shared/types";
 
-import { isApiClientError, useApi } from "@/lib/api";
+import { ApiClientError, isApiClientError, useApi } from "@/lib/api";
 import { queryKeys } from "@/lib/queryKeys";
 import { showError } from "@/lib/toast";
 
@@ -37,6 +37,11 @@ export const clientRoutes = {
   order: (id: string, orderId: string): Href => ({
     pathname: "/(tabs)/clients/[id]/orders/[orderId]",
     params: { id, orderId },
+  }),
+  /** One sent email on the client's file. */
+  message: (id: string, messageId: string): Href => ({
+    pathname: "/(tabs)/clients/[id]/messages/[messageId]",
+    params: { id, messageId },
   }),
 };
 
@@ -106,6 +111,58 @@ export function useShopOrders(status: ShopOrdersFilter = "open") {
     queryFn: async () => (await api.listShopOrders(status === "delivered" ? { status } : undefined)).orders,
     retry: 1,
   });
+}
+
+/** GET /clients/:id/messages — emails sent to the client, newest first. */
+export function useMessages(clientId: string | undefined) {
+  const api = useApi();
+  return useQuery<Message[]>({
+    queryKey: queryKeys.messages(clientId ?? ""),
+    queryFn: async () => (await api.listMessages(clientId as string)).messages,
+    enabled: !!clientId,
+    retry: (count, err) => !(isApiClientError(err) && err.isNotFound) && count < 1,
+  });
+}
+
+/**
+ * One sent message. There's no single-message route, so this seeds from the cached list and otherwise loads the
+ * list and picks the message out (caching the list on the way). Messages never change once sent, so never stale.
+ */
+export function useMessage(clientId: string | undefined, messageId: string | undefined) {
+  const api = useApi();
+  const qc = useQueryClient();
+  const enabled = !!clientId && !!messageId;
+  return useQuery<Message>({
+    queryKey: queryKeys.message(clientId ?? "", messageId ?? ""),
+    queryFn: async () => {
+      const messages = (await api.listMessages(clientId as string)).messages;
+      qc.setQueryData<Message[]>(queryKeys.messages(clientId as string), messages);
+      const found = messages.find((m) => m.id === messageId);
+      if (!found) throw new ApiClientError(404, "not_found", "This message is no longer on file.");
+      return found;
+    },
+    enabled,
+    initialData: () => (enabled ? qc.getQueryData<Message[]>(queryKeys.messages(clientId))?.find((m) => m.id === messageId) : undefined),
+    staleTime: Infinity,
+    retry: (count, err) => !(isApiClientError(err) && err.isNotFound) && count < 1,
+  });
+}
+
+/** After POST /clients/:id/messages: cache the message and put it at the top of the client's cached list. */
+export function cacheMessage(qc: QueryClient, message: Message): void {
+  qc.setQueryData<Message>(queryKeys.message(message.clientId, message.id), message);
+  qc.setQueryData<Message[]>(queryKeys.messages(message.clientId), (old) => {
+    if (!old) return old;
+    const rest = old.filter((m) => m.id !== message.id);
+    return [message, ...rest].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  });
+}
+
+/** After an email is sent: refresh the client's messages (the list only — sent messages don't change), the client file and Home. */
+export function afterMessageSent(qc: QueryClient, clientId: string): void {
+  void qc.invalidateQueries({ queryKey: queryKeys.messages(clientId), exact: true });
+  void qc.invalidateQueries({ queryKey: queryKeys.client(clientId), exact: true });
+  void qc.invalidateQueries({ queryKey: queryKeys.home });
 }
 
 /** True when a query failed because the record no longer exists. */

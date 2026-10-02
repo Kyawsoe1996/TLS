@@ -3,7 +3,7 @@ main = "src/index.ts"
 compatibility_date = "2025-09-01"
 compatibility_flags = ["nodejs_compat"]
 
-# Non-secret config. Secrets (CLERK_SECRET_KEY, TURSO_*, UPSTASH_*, GEMINI_API_KEY)
+# Non-secret config. Secrets (CLERK_SECRET_KEY, TURSO_*, UPSTASH_*, GEMINI_API_KEY, RESEND_*)
 # go in .dev.vars for local dev and `wrangler secret put <NAME>` for production.
 [vars]
 GEMINI_MODEL = "gemini-3.1-flash-lite"

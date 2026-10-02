@@ -21,7 +21,7 @@ const palette: Record<TagTone, { bg: string; fg: string }> = {
   success: { bg: colors.successBg, fg: colors.successFg },
   warning: { bg: colors.sand, fg: colors.goldDark },
   // Softer than the form error red; 5:1 on the pale bg so the small label stays readable.
-  danger: { bg: "#F3E1DD", fg: "#8A2E24" },
+  danger: { bg: colors.dangerSoft, fg: colors.dangerDeep },
 };
 
 /** Small, non-interactive pill: "Inactive", "AI analysed", an order status, or a measurement like "Chest 102.4". */

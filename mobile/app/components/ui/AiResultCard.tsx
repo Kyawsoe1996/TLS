@@ -19,11 +19,13 @@ export interface AiResultCardProps {
   shareText?: string;
   /** Extra content rendered between the body and the buttons. */
   children?: ReactNode;
+  /** Extra buttons after Copy / Share (e.g. "Edit", "Send by email"). */
+  actions?: ReactNode;
   style?: StyleProp<ViewStyle>;
 }
 
 /** Dark card for AI output with gold eyebrow and Copy / Share actions. */
-export function AiResultCard({ title, body, eyebrow = "AI result", copyText, shareText, children, style }: AiResultCardProps) {
+export function AiResultCard({ title, body, eyebrow = "AI result", copyText, shareText, children, actions, style }: AiResultCardProps) {
   const [copied, setCopied] = useState(false);
   const [sharing, setSharing] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -74,6 +76,7 @@ export function AiResultCard({ title, body, eyebrow = "AI result", copyText, sha
           onPress={onCopy}
         />
         <Button size="sm" variant="onDark" icon="share-outline" title="Share" onPress={onShare} loading={sharing} />
+        {actions}
       </View>
     </Card>
   );
@@ -83,5 +86,5 @@ const styles = StyleSheet.create({
   card: { gap: 10 },
   title: { ...typography.h2, color: colors.ivory, marginTop: 2 },
   body: { fontFamily: fonts.body, fontSize: 15, lineHeight: 23, color: colors.ivorySoft },
-  actions: { flexDirection: "row", gap: 10, marginTop: 6 },
+  actions: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 6 },
 });

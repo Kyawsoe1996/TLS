@@ -21,8 +21,11 @@ import type {
   HomeResponse,
   ListClientsResponse,
   ListFittingsResponse,
+  ListMessagesResponse,
   ListOrdersResponse,
+  MessageResponse,
   OrderResponse,
+  SendMessageRequest,
   UpdateClientRequest,
   UpdateOrderRequest,
   UpsertShopRequest,
@@ -198,6 +201,12 @@ export function createApi(getToken: GetToken) {
     /** Shop-wide: open orders (overdue first, then by due date, no date last) or, with `status: "delivered"`, the delivered ones. */
     listShopOrders: (params?: { status?: "delivered" }) =>
       request<ListOrdersResponse>("/orders", { query: { status: params?.status } }),
+
+    // ---- Messages (emails sent to a client) ----
+    listMessages: (clientId: string) => request<ListMessagesResponse>(`${clientPath(clientId)}/messages`),
+    /** Sends right away to the client's email address (400 when they have none). Returns the saved message with its status. */
+    sendMessage: (clientId: string, body: SendMessageRequest) =>
+      request<MessageResponse>(`${clientPath(clientId)}/messages`, { method: "POST", body }),
 
     // ---- AI ----
     aiFit: (body: AiFitRequest) => request<AiFitResponse>("/ai/fit", { method: "POST", body }),

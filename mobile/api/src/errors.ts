@@ -26,8 +26,8 @@ export const notFound = (message = "Not found.") => new ApiHttpError(404, "not_f
 
 export const badRequest = (message: string) => new ApiHttpError(400, "bad_request", message);
 
-export const rateLimited = () =>
-  new ApiHttpError(429, "rate_limited", "You've reached today's AI limit. Try again tomorrow.");
+export const rateLimited = (message = "You've reached today's AI limit. Try again tomorrow.") =>
+  new ApiHttpError(429, "rate_limited", message);
 
 export const aiFailed = () =>
   new ApiHttpError(502, "ai_failed", "The AI couldn't produce a result. Please try again.");

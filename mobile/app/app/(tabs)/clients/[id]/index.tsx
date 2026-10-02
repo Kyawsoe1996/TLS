@@ -9,12 +9,14 @@ import {
   FittingRow,
   InactiveTag,
   LoadingBlock,
+  MessageRow,
   Monogram,
   OrderRow,
   clientRoutes,
   isNotFoundError,
   useClient,
   useFittings,
+  useMessages,
   useOrders,
 } from "@/components/clients";
 import { Button, Card, EmptyState, Eyebrow, Screen, SectionTitle, type IoniconName } from "@/components/ui";
@@ -29,13 +31,14 @@ export default function ClientDetailScreen() {
   const clientQuery = useClient(id);
   const ordersQuery = useOrders(id);
   const fittingsQuery = useFittings(id);
+  const messagesQuery = useMessages(id);
   const [refreshing, setRefreshing] = useState(false);
   const client = clientQuery.data;
 
   const onRefresh = async () => {
     setRefreshing(true);
     try {
-      await Promise.all([clientQuery.refetch(), ordersQuery.refetch(), fittingsQuery.refetch()]);
+      await Promise.all([clientQuery.refetch(), ordersQuery.refetch(), fittingsQuery.refetch(), messagesQuery.refetch()]);
     } finally {
       setRefreshing(false);
     }
@@ -79,6 +82,7 @@ export default function ClientDetailScreen() {
   const hasContact = !!(client.phone || client.email || client.lineId);
   const orders = ordersQuery.data ?? [];
   const fittings = fittingsQuery.data ?? [];
+  const messages = messagesQuery.data ?? [];
 
   return (
     <Screen
@@ -164,6 +168,28 @@ export default function ClientDetailScreen() {
             {orders.map((order) => (
               <OrderRow key={order.id} order={order} onPress={() => router.push(clientRoutes.order(id, order.id))} />
             ))}
+          </View>
+        )}
+      </View>
+
+      <View>
+        <SectionTitle title="Messages" right={messages.length > 0 ? <Text style={typography.small}>{messages.length}</Text> : undefined} />
+        {messagesQuery.isPending ? (
+          <LoadingBlock />
+        ) : messagesQuery.isError ? (
+          <ErrorBlock error={messagesQuery.error} onRetry={() => void messagesQuery.refetch()} retrying={messagesQuery.isFetching} />
+        ) : messages.length === 0 ? (
+          <EmptyState icon="mail-outline" title="No messages yet" body="Win-back emails and order notifications you send will appear here." />
+        ) : (
+          <View style={styles.list}>
+            {messages.map((message) => (
+              <MessageRow key={message.id} message={message} onPress={() => router.push(clientRoutes.message(id, message.id))} />
+            ))}
+            {messages.some((m) => m.status === "simulated") ? (
+              <Text style={styles.simulatedHint}>
+                Simulated means email sending was not set up yet when this was sent; the text was saved but no email went out.
+              </Text>
+            ) : null}
           </View>
         )}
       </View>
@@ -277,4 +303,5 @@ const styles = StyleSheet.create({
   actionRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   grow: { flex: 1 },
   list: { gap: 10 },
+  simulatedHint: { ...typography.small, paddingHorizontal: 4, marginTop: 2 },
 });

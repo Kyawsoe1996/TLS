@@ -11,6 +11,10 @@ export interface Bindings {
   UPSTASH_REDIS_REST_TOKEN?: string;
   GEMINI_API_KEY: string;
   GEMINI_MODEL?: string;
+  /** Resend (https://resend.com). Without a key, emails are logged as "simulated" instead of sent. */
+  RESEND_API_KEY?: string;
+  /** Sender: "Shop <hello@yourdomain.com>" (verified Resend domain) or a bare address. Default onboarding@resend.dev. */
+  RESEND_FROM?: string;
 }
 
 /** Per-request values set by middleware. */

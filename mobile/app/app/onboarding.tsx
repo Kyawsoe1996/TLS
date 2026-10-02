@@ -45,7 +45,7 @@ export default function OnboardingScreen() {
   const mutation = useMutation({
     mutationFn: (body: UpsertShopRequest) => api.upsertShop(body),
     onSuccess: (res) => {
-      setShop(res.shop);
+      setShop(res);
       if (isEdit) {
         if (router.canGoBack()) router.back();
         else router.replace("/(tabs)/settings");

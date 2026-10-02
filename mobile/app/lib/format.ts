@@ -15,6 +15,15 @@ export function formatDate(value: string | number | Date | null | undefined): st
   return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
 }
 
+/** "2026-10-02T07:05:00.000Z" → "2 Oct 2026, 14:05" in local time ("" when empty/invalid). */
+export function formatDateTime(value: string | number | Date | null | undefined): string {
+  const d = toDate(value);
+  if (!d) return "";
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  return `${formatDate(d)}, ${hh}:${mm}`;
+}
+
 /** Whole days between `value` and `now` (0 when today, negative when in the future). */
 export function daysSince(value: string | number | Date | null | undefined, now: Date = new Date()): number {
   const d = toDate(value);
@@ -38,6 +47,14 @@ export function formatMonthsSince(value: string | number | Date | null | undefin
   const m = monthsSince(value, now);
   if (m === 0) return "This month";
   return m === 1 ? "1 month ago" : `${m} months ago`;
+}
+
+/** 12000 → "฿12,000". Whole baht; rounds any decimals. "—" when empty. (No Intl: Hermes support varies by platform.) */
+export function formatThb(value: number | null | undefined): string {
+  if (value === null || value === undefined || Number.isNaN(value)) return "—";
+  const whole = Math.round(Math.abs(value));
+  const grouped = String(whole).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return `${value < 0 ? "-" : ""}฿${grouped}`;
 }
 
 /** "Siam Bespoke" → "SB", "Anucha" → "A". Up to two letters, uppercase. */

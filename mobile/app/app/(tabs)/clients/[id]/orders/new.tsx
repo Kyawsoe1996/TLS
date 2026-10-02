@@ -4,16 +4,23 @@ import { useEffect, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import type { CreateOrderRequest } from "@shared/types";
 
-import { afterOrderChanged, cacheOrder, clientRoutes, dateInputToIso, useClient, useFittings } from "@/components/clients";
-import { Button, Chip, ErrorBanner, Eyebrow, Field, Screen } from "@/components/ui";
-import { typography } from "@/constants/theme";
+import { afterOrderChanged, cacheOrder, clientRoutes, dateInputToIso, garmentLabel, useClient, useFittings } from "@/components/clients";
+import { Button, Card, Chip, ErrorBanner, Eyebrow, Field, NumberField, Screen } from "@/components/ui";
+import { colors, fonts, typography } from "@/constants/theme";
 import { useApi } from "@/lib/api";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatThb } from "@/lib/format";
 import { showError } from "@/lib/toast";
 
 const GARMENT_PRESETS = ["Two-piece suit", "Three-piece suit", "Jacket", "Trousers", "Shirt"] as const;
 const CUSTOM_GARMENT = "Custom";
 const FABRIC_SUGGESTIONS = ["Super 130s navy wool", "Irish linen", "Charcoal flannel"] as const;
+
+/** Quick deposit choices, as a share of the price. */
+const DEPOSIT_PRESETS: { label: string; of: (price: number) => number }[] = [
+  { label: "30%", of: (price) => Math.round(price * 0.3) },
+  { label: "50%", of: (price) => Math.round(price * 0.5) },
+  { label: "Paid in full", of: (price) => price },
+];
 
 /** True when `iso` (a local-noon date from dateInputToIso) falls on a day before today. */
 function isBeforeToday(iso: string): boolean {
@@ -37,10 +44,14 @@ export default function NewOrderScreen() {
   const [fittingId, setFittingId] = useState<string | null>(fittingParam || null);
   const [dueAt, setDueAt] = useState("");
   const [dueError, setDueError] = useState<string | null>(null);
+  const [price, setPrice] = useState<number | null>(null);
+  const [deposit, setDeposit] = useState<number | null>(null);
+  const [priceError, setPriceError] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const fittings = fittingsQuery.data ?? [];
+  const balance = price === null ? null : Math.max(0, price - (deposit ?? 0));
 
   // Arriving from a fitting: suggest its fabric once the fittings load, unless something was already typed.
   const preselected = fittingParam ? fittings.find((f) => f.id === fittingParam) : undefined;
@@ -71,14 +82,20 @@ export default function NewOrderScreen() {
       dueIso = iso;
     }
 
+    if (deposit !== null && price === null) return setPriceError("Add the price to record a deposit against it.");
+    if (price !== null && deposit !== null && deposit > price) return setPriceError("The deposit can't be more than the price.");
+
     setError(null);
     setDueError(null);
+    setPriceError(null);
     mutation.mutate({
       garment,
       fabric: fabric.trim() || undefined,
       fittingId: fittingId ?? undefined,
       dueAt: dueIso,
       notes: notes.trim() || undefined,
+      price: price ?? undefined,
+      deposit: deposit ?? undefined,
     });
   };
 
@@ -144,7 +161,7 @@ export default function NewOrderScreen() {
             {fittings.map((f) => (
               <Chip
                 key={f.id}
-                label={`${formatDate(f.createdAt)} · ${f.style}`}
+                label={`${formatDate(f.createdAt)} · ${garmentLabel(f.garmentType)} · ${f.style}`}
                 selected={fittingId === f.id}
                 onPress={() => {
                   setFittingId(f.id);
@@ -179,6 +196,61 @@ export default function NewOrderScreen() {
         editable={!busy}
       />
 
+      <Card style={styles.priceCard} testID="order-price-card">
+        <Eyebrow>Price</Eyebrow>
+        <View style={styles.priceRow}>
+          <NumberField
+            label="Price"
+            unit="฿"
+            decimals={0}
+            value={price}
+            onChangeValue={(v) => {
+              setPrice(v);
+              if (priceError) setPriceError(null);
+            }}
+            containerStyle={styles.cell}
+            editable={!busy}
+            testID="order-price"
+          />
+          <NumberField
+            label="Deposit paid"
+            unit="฿"
+            decimals={0}
+            value={deposit}
+            onChangeValue={(v) => {
+              setDeposit(v);
+              if (priceError) setPriceError(null);
+            }}
+            containerStyle={styles.cell}
+            editable={!busy}
+            testID="order-deposit"
+          />
+        </View>
+        <View style={styles.chips}>
+          {DEPOSIT_PRESETS.map((preset) => (
+            <Chip
+              key={preset.label}
+              label={preset.label}
+              selected={price !== null && deposit !== null && deposit === preset.of(price)}
+              onPress={() => {
+                if (price === null) return;
+                setDeposit(preset.of(price));
+                if (priceError) setPriceError(null);
+              }}
+              disabled={busy || price === null}
+            />
+          ))}
+        </View>
+        {priceError ? <Text style={styles.priceError}>{priceError}</Text> : null}
+        {balance !== null ? (
+          <View style={styles.balanceRow} accessibilityLabel={`Balance due ${formatThb(balance)}`}>
+            <Text style={styles.balanceLabel}>Balance due</Text>
+            <Text style={styles.balanceValue}>{formatThb(balance)}</Text>
+          </View>
+        ) : null}
+        <Text style={typography.small}>For your records only. Payments are taken in the shop as usual.</Text>
+      </Card>
+
       <Field
         label="Notes"
         value={notes}
@@ -195,4 +267,20 @@ const styles = StyleSheet.create({
   block: { gap: 10 },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   chip: { minHeight: 44 },
+  priceCard: { gap: 12 },
+  priceRow: { flexDirection: "row", gap: 10 },
+  cell: { flex: 1, minWidth: 0 },
+  priceError: { ...typography.small, color: colors.danger },
+  balanceRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    backgroundColor: colors.sand,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  balanceLabel: { fontFamily: fonts.bodySemi, fontSize: 14, lineHeight: 20, color: colors.goldDark },
+  balanceValue: { ...typography.h3, color: colors.goldDark },
 });

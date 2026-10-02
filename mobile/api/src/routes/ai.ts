@@ -11,15 +11,26 @@ import type {
   AiWinbackResponse,
   Audience,
   CompetitorTier,
+  GarmentType,
   Incentive,
+  Measurements,
   SearchConsoleStatus,
 } from "../../../shared/types";
 import { runPipeline } from "../ai/gemini";
 import { findNearbyTailors } from "../ai/maps";
 import { fitAnalysisSchema, postSchema, seoSchema, winbackSchema } from "../ai/schemas";
-import { type Db, getClientRow, newId, nowIso, rowToClient, rowToFitting } from "../db";
+import {
+  type Db,
+  getClientRow,
+  MEASUREMENT_COLUMNS,
+  MEASUREMENT_KEYS,
+  newId,
+  nowIso,
+  rowToClient,
+  rowToFitting,
+} from "../db";
 import type { AppEnv } from "../env";
-import { notFound } from "../errors";
+import { badRequest, notFound } from "../errors";
 import { enforceAiRateLimit } from "../ratelimit";
 import { parseBody, requiredText } from "../validate";
 import { BRAND_TONES } from "./shop";
@@ -79,6 +90,14 @@ async function saveGeneration(db: Db, shopId: string, kind: "seo" | "post" | "wi
   });
 }
 
+/** Measurements pipeline 1 cannot work without, per garment type; POST /ai/fit is a 400 when any is missing. */
+const REQUIRED_MEASUREMENTS: Record<GarmentType, (keyof Measurements)[]> = {
+  jacket: ["chest", "waist"],
+  suit: ["chest", "waist"],
+  shirt: ["chest", "waist"],
+  trousers: ["waist", "hip"],
+};
+
 /** Whole calendar months between two instants (UTC), never less than 1. */
 export function inactiveMonths(since: Date, now: Date = new Date()): number {
   let months = (now.getUTCFullYear() - since.getUTCFullYear()) * 12 + (now.getUTCMonth() - since.getUTCMonth());
@@ -105,20 +124,38 @@ aiRoutes.post("/fit", async (c) => {
   const row = rs.rows[0];
   if (!row) throw notFound("Fitting not found.");
   const fitting = rowToFitting(row);
+  const m = fitting.measurements;
+
+  // Checked before the rate limit so an incomplete fitting doesn't consume the user's daily AI quota.
+  const missing = REQUIRED_MEASUREMENTS[fitting.garmentType].filter((key) => m[key] == null);
+  if (missing.length > 0) {
+    throw badRequest(
+      `Add the ${missing.join(" and ")} measurement${missing.length > 1 ? "s" : ""} to this ${fitting.garmentType} fitting before running the AI analysis.`,
+    );
+  }
 
   await enforceAiRateLimit(c);
+
+  // The prompt documents chest / waist / over_arm / posture_radar; every other measurement that was taken
+  // goes along under its snake_case name, plus garment_type, so the cutter notes fit the garment.
+  const iotData: Record<string, string | number | null> = {
+    garment_type: fitting.garmentType,
+    chest: m.chest,
+    waist: m.waist,
+    over_arm: m.overArm,
+  };
+  for (const key of MEASUREMENT_KEYS) {
+    const name = MEASUREMENT_COLUMNS[key];
+    if (!(name in iotData) && m[key] != null) iotData[name] = m[key];
+  }
+  iotData["posture_radar"] = fitting.postureNote || "No posture anomalies noted";
 
   const payload = {
     ACTION: "PROCESS_IOT_MEASUREMENTS",
     client_name: String(row["client_name"] ?? ""),
     target_style: fitting.style,
     selected_fabric: fitting.fabric,
-    iot_data: {
-      chest: fitting.measurements.chest,
-      waist: fitting.measurements.waist,
-      over_arm: fitting.measurements.overArm,
-      posture_radar: fitting.postureNote || "No posture anomalies noted",
-    },
+    iot_data: iotData,
   };
   const analysis = await runPipeline(c.env, payload, fitAnalysisSchema);
 

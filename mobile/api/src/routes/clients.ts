@@ -131,7 +131,7 @@ clientRoutes.patch("/:id", async (c) => {
   return c.json(body);
 });
 
-/** DELETE /clients/:id -> 204 (also deletes the client's orders and fittings) */
+/** DELETE /clients/:id -> 204 (also deletes the client's messages, orders and fittings) */
 clientRoutes.delete("/:id", async (c) => {
   const db = c.get("db");
   const shop = c.get("shop");
@@ -142,6 +142,7 @@ clientRoutes.delete("/:id", async (c) => {
 
   await db.batch(
     [
+      { sql: "DELETE FROM messages WHERE client_id = ? AND shop_id = ?", args: [id, shop.id] },
       { sql: "DELETE FROM orders WHERE client_id = ? AND shop_id = ?", args: [id, shop.id] },
       { sql: "DELETE FROM fittings WHERE client_id = ? AND shop_id = ?", args: [id, shop.id] },
       { sql: "DELETE FROM clients WHERE id = ? AND shop_id = ?", args: [id, shop.id] },

@@ -6,7 +6,7 @@ import { Card } from "@/components/ui";
 import { colors, typography } from "@/constants/theme";
 import { formatDate } from "@/lib/format";
 
-import { formatMeasurement, presentMeasurements } from "./measurements";
+import { formatMeasurement, garmentLabel, presentMeasurements } from "./measurements";
 import { AnalysedTag, Tag } from "./Tag";
 
 export interface FittingRowProps {
@@ -14,9 +14,9 @@ export interface FittingRowProps {
   onPress: () => void;
 }
 
-/** One fitting on the client file: style · fabric, date, measurement chips, AI tag. */
+/** One fitting on the client file: style · fabric, garment · date, the garment's measurement chips, AI tag. */
 export function FittingRow({ fitting, onPress }: FittingRowProps) {
-  const present = presentMeasurements(fitting.measurements);
+  const present = presentMeasurements(fitting.measurements, fitting.garmentType);
   return (
     <Card onPress={onPress} style={styles.card} testID={`fitting-row-${fitting.id}`}>
       <View style={styles.top}>
@@ -24,7 +24,9 @@ export function FittingRow({ fitting, onPress }: FittingRowProps) {
           <Text style={typography.h3} numberOfLines={2}>
             {fitting.style} · {fitting.fabric}
           </Text>
-          <Text style={typography.small}>{formatDate(fitting.createdAt)}</Text>
+          <Text style={typography.small}>
+            {garmentLabel(fitting.garmentType)} · {formatDate(fitting.createdAt)}
+          </Text>
         </View>
         <Ionicons name="chevron-forward" size={18} color={colors.muted} />
       </View>

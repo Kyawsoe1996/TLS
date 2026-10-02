@@ -5,6 +5,21 @@ All notable changes to TLS, newest first. Written in plain language so anyone on
 ## Unreleased
 
 ### Added
+- **Email to clients, sent from the app.** Win-back emails, "your order is ready" notices (when an
+  order reaches Ready) and the AI fitting follow-up can now be edited and sent with one tap, after a
+  confirmation. Every email is logged in a new **Messages** section on the client's file with a
+  status: Sent, Simulated (email sending not set up yet) or Failed. Settings shows whether email
+  sending is connected. Emails go through Resend; until a domain is verified they use the test sender
+  and only reach the account owner's own address.
+- **Shop details.** Settings → Shop details: address, phone, opening hours and a reply-to email. They
+  appear in the footer of every email, replies go to the reply-to address, and the order-ready email
+  uses the real opening hours.
+- **Order price & deposit.** Price, deposit paid and balance due on each order (for the shop's records
+  only), with quick 30% / 50% / paid-in-full chips, a "Record payment" action, and the balance shown
+  in order lists.
+- **Garment-specific measurements.** A fitting now has a garment type (Jacket, Trousers, Shirt, Full
+  suit) and shows the right measurement fields for it. The AI analysis uses whatever was measured.
+- **Overdue orders** get a red badge on the Clients tab and an Overdue row on Home.
 - **Order tracking** in the mobile app. Each client can have orders (a garment, fabric, due date,
   notes, optionally linked to a fitting) that move through *Measured → Cutting → Fitting → Ready →
   Delivered*. Orders show in the client's file, a fitting can be turned into an order in one tap, and
