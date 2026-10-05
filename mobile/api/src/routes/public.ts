@@ -55,6 +55,7 @@ const PRIVACY_HTML = `
   <li><strong>Your clients.</strong> The client details you enter: names, phone numbers, email addresses, LINE IDs, notes and last-order dates.</li>
   <li><strong>Measurements and fittings.</strong> The measurements, garment style, fabric and posture notes you record for each fitting.</li>
   <li><strong>AI outputs.</strong> The fit analyses, SEO keyword maps, marketing posts and win-back emails generated for you, so you can find them again.</li>
+  <li><strong>Posts and media.</strong> The posts in your content library and any photo or video you attach to them.</li>
 </ul>
 <p>We do not collect anything you don't enter yourself. We don't use advertising trackers.</p>
 
@@ -63,7 +64,7 @@ const PRIVACY_HTML = `
 <ul>
   <li><strong>Clerk</strong> - sign-in and account security.</li>
   <li><strong>Turso</strong> - the database where your shop, client, fitting and AI data is stored.</li>
-  <li><strong>Cloudflare</strong> - hosting for the API that the app talks to.</li>
+  <li><strong>Cloudflare</strong> - hosting for the API that the app talks to, and storage for the photos and videos you attach to posts.</li>
   <li><strong>Google Gemini</strong> - AI generation. When you tap an AI feature, the relevant inputs (for example a client's first name, style, fabric and measurements, or your district and brand tone) are sent to Google to produce the result. For Local SEO, Google also looks up tailor shops near the district you enter on Google Maps.</li>
   <li><strong>Upstash</strong> - counts your AI requests so we can apply the daily usage limit. It only sees an anonymous user identifier, not your data.</li>
 </ul>
@@ -75,7 +76,7 @@ const PRIVACY_HTML = `
 <p>You are responsible for making sure you're allowed to record your clients' details and measurements in the app. Please only enter what you need to serve them.</p>
 
 <h2>Deleting your data</h2>
-<p>You can delete your account at any time from inside the app: <strong>Settings &rarr; Delete account</strong>. This permanently erases your shop, all client records, all fittings and measurements, all AI outputs, and your sign-in account. It cannot be undone.</p>
+<p>You can delete your account at any time from inside the app: <strong>Settings &rarr; Delete account</strong>. This permanently erases your shop, all client records, all fittings and measurements, all AI outputs, your posts and their photos and videos, and your sign-in account. It cannot be undone.</p>
 
 <h2>Security</h2>
 <p>Data is sent over encrypted connections (HTTPS) and stored with providers that encrypt data at rest. Access to the API always requires your signed-in session.</p>

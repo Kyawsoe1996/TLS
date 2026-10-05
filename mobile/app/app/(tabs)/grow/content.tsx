@@ -1,15 +1,16 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import * as Clipboard from "expo-clipboard";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { Share, StyleSheet, Text, View } from "react-native";
-import type { AiPostRequest, Audience, BrandTone } from "@shared/types";
+import { Platform, Pressable, Share, StyleSheet, Text, View } from "react-native";
+import type { AiPostRequest, Audience, BrandTone, Post } from "@shared/types";
 
-import { ChoiceChips, DEFAULT_PLATFORM_SELECTION, PLATFORMS, PlaceholderTile, PlatformRow, type PlatformKey } from "@/components/grow";
+import { ChoiceChips, PostMediaBlock, afterPostChanged, cachePost, postCopyAllText, postRoutes, postShareText, useAttachMedia, usePost } from "@/components/grow";
 import { AiResultCard, Button, Card, Eyebrow, Field, LoadingAI, Screen } from "@/components/ui";
 import { colors, fonts, typography } from "@/constants/theme";
 import { useApi } from "@/lib/api";
+import { formatDateTime } from "@/lib/format";
 import { showError, showToast } from "@/lib/toast";
 import { useShop } from "@/lib/useShop";
 
@@ -22,7 +23,8 @@ function firstParam(value: string | string[] | undefined): string {
 }
 
 /**
- * Content Studio — pipeline 3 (POST /ai/post).
+ * Content Studio — pipeline 3 (POST /ai/post). The API saves every result as a draft post; this screen then lets the
+ * owner attach a photo or video and hand the caption to the share sheet.
  * Local SEO can deep-link here with `topic` (prefills the field) and `angle` (shown as a hint).
  */
 export default function ContentStudioScreen() {
@@ -30,16 +32,14 @@ export default function ContentStudioScreen() {
   const topicParam = firstParam(params.topic);
   const angleParam = firstParam(params.angle);
 
-  const router = useRouter();
   const api = useApi();
+  const queryClient = useQueryClient();
   const shop = useShop().data ?? null;
 
   const [tone, setTone] = useState<BrandTone>(shop?.tone ?? "Sophisticated");
   const toneTouched = useRef(false);
   const [audience, setAudience] = useState<Audience>("Expatriates");
   const [topic, setTopic] = useState(topicParam);
-  const [platforms, setPlatforms] = useState<Record<PlatformKey, boolean>>(DEFAULT_PLATFORM_SELECTION);
-  const [sharing, setSharing] = useState(false);
 
   // Default the tone to the shop's tone once it arrives, unless the user already picked one.
   useEffect(() => {
@@ -53,6 +53,10 @@ export default function ContentStudioScreen() {
 
   const mutation = useMutation({
     mutationFn: (body: AiPostRequest) => api.aiPost(body),
+    onSuccess: ({ post }) => {
+      cachePost(queryClient, post);
+      afterPostChanged(queryClient);
+    },
     onError: (err) => showError(err, "Couldn't write the post"),
   });
   const result = mutation.data ?? null;
@@ -61,38 +65,6 @@ export default function ContentStudioScreen() {
     const cleanTopic = topic.trim();
     if (!cleanTopic) return;
     mutation.mutate({ brandTone: tone, topic: cleanTopic, audience });
-  };
-
-  const selectedKeys = PLATFORMS.filter((p) => platforms[p.key]).map((p) => p.key);
-  const canPost = !!result && selectedKeys.length > 0 && !sharing;
-
-  const postCaption = result ? `${result.social_caption}\n\n${result.call_to_action}` : "";
-
-  const onPostNow = async () => {
-    if (!result) return;
-    setSharing(true);
-    try {
-      await Share.share({ message: postCaption });
-    } catch {
-      // share sheet dismissed or unavailable — still show the confirmation
-    } finally {
-      setSharing(false);
-    }
-    router.push({
-      pathname: "/(tabs)/grow/posted",
-      params: { platforms: selectedKeys.join(","), caption: postCaption },
-    });
-  };
-
-  const onCopyAll = async () => {
-    if (!result) return;
-    const all = [`${result.blog_title}\n\n${result.blog_body}`, result.social_caption, result.call_to_action].join("\n\n");
-    try {
-      await Clipboard.setStringAsync(all);
-      showToast("Copied", "Blog post, caption and call to action are on your clipboard.");
-    } catch (err) {
-      showError(err, "Couldn't copy");
-    }
   };
 
   return (
@@ -147,67 +119,98 @@ export default function ContentStudioScreen() {
 
       {mutation.isPending ? <LoadingAI label="Writing in your tone…" /> : null}
 
-      {result ? (
-        <View style={styles.results}>
-          <AiResultCard eyebrow="Blog post" title={result.blog_title} body={result.blog_body} />
-          <AiResultCard eyebrow="Social caption" title="Social caption" body={result.social_caption} copyText={result.social_caption} />
-          <AiResultCard eyebrow="Call to action" title="Call to action" body={result.call_to_action} copyText={result.call_to_action} />
-        </View>
-      ) : null}
+      {result && !mutation.isPending ? <PostResult key={result.post.id} saved={result.post} /> : null}
+    </Screen>
+  );
+}
+
+/** Everything under the form once a post exists: the saved banner, the three cards, media, Copy all + Share. */
+function PostResult({ saved }: { saved: Post }) {
+  const router = useRouter();
+  const api = useApi();
+  const queryClient = useQueryClient();
+  // The cache copy carries media / shared updates made from here; the AI result seeds it.
+  const post = usePost(saved.id).data ?? saved;
+  const attach = useAttachMedia(post.id);
+  const [sharing, setSharing] = useState(false);
+
+  const shared = useMutation({
+    mutationFn: () => api.markPostShared(post.id),
+    onSuccess: ({ post: updated }) => {
+      cachePost(queryClient, updated);
+      afterPostChanged(queryClient);
+    },
+    // The share itself went through; the status is a bookkeeping detail, so keep the error quiet and the screen calm.
+    onError: (err) => showError(err, "Shared, but couldn't mark the post"),
+  });
+
+  const onShare = async () => {
+    setSharing(true);
+    try {
+      const message = postShareText(post);
+      const url = post.media?.url;
+      const outcome = await Share.share(
+        // Android's sheet ignores `url`, so the photo link rides along in the text there.
+        Platform.OS === "android" && url ? { message: `${message}\n\n${url}` } : { message, url },
+        { subject: post.title, dialogTitle: "Share post" },
+      );
+      if (outcome.action === Share.sharedAction) shared.mutate();
+    } catch (err) {
+      showError(err, "Couldn't open the share sheet");
+    } finally {
+      setSharing(false);
+    }
+  };
+
+  const onCopyAll = async () => {
+    try {
+      await Clipboard.setStringAsync(postCopyAllText(post));
+      showToast("Copied", "Blog post, caption and call to action are on your clipboard.");
+    } catch (err) {
+      showError(err, "Couldn't copy");
+    }
+  };
+
+  return (
+    <>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Open the saved post"
+        onPress={() => router.push(postRoutes.detail(post.id))}
+        style={({ pressed }) => [styles.savedBanner, pressed && styles.pressed]}
+      >
+        <Ionicons name="checkmark-circle" size={18} color={colors.successFg} />
+        <Text style={styles.savedText} numberOfLines={2}>
+          Saved to Posts · {post.status === "shared" ? "Shared" : "Draft"} · {formatDateTime(post.createdAt)}
+        </Text>
+        <Text style={styles.savedLink}>Open</Text>
+      </Pressable>
+
+      <View style={styles.results}>
+        <AiResultCard eyebrow="Blog post" title={post.title} body={post.body} />
+        <AiResultCard eyebrow="Social caption" title="Social caption" body={post.caption} copyText={post.caption} />
+        <AiResultCard eyebrow="Call to action" title="Call to action" body={post.callToAction} copyText={post.callToAction} />
+      </View>
 
       <View style={styles.section}>
-        <Eyebrow>Media</Eyebrow>
-        <View style={styles.tiles}>
-          <PlaceholderTile icon="image-outline" label="Photo post" hint="Square, 1080 × 1080" />
-          <PlaceholderTile icon="videocam-outline" label="15s video" hint="Vertical, 9:16" />
-        </View>
-        <Button
-          variant="ghost"
-          size="sm"
-          icon="add"
-          title="Add photo"
-          onPress={() => showToast("Coming soon", "Photo upload is coming in the next update.")}
-        />
+        <Eyebrow>Photo or video</Eyebrow>
+        <PostMediaBlock post={post} attach={attach} />
       </View>
-
-      <Card style={styles.shareCard}>
-        <Eyebrow>Share to</Eyebrow>
-        <View>
-          {PLATFORMS.map((platform, i) => (
-            <PlatformRow
-              key={platform.key}
-              platform={platform}
-              value={platforms[platform.key]}
-              onValueChange={(v) => setPlatforms((prev) => ({ ...prev, [platform.key]: v }))}
-              last={i === PLATFORMS.length - 1}
-            />
-          ))}
-        </View>
-        <Text style={typography.small}>
-          Direct posting to these apps is coming. For now, Post now opens your phone&apos;s share sheet.
-        </Text>
-      </Card>
 
       <View style={styles.actions}>
-        <Button
-          variant="secondary"
-          icon="calendar-outline"
-          title="Schedule"
-          style={styles.action}
-          onPress={() => showToast("Scheduling is coming soon")}
-        />
-        <Button
-          variant="gold"
-          icon="send"
-          title="Post now"
-          style={styles.action}
-          onPress={() => void onPostNow()}
-          loading={sharing}
-          disabled={!canPost}
-        />
+        <Button variant="ghost" icon="copy-outline" title="Copy all" style={styles.action} onPress={() => void onCopyAll()} />
+        <Button icon="share-outline" title="Share" style={styles.action} onPress={() => void onShare()} loading={sharing} disabled={attach.busy} />
       </View>
-      <Button variant="ghost" icon="copy-outline" title="Copy all" onPress={() => void onCopyAll()} disabled={!result} style={styles.copyAll} />
-    </Screen>
+      {post.sharedAt ? (
+        <View style={styles.sharedRow}>
+          <Ionicons name="checkmark-circle-outline" size={14} color={colors.successFg} />
+          <Text style={styles.sharedText}>Shared · {formatDateTime(post.sharedAt)}</Text>
+        </View>
+      ) : null}
+      <Text style={styles.caption}>
+        Share opens your phone&apos;s share sheet: paste into Instagram, Facebook, LINE or anywhere else. The post is marked as shared.
+      </Text>
+    </>
   );
 }
 
@@ -216,11 +219,23 @@ const styles = StyleSheet.create({
   hintIcon: { marginTop: 2 },
   hintText: { ...typography.body, flex: 1 },
   hintLabel: { fontFamily: fonts.bodySemi, color: colors.goldDark },
+  savedBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: colors.successBg,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  pressed: { opacity: 0.8 },
+  savedText: { flex: 1, fontFamily: fonts.bodyMedium, fontSize: 14, lineHeight: 20, color: colors.successFg },
+  savedLink: { fontFamily: fonts.bodySemi, fontSize: 14, lineHeight: 20, color: colors.successFg, textDecorationLine: "underline" },
   results: { gap: 16 },
   section: { gap: 10, marginTop: 4 },
-  tiles: { flexDirection: "row", gap: 12 },
-  shareCard: { gap: 10 },
-  actions: { flexDirection: "row", gap: 10 },
+  actions: { flexDirection: "row", gap: 10, marginTop: 4 },
   action: { flex: 1 },
-  copyAll: { alignSelf: "center" },
+  sharedRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, marginTop: -6 },
+  sharedText: { fontFamily: fonts.bodyMedium, fontSize: 13, lineHeight: 18, color: colors.successFg },
+  caption: { ...typography.small, textAlign: "center", paddingHorizontal: 8, marginTop: -4 },
 });

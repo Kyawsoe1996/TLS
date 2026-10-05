@@ -1,5 +1,6 @@
 import { createClient, type Client as DbClient, type ResultSet, type Row } from "@libsql/client/web";
 import {
+  type Audience,
   type BrandTone,
   type Client,
   type FitAnalysis,
@@ -7,16 +8,20 @@ import {
   GARMENT_TYPES,
   type GarmentType,
   type Measurements,
+  type MediaKind,
   type Message,
   type MessageChannel,
   type MessageKind,
   type MessageStatus,
   type Order,
   type OrderStatus,
+  type Post,
+  type PostStatus,
   type Shop,
 } from "../../shared/types";
 import type { Bindings } from "./env";
 import { serverError } from "./errors";
+import { mediaUrl } from "./media";
 
 export type Db = DbClient;
 
@@ -229,6 +234,40 @@ export function rowToMessage(row: Row): Message {
   };
 }
 
+/**
+ * `origin` (scheme + host of the current request, see media.ts requestOrigin) turns the stored R2 key into
+ * the absolute `media.url`. `media` is null when the post has no file attached.
+ */
+export function rowToPost(row: Row, origin: string): Post {
+  const mediaKey = textOrNull(row, "media_key");
+  return {
+    id: text(row, "id"),
+    title: text(row, "title"),
+    body: text(row, "body"),
+    caption: text(row, "caption"),
+    callToAction: text(row, "call_to_action"),
+    topic: text(row, "topic"),
+    tone: text(row, "tone") as BrandTone,
+    audience: text(row, "audience") as Audience,
+    status: text(row, "status") as PostStatus,
+    sharedAt: textOrNull(row, "shared_at"),
+    media:
+      mediaKey == null
+        ? null
+        : {
+            kind: text(row, "media_kind") as MediaKind,
+            url: mediaUrl(origin, mediaKey),
+            contentType: text(row, "media_content_type"),
+            width: numberOrNull(row, "media_width"),
+            height: numberOrNull(row, "media_height"),
+            durationSec: numberOrNull(row, "media_duration"),
+            sizeBytes: numberOrNull(row, "media_size") ?? 0,
+          },
+    createdAt: text(row, "created_at"),
+    updatedAt: text(row, "updated_at"),
+  };
+}
+
 // ---------- Common lookups ----------
 
 export async function getShopByOwner(db: Db, userId: string): Promise<Shop | null> {
@@ -265,6 +304,14 @@ export async function getMessageRow(db: Db, shopId: string, messageId: string): 
   const rs = await db.execute({
     sql: "SELECT * FROM messages WHERE id = ? AND shop_id = ?",
     args: [messageId, shopId],
+  });
+  return rs.rows[0] ?? null;
+}
+
+export async function getPostRow(db: Db, shopId: string, postId: string): Promise<Row | null> {
+  const rs = await db.execute({
+    sql: "SELECT * FROM posts WHERE id = ? AND shop_id = ?",
+    args: [postId, shopId],
   });
   return rs.rows[0] ?? null;
 }

@@ -54,6 +54,14 @@
           "resizeMode": "contain",
           "backgroundColor": "#14213A"
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Magick TLS uses your photos to attach a picture or short video to a post.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
       ]
     ],
     "experiments": {

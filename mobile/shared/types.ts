@@ -300,12 +300,82 @@ export interface AiPostRequest {
   topic: string;
   audience: Audience;
 }
+/** The generated text, already saved as a draft post (see `post`). */
 export interface AiPostResponse {
   blog_title: string;
   blog_body: string;
   social_caption: string;
   call_to_action: string;
+  post: Post; // saved automatically so nothing generated is ever lost
 }
+
+// ---------- Posts (the content library behind Content Studio) ----------
+export type PostStatus = "draft" | "shared";
+export type MediaKind = "image" | "video";
+
+/** A photo or short video attached to a post, stored by the API and served at `url`. */
+export interface PostMedia {
+  kind: MediaKind;
+  url: string; // absolute URL (API_URL + /media/…), public but unguessable
+  contentType: string; // e.g. "image/jpeg", "video/mp4"
+  width: number | null;
+  height: number | null;
+  durationSec: number | null; // videos only
+  sizeBytes: number;
+}
+
+export interface Post {
+  id: string;
+  title: string; // blog title
+  body: string; // blog post, 3 paragraphs
+  caption: string; // social caption with hashtags
+  callToAction: string;
+  // What it was generated from (kept so the owner can see / re-run with the same brief).
+  topic: string;
+  tone: BrandTone;
+  audience: Audience;
+  status: PostStatus;
+  sharedAt: ISODate | null; // last time "Share" was completed
+  media: PostMedia | null;
+  createdAt: ISODate;
+  updatedAt: ISODate;
+}
+
+/** GET /posts?status=draft|shared&q=<search in title/topic> (newest first) */
+export interface ListPostsResponse {
+  posts: Post[];
+}
+/** POST /posts — manual post (the AI route creates one automatically) */
+export interface CreatePostRequest {
+  title: string;
+  body: string;
+  caption: string;
+  callToAction: string;
+  topic: string;
+  tone: BrandTone;
+  audience: Audience;
+}
+/** PATCH /posts/:id — any subset of the text fields */
+export type UpdatePostRequest = Partial<CreatePostRequest>;
+/** GET/POST/PATCH single post; POST /posts/:id/duplicate → 201; POST /posts/:id/shared marks it shared */
+export interface PostResponse {
+  post: Post;
+}
+/**
+ * PUT /posts/:id/media — raw file body with headers:
+ *   Content-Type: image/jpeg | image/png | image/webp | video/mp4 | video/quicktime
+ *   X-Media-Width / X-Media-Height / X-Media-Duration (optional, numbers)
+ * Limits: images 10 MB, videos 60 MB and 60 seconds. → { post } with media set.
+ * DELETE /posts/:id/media → { post } with media null.
+ * GET /media/<key> serves the file (no auth; keys are random).
+ */
+export const MEDIA_LIMITS = {
+  imageBytes: 10 * 1024 * 1024,
+  videoBytes: 60 * 1024 * 1024,
+  videoSeconds: 60,
+  imageTypes: ["image/jpeg", "image/png", "image/webp"],
+  videoTypes: ["video/mp4", "video/quicktime"],
+} as const;
 
 /** Pipeline 4 — TRIGGER_RETENTION_CAMPAIGN */
 export type Incentive = "Complimentary shirt with a suit" | "10% off" | "Free alteration";

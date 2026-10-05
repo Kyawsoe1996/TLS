@@ -11,8 +11,10 @@ import aiRoutes from "./routes/ai";
 import clientRoutes from "./routes/clients";
 import fittingRoutes from "./routes/fittings";
 import homeRoutes from "./routes/home";
+import mediaRoutes from "./routes/media";
 import messageRoutes from "./routes/messages";
 import orderRoutes, { shopOrderRoutes } from "./routes/orders";
+import postRoutes from "./routes/posts";
 import publicRoutes from "./routes/public";
 import shopRoutes from "./routes/shop";
 
@@ -23,14 +25,15 @@ app.use(
   cors({
     origin: "*",
     allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowHeaders: ["Authorization", "Content-Type"],
+    allowHeaders: ["Authorization", "Content-Type", "X-Media-Width", "X-Media-Height", "X-Media-Duration"],
     exposeHeaders: ["X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"],
     maxAge: 86400,
   }),
 );
 
-// Public: GET /health, GET /privacy, GET /support (registered before auth so they bypass it).
+// Public: GET /health, GET /privacy, GET /support, GET /media/<key> (registered before auth so they bypass it).
 app.route("/", publicRoutes);
+app.route("/media", mediaRoutes);
 
 // Everything below requires a Clerk session token.
 app.use("*", requireAuth);
@@ -48,6 +51,8 @@ app.use("/clients", requireShop);
 app.use("/clients/*", requireShop);
 app.use("/orders", requireShop);
 app.use("/orders/*", requireShop);
+app.use("/posts", requireShop);
+app.use("/posts/*", requireShop);
 app.use("/ai/*", requireShop);
 
 app.route("/home", homeRoutes);
@@ -56,6 +61,7 @@ app.route("/clients", fittingRoutes); // /clients/:clientId/fittings
 app.route("/clients", orderRoutes); // /clients/:clientId/orders[/:orderId]
 app.route("/clients", messageRoutes); // /clients/:clientId/messages
 app.route("/orders", shopOrderRoutes); // shop-wide list
+app.route("/posts", postRoutes); // content library + /posts/:id/media upload
 app.route("/ai", aiRoutes);
 
 app.notFound((c) => {

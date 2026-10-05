@@ -16,6 +16,7 @@ import type {
   CreateClientRequest,
   CreateFittingRequest,
   CreateOrderRequest,
+  CreatePostRequest,
   FittingResponse,
   GetShopResponse,
   HomeResponse,
@@ -23,11 +24,15 @@ import type {
   ListFittingsResponse,
   ListMessagesResponse,
   ListOrdersResponse,
+  ListPostsResponse,
   MessageResponse,
   OrderResponse,
+  PostResponse,
+  PostStatus,
   SendMessageRequest,
   UpdateClientRequest,
   UpdateOrderRequest,
+  UpdatePostRequest,
   UpsertShopRequest,
   UpsertShopResponse,
 } from "@shared/types";
@@ -83,6 +88,20 @@ export interface RequestOptions {
 
 export type GetToken = () => Promise<string | null>;
 
+/** A photo or video picked on the device, ready for PUT /posts/:id/media. */
+export interface MediaFile {
+  /** Local file URI from the picker. */
+  uri: string;
+  /** One of MEDIA_LIMITS.imageTypes / videoTypes. */
+  mimeType: string;
+  width?: number | null;
+  height?: number | null;
+  /** Seconds (videos only). */
+  duration?: number | null;
+  /** Bytes, when the picker reports it. */
+  size?: number | null;
+}
+
 function isApiError(value: unknown): value is ApiError {
   if (!value || typeof value !== "object") return false;
   const e = (value as { error?: unknown }).error;
@@ -115,22 +134,15 @@ function buildUrl(path: string, query?: Record<string, QueryValue>): string {
  * you already have a `getToken` function (e.g. outside React).
  */
 export function createApi(getToken: GetToken) {
-  async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
-    const { method = "GET", body, query, signal } = options;
-    const token = await getToken();
+  const clientPath = (id: string) => `/clients/${encodeURIComponent(id)}`;
+  const orderPath = (clientId: string, orderId: string) => `${clientPath(clientId)}/orders/${encodeURIComponent(orderId)}`;
+  const postPath = (id: string) => `/posts/${encodeURIComponent(id)}`;
 
-    const headers: Record<string, string> = { Accept: "application/json" };
-    if (body !== undefined) headers["Content-Type"] = "application/json";
-    if (token) headers.Authorization = `Bearer ${token}`;
-
+  /** Sends a prepared fetch and turns the response into `T` or an ApiClientError. */
+  async function send<T>(url: string, init: RequestInit): Promise<T> {
     let res: Response;
     try {
-      res = await fetch(buildUrl(path, query), {
-        method,
-        headers,
-        body: body !== undefined ? JSON.stringify(body) : undefined,
-        signal,
-      });
+      res = await fetch(url, init);
     } catch (err) {
       const message = err instanceof Error && err.name === "AbortError" ? "Request cancelled." : "Can't reach the server. Check your connection and try again.";
       throw new ApiClientError(0, "network", message);
@@ -160,8 +172,43 @@ export function createApi(getToken: GetToken) {
     return json as T;
   }
 
-  const clientPath = (id: string) => `/clients/${encodeURIComponent(id)}`;
-  const orderPath = (clientId: string, orderId: string) => `${clientPath(clientId)}/orders/${encodeURIComponent(orderId)}`;
+  async function authHeaders(): Promise<Record<string, string>> {
+    const token = await getToken();
+    const headers: Record<string, string> = { Accept: "application/json" };
+    if (token) headers.Authorization = `Bearer ${token}`;
+    return headers;
+  }
+
+  async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+    const { method = "GET", body, query, signal } = options;
+    const headers = await authHeaders();
+    if (body !== undefined) headers["Content-Type"] = "application/json";
+    return send<T>(buildUrl(path, query), {
+      method,
+      headers,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+      signal,
+    });
+  }
+
+  /**
+   * PUT /posts/:id/media — the file goes up as the raw request body (no multipart), with its type in Content-Type
+   * and the optional dimensions / duration in X-Media-* headers. Reads the local file through fetch() first.
+   */
+  async function uploadPostMedia(postId: string, file: MediaFile): Promise<PostResponse> {
+    let blob: Blob;
+    try {
+      blob = await (await fetch(file.uri)).blob();
+    } catch {
+      throw new ApiClientError(0, "network", "Couldn't read the file from your phone. Try picking it again.");
+    }
+    const headers = await authHeaders();
+    headers["Content-Type"] = file.mimeType;
+    if (file.width) headers["X-Media-Width"] = String(Math.round(file.width));
+    if (file.height) headers["X-Media-Height"] = String(Math.round(file.height));
+    if (file.duration) headers["X-Media-Duration"] = String(Math.round(file.duration * 10) / 10);
+    return send<PostResponse>(buildUrl(`${postPath(postId)}/media`), { method: "PUT", headers, body: blob });
+  }
 
   return {
     /** Raw typed request — for routes not covered by the helpers below. */
@@ -213,6 +260,21 @@ export function createApi(getToken: GetToken) {
     aiSeo: (body: AiSeoRequest) => request<AiSeoResponse>("/ai/seo", { method: "POST", body }),
     aiPost: (body: AiPostRequest) => request<AiPostResponse>("/ai/post", { method: "POST", body }),
     aiWinback: (body: AiWinbackRequest) => request<AiWinbackResponse>("/ai/winback", { method: "POST", body }),
+
+    // ---- Posts (content library) ----
+    /** Newest first; `status` narrows to drafts / shared, `q` searches title and topic. */
+    listPosts: (params?: { status?: PostStatus; q?: string }) =>
+      request<ListPostsResponse>("/posts", { query: { status: params?.status, q: params?.q } }),
+    createPost: (body: CreatePostRequest) => request<PostResponse>("/posts", { method: "POST", body }),
+    getPost: (id: string) => request<PostResponse>(postPath(id)),
+    updatePost: (id: string, body: UpdatePostRequest) => request<PostResponse>(postPath(id), { method: "PATCH", body }),
+    deletePost: (id: string) => request<void>(postPath(id), { method: "DELETE" }),
+    /** → 201 with the copy (a new draft, media included). */
+    duplicatePost: (id: string) => request<PostResponse>(`${postPath(id)}/duplicate`, { method: "POST" }),
+    /** Marks the post shared (status "shared", sharedAt now). */
+    markPostShared: (id: string) => request<PostResponse>(`${postPath(id)}/shared`, { method: "POST" }),
+    uploadPostMedia,
+    deletePostMedia: (id: string) => request<PostResponse>(`${postPath(id)}/media`, { method: "DELETE" }),
 
     // ---- Account ----
     deleteAccount: () => request<void>("/account", { method: "DELETE" }),

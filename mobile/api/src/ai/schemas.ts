@@ -27,13 +27,13 @@ export const seoSchema = z.object({
     .min(1),
 }) satisfies z.ZodType<Pick<AiSeoResponse, "target_market" | "keywords">, unknown>;
 
-/** Pipeline 3 - GENERATE_DASHBOARD_POST */
+/** Pipeline 3 - GENERATE_DASHBOARD_POST (the model's part; `post` is the row routes/ai.ts saves from it) */
 export const postSchema = z.object({
   blog_title: nonEmpty,
   blog_body: nonEmpty,
   social_caption: nonEmpty,
   call_to_action: nonEmpty,
-}) satisfies z.ZodType<AiPostResponse, unknown>;
+}) satisfies z.ZodType<Omit<AiPostResponse, "post">, unknown>;
 
 /** Pipeline 4 - TRIGGER_RETENTION_CAMPAIGN */
 export const winbackSchema = z.object({

@@ -2,18 +2,27 @@ import { createClerkClient } from "@clerk/backend";
 import { Hono } from "hono";
 import { getShopByOwner } from "../db";
 import type { AppEnv } from "../env";
+import { deleteMediaByPrefix } from "../media";
 
 const accountRoutes = new Hono<AppEnv>();
 
-/** DELETE /account -> 204. Erases the shop and all its data, then deletes the Clerk user. */
+/** DELETE /account -> 204. Erases the shop and all its data (including media files), then deletes the Clerk user. */
 accountRoutes.delete("/", async (c) => {
   const db = c.get("db");
   const userId = c.get("userId");
 
   const shop = await getShopByOwner(db, userId);
   if (shop) {
+    // Media first, while the posts rows (and their keys) still exist; best effort - every key for this shop
+    // sits under `<shopId>/`, so a retry or a later sweep can find anything left behind.
+    try {
+      await deleteMediaByPrefix(c.env.MEDIA, `${shop.id}/`);
+    } catch (err) {
+      console.warn(`[account] could not delete media for shop ${shop.id}:`, err instanceof Error ? err.message : err);
+    }
     await db.batch(
       [
+        { sql: "DELETE FROM posts WHERE shop_id = ?", args: [shop.id] },
         { sql: "DELETE FROM messages WHERE shop_id = ?", args: [shop.id] },
         { sql: "DELETE FROM orders WHERE shop_id = ?", args: [shop.id] },
         { sql: "DELETE FROM fittings WHERE shop_id = ?", args: [shop.id] },

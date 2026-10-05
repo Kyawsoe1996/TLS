@@ -8,16 +8,17 @@ Backend API for the TLS mobile app (bespoke tailor shops).
 - **AI:** Google Gemini REST API (`GEMINI_MODEL`, default `gemini-3.1-flash-lite`) using the 4-pipeline prompt in `../shared/ai-engine-prompt.md`
 - **Rate limiting:** Upstash Redis + `@upstash/ratelimit`, sliding windows of 30 AI requests and 60 emails per user per day
 - **Email:** [Resend](https://resend.com) REST API (`RESEND_API_KEY`, optional - without it emails are logged as `simulated`)
+- **Media:** Cloudflare R2 bucket `tls-media` (binding `MEDIA`) for the photo / video attached to a post, served back at `GET /media/<key>`
 - **Contract:** every request/response shape lives in [`../shared/types.ts`](../shared/types.ts); the API imports those types so it can't drift from the app.
 
 ## Layout
 
 ```
 api/
-  wrangler.toml            worker config (name, compat flags, non-secret vars)
+  wrangler.toml            worker config (name, compat flags, non-secret vars, R2 bucket binding)
   .dev.vars.example        every secret the worker needs (copy to .dev.vars for local dev)
   migrations/*.sql         database schema (0001 shops/clients/fittings/generations, 0002 orders, 0003 messages,
-                           0004 shop details + fitting garment types/measurements + order prices)
+                           0004 shop details + fitting garment types/measurements + order prices, 0005 posts)
   scripts/migrate.mjs      `npm run db:migrate`
   src/
     index.ts               Hono app: CORS, auth, routing, error -> ApiError mapping
@@ -26,12 +27,13 @@ api/
     db.ts                  Turso client, row -> API mappers, common lookups
     validate.ts            zod body parsing -> 400 bad_request
     ratelimit.ts           Upstash sliding-window limiters for /ai/* and POST .../messages
-    errors.ts              ApiHttpError + helpers (401/404/400/429/502/500)
+    errors.ts              ApiHttpError + helpers (401/404/400/413/429/502/500)
     email.ts               Resend sender (sendEmail, emailStatus, buildEmailFooter), 20s timeout
+    media.ts               R2 helpers: object keys, size-limited streaming upload, prefix delete, media URLs
     ai/prompt.ts           the Gemini system prompt (copy of ../shared/ai-engine-prompt.md)
     ai/gemini.ts           REST call, JSON parsing, zod validation, 1 retry, 25s timeout
     ai/schemas.ts          zod output schemas for the 4 pipelines
-    routes/                shop, home, clients, fittings, orders, messages, ai, account, public
+    routes/                shop, home, clients, fittings, orders, messages, posts, media, ai, account, public
 ```
 
 ## Setup
@@ -79,7 +81,17 @@ The sender defaults to `<shop name> via Magick TLS <onboarding@resend.dev>`. Res
 
 **Footer and Reply-To.** Every email goes out with a footer built from the shop's details (`PUT /shop`: `address`, `phone`, `openingHours`, `replyToEmail`, all optional). After a blank line: `— <shop name>`, then the address (if set), then `<phone> · <opening hours>` (whichever are set), then `Reply to this email to reach the shop.` only when `replyToEmail` is set - in which case it is also sent to Resend as `reply_to`, so client replies land in the shop's inbox instead of the sender address. The HTML version carries the same footer as a muted paragraph. The footer is presentation only: `messages.body` stores the text exactly as the app sent it. `buildEmailFooter(shop)` in `src/email.ts` is pure and can be unit-tested.
 
-### 7. Local development
+### 7. Media storage (Cloudflare R2)
+
+Post photos / videos are stored in an R2 bucket bound as `MEDIA` (`[[r2_buckets]]` in `wrangler.toml`, bucket `tls-media`). R2 has to be enabled on the Cloudflare account first (dashboard → R2 → enable; it asks for a payment method but the free tier covers 10 GB). Then create the bucket once:
+
+```bash
+wrangler r2 bucket create tls-media
+```
+
+Deploying before the bucket exists fails with "R2 bucket tls-media does not exist". No bucket is needed for local development: `wrangler dev` simulates R2 on disk under `.wrangler/state/` (same place as the rest of its local state; delete the folder to start empty). Files are private in R2; the API serves them itself at `GET /media/<key>`, where `<key>` is `<shopId>/<postId>/<random uuid>.<ext>` - unguessable, so the route needs no token and the app can hand the URL straight to an `<Image>` / video player.
+
+### 8. Local development
 
 ```bash
 cp .dev.vars.example .dev.vars   # fill in the values above
@@ -87,9 +99,9 @@ npm run dev                      # wrangler dev -> http://localhost:8787
 npm run typecheck                # tsc --noEmit
 ```
 
-### 8. Deploy
+### 9. Deploy
 
-Set each secret once on the deployed worker, then deploy:
+Set each secret once on the deployed worker, create the R2 bucket (see 7), then deploy:
 
 ```bash
 wrangler secret put CLERK_SECRET_KEY
@@ -101,6 +113,7 @@ wrangler secret put UPSTASH_REDIS_REST_TOKEN
 wrangler secret put GEMINI_API_KEY
 wrangler secret put RESEND_API_KEY     # optional, see 6
 wrangler secret put RESEND_FROM        # optional
+wrangler r2 bucket create tls-media    # once, see 7
 npm run deploy
 ```
 
@@ -108,7 +121,7 @@ Before release, replace the `[COMPANY NAME]`, `[SUPPORT EMAIL]`, `[DATE]` and `[
 
 ## Endpoints
 
-All routes except `GET /health`, `GET /privacy`, `GET /support` require `Authorization: Bearer <Clerk session token>`. Errors are always `{ "error": { "code", "message" } }` with codes `unauthorized` (401), `not_found` (404), `bad_request` (400), `rate_limited` (429), `ai_failed` (502), `server_error` (500). Request/response types are in `../shared/types.ts`.
+All routes except `GET /health`, `GET /privacy`, `GET /support` and `GET /media/<key>` require `Authorization: Bearer <Clerk session token>`. Errors are always `{ "error": { "code", "message" } }` with codes `unauthorized` (401), `not_found` (404), `bad_request` (400, also used for 413 on oversized uploads), `rate_limited` (429), `ai_failed` (502), `server_error` (500). Request/response types are in `../shared/types.ts`.
 
 | Method | Path | Body | Response |
 |---|---|---|---|
@@ -135,13 +148,26 @@ All routes except `GET /health`, `GET /privacy`, `GET /support` require `Authori
 | POST | `/clients/:id/messages` | `SendMessageRequest` (`kind`, `subject`, `body`, optional `orderId`) | 201 `{ message }` with status `sent`, `simulated` or `failed` |
 | POST | `/ai/fit` | `{ fittingId }` | `{ fitting }` with `analysis` filled (pipeline 1, saved on the fitting); 400 when the garment's required measurements are missing |
 | POST | `/ai/seo` | `AiSeoRequest` | `AiSeoResponse` (Google Maps lookup, then pipeline 2; saved as generation `seo`) |
-| POST | `/ai/post` | `AiPostRequest` | `AiPostResponse` (pipeline 3, saved as generation `post`) |
+| POST | `/ai/post` | `AiPostRequest` | `AiPostResponse` (pipeline 3, saved as generation `post` **and** as a draft post, returned as `post`) |
 | POST | `/ai/winback` | `AiWinbackRequest` | `AiWinbackResponse` (pipeline 4, saved as generation `winback`) |
-| DELETE | `/account` | - | 204; deletes messages, orders, fittings, clients, generations, shop and the Clerk user |
+| GET | `/posts?status=draft\|shared&q=` | - | `{ posts }` newest first (`q` searches title and topic) |
+| POST | `/posts` | `CreatePostRequest` | 201 `{ post }` with status `draft` |
+| GET | `/posts/:id` | - | `{ post }` |
+| PATCH | `/posts/:id` | `UpdatePostRequest` (any subset of the text fields) | `{ post }` |
+| DELETE | `/posts/:id` | - | 204 (also deletes its media file) |
+| POST | `/posts/:id/duplicate` | - | 201 `{ post }`: draft copy, title + ` (copy)`, media copied when possible |
+| POST | `/posts/:id/shared` | - | `{ post }` with status `shared`, `sharedAt = now` |
+| PUT | `/posts/:id/media` | raw file body; headers `Content-Type`, optional `X-Media-Width`, `X-Media-Height`, `X-Media-Duration` | `{ post }` with `media` set (replaces any previous file) |
+| DELETE | `/posts/:id/media` | - | `{ post }` with `media: null` |
+| GET | `/media/<key>` | - | the file (no auth; supports `Range` and `If-None-Match`; `Cache-Control: public, max-age=31536000, immutable`) |
+| DELETE | `/account` | - | 204; deletes the shop's media files, posts, messages, orders, fittings, clients, generations, shop and the Clerk user |
 
 Notes:
 
-- `/home`, `/clients*`, `/orders*` and `/ai/*` return 404 `not_found` ("Set up your shop first.") until `PUT /shop` has been called.
+- `/home`, `/clients*`, `/orders*`, `/posts*` and `/ai/*` return 404 `not_found` ("Set up your shop first.") until `PUT /shop` has been called.
+- Posts (`posts` table): `title`, `body`, `caption`, `callToAction` plus the brief they came from (`topic`, `tone`, `audience`); all required text (limits 200 / 20,000 / 2,000 / 1,000 / 200 characters). `status` is `draft` until `POST /posts/:id/shared` sets it to `shared` and stamps `sharedAt` (sharing itself happens on the phone via the OS share sheet). `POST /ai/post` always inserts a draft from what it generated, so the Content Studio result is never lost. `GET /posts?q=` is a case-insensitive `LIKE` on title or topic with wildcards escaped, like the client search.
+- Post media: `PUT /posts/:id/media` takes the raw file as the body. `Content-Type` must be `image/jpeg`, `image/png`, `image/webp`, `video/mp4` or `video/quicktime` (else 400 "Use a JPEG, PNG or WebP photo, or an MP4/MOV video."). Limits are in `MEDIA_LIMITS` (`../shared/types.ts`): photos 10 MB, videos 60 MB and 60 seconds. Size is checked twice - `Content-Length` up front (413, code `bad_request`, "Photos up to 10 MB, videos up to 60 MB.") and again while streaming into R2, so a chunked upload or a wrong header can't get around it (the object is not stored). Duration can only be checked from `X-Media-Duration` (the API doesn't decode the video); over 60 s is a 400. The file is stored under a fresh key `<shopId>/<postId>/<uuid>.<ext>` with `Content-Type` as its `httpMetadata`, the previous file (if any) is deleted, and the `media_*` columns are updated. `media.url` is built from the request's own origin (`http://localhost:8787/media/...` in dev, the workers.dev host in production) so no config is needed. `DELETE /posts/:id/media` clears the columns and deletes the object (no-op when there was none). Deleting a post, and deleting the account (`MEDIA.list({ prefix: "<shopId>/" })` + batched `delete`), also removes the files, best effort.
+- `GET /media/<key>` streams the object with its stored `Content-Type`, `ETag`, `Accept-Ranges: bytes` and a one-year immutable `Cache-Control` (a replaced file always gets a new key). A single-range `Range` request gets 206 + `Content-Range` (video players need this to scrub; the range is resolved by the API, not R2, so local and production behave the same), an out-of-bounds one 416, and `If-None-Match` gets 304. Unknown keys and keys containing `..` are 404.
 - A client is `inactive` when `coalesce(lastOrderAt, createdAt)` is 90+ days ago. `fittingsThisMonth` counts fittings created in the current calendar month (UTC).
 - Shop details: `address`, `phone`, `openingHours` and `replyToEmail` (`shops.address`, `phone`, `opening_hours`, `reply_to_email`) are `null` until set. `replyToEmail` must be a valid email address when non-empty. They feed the email footer / Reply-To (see Setup 6).
 - Fittings: `garmentType` (`jacket` | `trousers` | `shirt` | `suit`, column `fittings.garment_type`, default `jacket` so older rows read as jackets) says which measurement set applies. `measurements` always comes back with all 14 keys (`chest`, `waist`, `overArm`, `shoulder`, `sleeve`, `jacketLength`, `hip`, `inseam`, `outseam`, `thigh`, `hem`, `neck`, `cuff`, `shirtLength`; columns are the snake_case names), `null` when not taken; the request may send any subset.

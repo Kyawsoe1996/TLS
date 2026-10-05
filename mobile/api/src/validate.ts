@@ -34,6 +34,10 @@ export type AssertAccepts<S extends z.ZodType, Req> = [Req] extends [z.input<S>]
 
 // ---------- Reusable field schemas ----------
 
+/** One of a fixed list of strings (the shared/types.ts unions), with a readable 400 message. */
+export const oneOf = <T extends readonly [string, ...string[]]>(values: T) =>
+  z.enum(values, { error: `must be one of: ${values.join(", ")}` });
+
 /** Required, trimmed, non-empty string. */
 export const requiredText = (max: number) =>
   z.string({ error: "must be text" }).trim().min(1, "is required").max(max, `must be at most ${max} characters`);

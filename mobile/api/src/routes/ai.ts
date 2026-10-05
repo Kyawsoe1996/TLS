@@ -9,7 +9,6 @@ import type {
   AiSeoResponse,
   AiWinbackRequest,
   AiWinbackResponse,
-  Audience,
   CompetitorTier,
   GarmentType,
   Incentive,
@@ -22,17 +21,21 @@ import { fitAnalysisSchema, postSchema, seoSchema, winbackSchema } from "../ai/s
 import {
   type Db,
   getClientRow,
+  getPostRow,
   MEASUREMENT_COLUMNS,
   MEASUREMENT_KEYS,
   newId,
   nowIso,
   rowToClient,
   rowToFitting,
+  rowToPost,
 } from "../db";
 import type { AppEnv } from "../env";
 import { badRequest, notFound } from "../errors";
+import { requestOrigin } from "../media";
 import { enforceAiRateLimit } from "../ratelimit";
-import { parseBody, requiredText } from "../validate";
+import { oneOf, parseBody, requiredText } from "../validate";
+import { AUDIENCES, insertPost } from "./posts";
 import { BRAND_TONES } from "./shop";
 
 // ---------- Request schemas (enums mirror shared/types.ts) ----------
@@ -51,16 +54,11 @@ const SEARCH_CONSOLE_STATUSES = [
   "Not sure",
 ] as const satisfies readonly SearchConsoleStatus[];
 
-const AUDIENCES = ["Expatriates", "Local executives", "Grooms", "Tourists"] as const satisfies readonly Audience[];
-
 const INCENTIVES = [
   "Complimentary shirt with a suit",
   "10% off",
   "Free alteration",
 ] as const satisfies readonly Incentive[];
-
-const oneOf = <T extends readonly [string, ...string[]]>(values: T) =>
-  z.enum(values, { error: `must be one of: ${values.join(", ")}` });
 
 const aiFitSchema = z.object({ fittingId: requiredText(64) }) satisfies z.ZodType<AiFitRequest, unknown>;
 
@@ -199,7 +197,10 @@ aiRoutes.post("/seo", async (c) => {
   return c.json(body);
 });
 
-/** POST /ai/post -> pipeline 3 -> { blog_title, blog_body, social_caption, call_to_action } */
+/**
+ * POST /ai/post -> pipeline 3 -> { blog_title, blog_body, social_caption, call_to_action, post }.
+ * The result is saved as a draft post right away (and logged in generations), so nothing generated is lost.
+ */
 aiRoutes.post("/post", async (c) => {
   const db = c.get("db");
   const shop = c.get("shop");
@@ -215,12 +216,24 @@ aiRoutes.post("/post", async (c) => {
   };
   const result = await runPipeline(c.env, payload, postSchema);
   await saveGeneration(db, shop.id, "post", payload, result);
+  const postId = await insertPost(db, shop.id, {
+    title: result.blog_title,
+    body: result.blog_body,
+    caption: result.social_caption,
+    callToAction: result.call_to_action,
+    topic: input.topic,
+    tone: input.brandTone,
+    audience: input.audience,
+  });
 
+  const row = await getPostRow(db, shop.id, postId);
+  if (!row) throw notFound("Post not found.");
   const body: AiPostResponse = {
     blog_title: result.blog_title,
     blog_body: result.blog_body,
     social_caption: result.social_caption,
     call_to_action: result.call_to_action,
+    post: rowToPost(row, requestOrigin(c)),
   };
   return c.json(body);
 });

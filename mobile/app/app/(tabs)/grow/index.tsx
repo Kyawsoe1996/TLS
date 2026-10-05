@@ -20,6 +20,13 @@ const TILES: { key: string; title: string; body: string; icon: IoniconName; href
     icon: "location-outline",
     href: "/(tabs)/grow/seo",
   },
+  {
+    key: "posts",
+    title: "Posts",
+    body: "Everything you've written, ready to share.",
+    icon: "albums-outline",
+    href: "/(tabs)/grow/posts",
+  },
 ];
 
 export default function GrowScreen() {
@@ -38,19 +45,12 @@ export default function GrowScreen() {
           <Ionicons name="chevron-forward" size={20} color={colors.muted} style={styles.chevron} />
         </Card>
       ))}
-
-      <View style={styles.note}>
-        <Ionicons name="information-circle-outline" size={16} color={colors.muted} />
-        <Text style={styles.noteText}>Posting to social apps: UI preview. Post now uses your phone&apos;s share sheet for now.</Text>
-      </View>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   tile: { flexDirection: "row", alignItems: "center", gap: 14, paddingVertical: 20 },
-  note: { flexDirection: "row", alignItems: "flex-start", gap: 8, paddingHorizontal: 4 },
-  noteText: { ...typography.small, flex: 1 },
   icon: {
     width: 48,
     height: 48,

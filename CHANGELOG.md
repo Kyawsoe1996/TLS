@@ -5,6 +5,14 @@ All notable changes to TLS, newest first. Written in plain language so anyone on
 ## Unreleased
 
 ### Added
+- **Content library.** Everything written in Content Studio is now saved as a post. A new **Posts**
+  screen under Grow lists them (search, Drafts / Shared), and each post can be opened, edited,
+  duplicated, deleted and shared again. A **photo or short video** (up to 60 seconds) can be attached
+  from the camera roll; it is stored by the API and shared together with the caption. The
+  preview-only social-media switches, Schedule button and "Shared to N apps" screen were removed;
+  **Share** opens the phone's share sheet and marks the post as shared. Posting straight to social
+  apps is a later step. (New `posts` table, migration 0005; photo/video storage on Cloudflare R2,
+  bucket `tls-media`; the app asks for photo-library access only when attaching media.)
 - **Email to clients, sent from the app.** Win-back emails, "your order is ready" notices (when an
   order reaches Ready) and the AI fitting follow-up can now be edited and sent with one tap, after a
   confirmation. Every email is logged in a new **Messages** section on the client's file with a

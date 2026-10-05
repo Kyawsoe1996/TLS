@@ -57,6 +57,25 @@ export function formatThb(value: number | null | undefined): string {
   return `${value < 0 ? "-" : ""}฿${grouped}`;
 }
 
+/** 42 → "0:42", 61.4 → "1:01". Whole seconds; "" when empty/invalid. */
+export function formatDuration(seconds: number | null | undefined): string {
+  if (seconds === null || seconds === undefined || Number.isNaN(seconds) || seconds < 0) return "";
+  const total = Math.round(seconds);
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+/** 1536 → "1.5 KB", 4_200_000 → "4.2 MB". "" when empty/invalid. */
+export function formatBytes(bytes: number | null | undefined): string {
+  if (bytes === null || bytes === undefined || Number.isNaN(bytes) || bytes < 0) return "";
+  if (bytes < 1024) return `${bytes} B`;
+  const kb = bytes / 1024;
+  if (kb < 1024) return `${kb < 10 ? kb.toFixed(1) : Math.round(kb)} KB`;
+  const mb = kb / 1024;
+  return `${mb < 10 ? mb.toFixed(1) : Math.round(mb)} MB`;
+}
+
 /** "Siam Bespoke" → "SB", "Anucha" → "A". Up to two letters, uppercase. */
 export function initials(name: string | null | undefined): string {
   if (!name) return "";
