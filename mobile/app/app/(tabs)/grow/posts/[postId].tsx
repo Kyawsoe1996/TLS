@@ -9,6 +9,7 @@ import type { Post } from "@shared/types";
 import { ErrorBlock, LoadingBlock, isNotFoundError } from "@/components/clients";
 import { PostMediaBlock, PostStatusTag, afterPostChanged, cachePost, forgetPost, postBriefLine, postRoutes, postShareText, useAttachMedia, usePost } from "@/components/grow";
 import { Button, Card, EmptyState, Eyebrow, Screen } from "@/components/ui";
+import { FEATURES } from "@/constants/features";
 import { colors, fonts, typography } from "@/constants/theme";
 import { useApi } from "@/lib/api";
 import { formatDate, formatDateTime } from "@/lib/format";
@@ -118,7 +119,9 @@ function PostDetails({ post, onDeleted }: { post: Post; onDeleted: () => void })
   const onDelete = async () => {
     const ok = await confirm({
       title: "Delete this post?",
-      message: `"${post.title}" and its ${post.media?.kind === "video" ? "video" : "photo"} will be removed. This can't be undone.`,
+      message: post.media
+        ? `"${post.title}" and its ${post.media.kind === "video" ? "video" : "photo"} will be removed. This can't be undone.`
+        : `"${post.title}" will be removed. This can't be undone.`,
       confirmText: "Delete",
       destructive: true,
     });
@@ -137,15 +140,17 @@ function PostDetails({ post, onDeleted }: { post: Post; onDeleted: () => void })
         <Text style={typography.small}>{postBriefLine(post)}</Text>
       </Card>
 
-      <View style={styles.section}>
-        <Eyebrow>Photo or video</Eyebrow>
-        <PostMediaBlock
-          post={post}
-          attach={attach}
-          replaceLabel={(kind) => (kind === "video" ? "Change video" : "Change photo")}
-          disabled={deleteMutation.isPending || duplicateMutation.isPending}
-        />
-      </View>
+      {FEATURES.postMedia ? (
+        <View style={styles.section}>
+          <Eyebrow>Photo or video</Eyebrow>
+          <PostMediaBlock
+            post={post}
+            attach={attach}
+            replaceLabel={(kind) => (kind === "video" ? "Change video" : "Change photo")}
+            disabled={deleteMutation.isPending || duplicateMutation.isPending}
+          />
+        </View>
+      ) : null}
 
       <TextCard eyebrow="Blog post" title={post.title} body={post.body} collapsible />
       <TextCard eyebrow="Social caption" body={post.caption} />
@@ -179,7 +184,7 @@ function PostDetails({ post, onDeleted }: { post: Post; onDeleted: () => void })
       <Card variant="soft" style={styles.infoCard}>
         <Ionicons name="information-circle-outline" size={20} color={colors.goldDark} style={styles.infoIcon} />
         <Text style={styles.infoText}>
-          Share sends the caption and photo to any app on your phone. Posting straight to Instagram, Facebook and LINE from here is the next step.
+          Share sends the caption to any app on your phone.
         </Text>
       </Card>
     </>

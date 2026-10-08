@@ -1,7 +1,13 @@
-name = "tls-api"
+name = "magicktls"
 main = "src/index.ts"
+# Deploys go to the company Cloudflare account ("globalmagicko", owner of generalmagickindustries.com).
+account_id = "8314c07597ec8a9c204b07aa50064c25"
 compatibility_date = "2025-09-01"
 compatibility_flags = ["nodejs_compat"]
+
+# Custom domain for the API, privacy and support pages (the zone is on this Cloudflare account, so
+# `wrangler deploy` creates the DNS record and certificate). The workers.dev URL keeps working too.
+routes = [{ pattern = "api.magicktls.generalmagickindustries.com", custom_domain = true }]
 
 # Non-secret config. Secrets (CLERK_SECRET_KEY, TURSO_*, UPSTASH_*, GEMINI_API_KEY, RESEND_*)
 # go in .dev.vars for local dev and `wrangler secret put <NAME>` for production.
@@ -9,11 +15,14 @@ compatibility_flags = ["nodejs_compat"]
 GEMINI_MODEL = "gemini-3.1-flash-lite"
 
 # Post photos / videos (PUT /posts/:id/media, served at GET /media/<key>).
-# Production needs the bucket to exist: `wrangler r2 bucket create tls-media` (R2 must be enabled on the account).
-# `wrangler dev` uses a local simulated bucket under .wrangler/state instead, so no bucket is needed for local dev.
-[[r2_buckets]]
-binding = "MEDIA"
-bucket_name = "tls-media"
+# SWITCHED OFF for this release: R2 isn't enabled on the company Cloudflare account yet (it needs a
+# payment method on file). Without the binding, uploads answer 400 and the app hides the media UI
+# (`postMedia` in mobile/app/constants/features.ts). To bring it back: enable R2 in the dashboard,
+# run `wrangler r2 bucket create tls-media`, uncomment the block below, deploy, and set `postMedia: true`.
+# `wrangler dev` would use a local simulated bucket under .wrangler/state, so local dev needs no real bucket.
+# [[r2_buckets]]
+# binding = "MEDIA"
+# bucket_name = "tls-media"
 
 [observability]
 enabled = true

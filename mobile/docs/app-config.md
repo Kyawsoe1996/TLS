@@ -29,7 +29,7 @@ npx expo install expo-router expo-secure-store expo-font expo-splash-screen expo
       "backgroundColor": "#14213A"
     },
     "ios": {
-      "bundleIdentifier": "com.generalmagickindustries.tls",
+      "bundleIdentifier": "com.generalmagickindustries.magicktls",
       "buildNumber": "1",
       "supportsTablet": false,
       "infoPlist": {
@@ -37,7 +37,7 @@ npx expo install expo-router expo-secure-store expo-font expo-splash-screen expo
       }
     },
     "android": {
-      "package": "com.generalmagickindustries.tls",
+      "package": "com.generalmagickindustries.magicktls",
       "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
@@ -86,7 +86,7 @@ npx expo install expo-router expo-secure-store expo-font expo-splash-screen expo
 
 Notes:
 
-- **Bundle id / package.** `com.generalmagickindustries.tls` is a placeholder derived from the team email domain. Confirm it or change it *before* the first `eas build`: Apple binds the id to the App Store Connect record and it cannot be changed after the app is created there. Both values must match on iOS and Android only by convention; they can differ.
+- **Bundle id / package.** `com.generalmagickindustries.magicktls`, confirmed 2026-10-07. Do not change it after the first `eas build`: Apple binds the id to the App Store Connect record and it cannot be changed after the app is created there. Both values must match on iOS and Android only by convention; they can differ.
 - **`extra.eas.projectId`.** `eas init` writes the real id. It refuses to overwrite an unrecognised value, so either delete the `extra` block first or run `eas init --force`.
 - **Splash.** SDK 54 reads the `expo-splash-screen` plugin config for native builds; the top-level `splash` key is kept for Expo Go and web. Keep both in sync.
 - **Permissions.** `android.permissions: []` adds nothing extra; `blockedPermissions` strips camera, microphone and location even if a library declares them, which keeps the Play Data safety form and Apple review simple. `INTERNET` is always included by Expo. No `NS*UsageDescription` strings are needed on iOS because the app uses no camera, mic, location, contacts or photos.
@@ -142,7 +142,7 @@ Notes:
 
   ```json
   "env": {
-    "EXPO_PUBLIC_API_URL": "https://[WORKER].workers.dev",
+    "EXPO_PUBLIC_API_URL": "https://api.magicktls.generalmagickindustries.com",
     "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_live_[...]"
   }
   ```
@@ -157,7 +157,7 @@ Notes:
 ```bash
 # one per environment; repeat for development / preview with the test values
 eas env:create --environment production --scope project --visibility plaintext \
-  --name EXPO_PUBLIC_API_URL --value "https://[WORKER].workers.dev"
+  --name EXPO_PUBLIC_API_URL --value "https://api.magicktls.generalmagickindustries.com"
 eas env:create --environment production --scope project --visibility plaintext \
   --name EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY --value "pk_live_[...]"
 

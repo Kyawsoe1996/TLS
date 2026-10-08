@@ -15,8 +15,11 @@ export interface Bindings {
   RESEND_API_KEY?: string;
   /** Sender: "Shop <hello@yourdomain.com>" (verified Resend domain) or a bare address. Default onboarding@resend.dev. */
   RESEND_FROM?: string;
-  /** R2 bucket for post photos / videos (`[[r2_buckets]]` in wrangler.toml; simulated locally by `wrangler dev`). */
-  MEDIA: R2Bucket;
+  /**
+   * R2 bucket for post photos / videos (`[[r2_buckets]]` in wrangler.toml; simulated locally by `wrangler dev`).
+   * Undefined while the binding is commented out: uploads are refused and existing media is skipped.
+   */
+  MEDIA?: R2Bucket;
 }
 
 /** Per-request values set by middleware. */

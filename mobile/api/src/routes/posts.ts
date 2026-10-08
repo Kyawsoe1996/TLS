@@ -20,6 +20,7 @@ import {
   newMediaKey,
   normalizeContentType,
   requestOrigin,
+  requireBucket,
   storeUpload,
 } from "../media";
 import { type AssertAccepts, oneOf, parseBody, requiredText } from "../validate";
@@ -242,14 +243,15 @@ postRoutes.post("/:id/duplicate", async (c) => {
   // The copy's id goes into its media key, so allocate it before inserting.
   const copyId = newId();
   const sourceKey = source["media_key"] as string | null;
+  const bucket = c.env.MEDIA;
   let media: MediaColumns | null = null;
-  if (sourceKey && sourcePost.media) {
+  if (sourceKey && sourcePost.media && bucket) {
     const key = newMediaKey(shop.id, copyId, sourcePost.media.contentType);
     try {
-      const object = await c.env.MEDIA.get(sourceKey);
+      const object = await bucket.get(sourceKey);
       if (object) {
         // R2 put needs a known-length stream; FixedLengthStream gives the copied body one.
-        await c.env.MEDIA.put(key, object.body.pipeThrough(new FixedLengthStream(object.size)), {
+        await bucket.put(key, object.body.pipeThrough(new FixedLengthStream(object.size)), {
           httpMetadata: object.httpMetadata,
           customMetadata: { shopId: shop.id, postId: copyId },
         });
@@ -308,6 +310,7 @@ postRoutes.put("/:id/media", async (c) => {
 
   const existing = await getPostRow(db, shop.id, id);
   if (!existing) throw notFound("Post not found.");
+  const bucket = requireBucket(c.env);
 
   const contentType = normalizeContentType(c.req.header("Content-Type"));
   const kind = mediaKindFor(contentType);
@@ -335,7 +338,7 @@ postRoutes.put("/:id/media", async (c) => {
   const key = newMediaKey(shop.id, id, contentType);
   let stored: R2Object;
   try {
-    stored = await storeUpload(c.env.MEDIA, key, raw, declared, limit, {
+    stored = await storeUpload(bucket, key, raw, declared, limit, {
       httpMetadata: { contentType },
       customMetadata: { shopId: shop.id, postId: id },
     });

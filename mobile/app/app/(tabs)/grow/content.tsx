@@ -8,6 +8,7 @@ import type { AiPostRequest, Audience, BrandTone, Post } from "@shared/types";
 
 import { ChoiceChips, PostMediaBlock, afterPostChanged, cachePost, postCopyAllText, postRoutes, postShareText, useAttachMedia, usePost } from "@/components/grow";
 import { AiResultCard, Button, Card, Eyebrow, Field, LoadingAI, Screen } from "@/components/ui";
+import { FEATURES } from "@/constants/features";
 import { colors, fonts, typography } from "@/constants/theme";
 import { useApi } from "@/lib/api";
 import { formatDateTime } from "@/lib/format";
@@ -192,10 +193,12 @@ function PostResult({ saved }: { saved: Post }) {
         <AiResultCard eyebrow="Call to action" title="Call to action" body={post.callToAction} copyText={post.callToAction} />
       </View>
 
-      <View style={styles.section}>
-        <Eyebrow>Photo or video</Eyebrow>
-        <PostMediaBlock post={post} attach={attach} />
-      </View>
+      {FEATURES.postMedia ? (
+        <View style={styles.section}>
+          <Eyebrow>Photo or video</Eyebrow>
+          <PostMediaBlock post={post} attach={attach} />
+        </View>
+      ) : null}
 
       <View style={styles.actions}>
         <Button variant="ghost" icon="copy-outline" title="Copy all" style={styles.action} onPress={() => void onCopyAll()} />

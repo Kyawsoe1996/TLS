@@ -59,7 +59,7 @@ export default function SettingsScreen() {
   const onDeleteAccount = async () => {
     const ok = await confirm({
       title: "Delete account?",
-      message: "This permanently deletes your shop, clients, fittings and sign-in. It can't be undone.",
+      message: "This permanently deletes your shop, clients, fittings, orders, sent emails, posts and sign-in. It can't be undone.",
       confirmText: "Delete",
       destructive: true,
     });
@@ -140,7 +140,7 @@ export default function SettingsScreen() {
           {emailStatus
             ? emailStatus.configured
               ? `Emails are sent from ${emailStatus.from}`
-              : "Emails are saved as Simulated until a Resend API key is added to the API. See mobile/api/README.md."
+              : "Email sending isn't set up yet. Emails you send are saved as Simulated and are not delivered."
             : shopQuery.isPending
               ? "Checking…"
               : "—"}

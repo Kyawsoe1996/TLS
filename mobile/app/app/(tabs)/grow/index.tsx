@@ -3,9 +3,12 @@ import { useRouter, type Href } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";
 
 import { Card, Screen, type IoniconName } from "@/components/ui";
+import { FEATURES } from "@/constants/features";
 import { colors, typography } from "@/constants/theme";
 
-const TILES: { key: string; title: string; body: string; icon: IoniconName; href: Href }[] = [
+type Tile = { key: string; title: string; body: string; icon: IoniconName; href: Href };
+
+const TILES: Tile[] = [
   {
     key: "content",
     title: "Content Studio",
@@ -14,19 +17,24 @@ const TILES: { key: string; title: string; body: string; icon: IoniconName; href
     href: "/(tabs)/grow/content",
   },
   {
-    key: "seo",
-    title: "Local SEO",
-    body: "AI-suggested search phrases for your district, with a content angle for each one.",
-    icon: "location-outline",
-    href: "/(tabs)/grow/seo",
-  },
-  {
     key: "posts",
     title: "Posts",
     body: "Everything you've written, ready to share.",
     icon: "albums-outline",
     href: "/(tabs)/grow/posts",
   },
+  // Hidden for this release; see constants/features.ts.
+  ...(FEATURES.localSeo
+    ? [
+        {
+          key: "seo",
+          title: "Local SEO",
+          body: "AI-suggested search phrases for your district, with a content angle for each one.",
+          icon: "location-outline" as IoniconName,
+          href: "/(tabs)/grow/seo" as Href,
+        },
+      ]
+    : []),
 ];
 
 export default function GrowScreen() {

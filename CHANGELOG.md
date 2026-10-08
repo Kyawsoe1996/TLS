@@ -4,6 +4,19 @@ All notable changes to TLS, newest first. Written in plain language so anyone on
 
 ## Unreleased
 
+### Changed
+- **Store-readiness fixes from the submission review.** The served privacy and support pages and
+  `docs/privacy-policy.md` now describe everything the app stores (shop details, orders with prices,
+  the copies of emails sent to clients, posts) and name Resend as the email provider; the last
+  placeholder (company address) is gone. The store listing no longer advertises Local SEO (hidden in
+  1.0) or says win-back emails are sent "from your own mail app"; it describes orders, the content
+  library and in-app email instead. In the app, the empty "Photo or video" header no longer shows on
+  post screens while media is off, the post-delete confirmation only mentions a photo when there is
+  one, the "next step" sentence on the post screen is gone, and the delete-account confirmation
+  lists orders, emails and posts. The `expo-image-picker` plugin and its photo-library prompt are
+  out of `app.json` for 1.0 (Android storage/media permissions blocked); `constants/features.ts`
+  says how to put them back with the feature.
+
 ### Added
 - **Content library.** Everything written in Content Studio is now saved as a post. A new **Posts**
   screen under Grow lists them (search, Drafts / Shared), and each post can be opened, edited,
@@ -39,6 +52,30 @@ All notable changes to TLS, newest first. Written in plain language so anyone on
   (project ID in `mobile/app/app.json`), so store builds can run in the cloud with `eas build`.
 
 ### Changed
+- The API now runs under the company Cloudflare account as worker `magicktls` at
+  `api.magicktls.generalmagickindustries.com`, and sign-in (Clerk app "Magick TLS") and the database
+  (Turso `magicktls-prod` for the deployed worker and `magicktls-dev` for local development, both Tokyo) were re-created under company logins with fresh data. The old personal
+  worker, Clerk app and database are no longer used.
+- **Photo / video attachments are hidden for this release.** Storing them needs a Cloudflare R2
+  bucket, which the company account can't enable until a payment method is added. The code stays:
+  `postMedia: false` in `mobile/app/constants/features.ts` hides the media block, and the API deploys
+  without the bucket (uploads answer 400, media links 404). To bring it back: enable R2, create the
+  `tls-media` bucket, uncomment `[[r2_buckets]]` in `mobile/api/wrangler.toml`, deploy, flip the flag.
+- Release details decided on 2026-10-07: the app ID is now `com.generalmagickindustries.magicktls`
+  (iOS bundle id and Android package); the privacy and support pages name General Magick Industries
+  Pte Ltd, `support@generalmagickindustries.com` and a 2-business-day reply time; the API gets the
+  custom domain `api.magicktls.generalmagickindustries.com` (live after the next `wrangler deploy`),
+  which the store listing uses for the privacy and support URLs.
+- The **Orders** screen now opens with the same three rows as Home (Orders in progress / Overdue /
+  Due this week), and here they filter the list: tap **Overdue** or **Due this week** to show only
+  those orders (the row highlights, a "Showing … · Clear" bar appears, and the Overdue row names the
+  clients concerned); tap it again, Clear, or **Orders in progress** to see everything. While
+  filtered on Overdue, a suggestion card gives the next step for the oldest late order. Home no longer
+  repeats these three rows; it keeps Clients, Fittings this month and Inactive 90+ days, and the AI
+  suggestion still points to orders due this week.
+- **Local SEO is hidden for this release** (`mobile/app/constants/features.ts`, `localSeo: false`).
+  The screens and API stay in the code; the tile is gone from Home and Grow, and Home's quick tiles
+  are now Smart Fitting · Orders · Content Studio · Win-back.
 - The mobile app is now named **Magick TLS** (store listing: "Magick TLS – Tailor Growth"). Updated the
   name under the icon, the sign-in and settings screens, the privacy and support pages, and the store
   docs. The technical app ID and the repository name are unchanged.
@@ -55,8 +92,8 @@ All notable changes to TLS, newest first. Written in plain language so anyone on
 - Remove the preview-only social-posting controls from the mobile app (the platform switches, the
   "Shared to N apps" screen and the "coming soon" buttons); keep "Post now" via the phone's share sheet.
 - Reviewer login for Apple's app review (Clerk test mode or a reviewer-only fallback).
-- Fill in company name, support email and dates on the API's privacy and support pages; confirm the
-  app ID `com.generalmagickindustries.tls`.
+- Create the `support@generalmagickindustries.com` mailbox (or alias) named on the privacy and support
+  pages, and fill the company address in `mobile/docs/privacy-policy.md`.
 - Switch the mobile API to Clerk production keys and add Upstash rate limiting for the AI routes.
 - Store listing: screenshots, icon polish, TestFlight check on a real iPhone.
 

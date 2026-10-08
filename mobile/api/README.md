@@ -83,6 +83,8 @@ The sender defaults to `<shop name> via Magick TLS <onboarding@resend.dev>`. Res
 
 ### 7. Media storage (Cloudflare R2)
 
+**Switched off for the current release.** The `[[r2_buckets]]` block in `wrangler.toml` is commented out because R2 isn't enabled on the company Cloudflare account yet. Without the binding the worker still deploys: `PUT /posts/:id/media` answers 400 "Photo and video uploads are switched off in this version", `GET /media/<key>` answers 404, duplicates are made without media, and the best-effort media deletes are no-ops. The app hides the media UI with `postMedia: false` in `mobile/app/constants/features.ts`. To re-enable: enable R2, create the bucket as below, uncomment the block, deploy, set `postMedia: true`.
+
 Post photos / videos are stored in an R2 bucket bound as `MEDIA` (`[[r2_buckets]]` in `wrangler.toml`, bucket `tls-media`). R2 has to be enabled on the Cloudflare account first (dashboard → R2 → enable; it asks for a payment method but the free tier covers 10 GB). Then create the bucket once:
 
 ```bash

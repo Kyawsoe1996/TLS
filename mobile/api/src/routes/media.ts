@@ -53,12 +53,13 @@ function resolveRange(header: string | undefined, size: number): ByteRange | nul
 
 mediaRoutes.get("/*", async (c) => {
   const key = keyFromPath(new URL(c.req.url).pathname);
-  if (!key) return c.notFound();
+  const bucket = c.env.MEDIA;
+  if (!key || !bucket) return c.notFound();
 
   let range: ByteRange | null = null;
   const rangeHeader = c.req.header("Range");
   if (rangeHeader) {
-    const head = await c.env.MEDIA.head(key);
+    const head = await bucket.head(key);
     if (!head) return c.notFound();
     const resolved = resolveRange(rangeHeader, head.size);
     if (resolved === "unsatisfiable") {
@@ -68,7 +69,7 @@ mediaRoutes.get("/*", async (c) => {
   }
 
   const onlyIf = c.req.raw.headers; // If-None-Match / If-Modified-Since
-  const object = await c.env.MEDIA.get(key, range ? { range, onlyIf } : { onlyIf });
+  const object = await bucket.get(key, range ? { range, onlyIf } : { onlyIf });
   if (!object) return c.notFound();
 
   const headers = new Headers();

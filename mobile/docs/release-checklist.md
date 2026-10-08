@@ -4,7 +4,7 @@ Work top to bottom. The API must be live before the app is built, because the pr
 
 ## 0. Pre-flight (do not build until every box is ticked)
 
-- [ ] Bundle id / package in `app.json` is the real one, not `com.generalmagickindustries.tls` unless that has been confirmed (`docs/app-config.md`).
+- [x] Bundle id / package in `app.json` is `com.generalmagickindustries.magicktls` (confirmed 2026-10-07, `docs/app-config.md`).
 - [ ] `app.json` `version` is `1.0.0`; `extra.eas.projectId` is a real id (written by `eas init`).
 - [ ] Icons in `app/assets/` are final, not the gold-ring placeholders from `docs/brand/make-icons.mjs` (or the placeholders have been signed off as the 1.0 icon).
 - [ ] No `[BRACKET]` placeholders remain: `grep -rn '\[[A-Z][A-Z ]*\]' mobile/api/src mobile/docs/privacy-policy.md` returns nothing that ships. Check the `/privacy` and `/support` pages in a browser.
@@ -20,11 +20,13 @@ Work top to bottom. The API must be live before the app is built, because the pr
 | Apple Developer Program (developer.apple.com) | US$99 / year | Apple ID email, Team ID (Membership page) | `eas.json` → `submit.production.ios.appleId`, `appleTeamId` |
 | Google Play Console (play.google.com/console) | US$25 once | Developer account; service-account JSON (section 7) | `./google-service-account.json` |
 | Expo (expo.dev) | Free | Login for `eas login`; project id from `eas init` | `app.json` → `extra.eas.projectId` |
-| Clerk (clerk.com) | Free tier | Production publishable key `pk_live_…`, secret key `sk_live_…`, JWT issuer / JWKS URL | App: `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY`; API: `wrangler secret put` |
-| Turso (turso.tech) | Free tier | Database URL `libsql://…`, auth token | API secrets |
+| Clerk (clerk.com) — company login, app `Magick TLS` | Free tier | Production publishable key `pk_live_…`, secret key `sk_live_…`, JWT issuer / JWKS URL | App: `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY`; API: `wrangler secret put` |
+| Turso (turso.tech) — company login, databases `magicktls-prod` (worker secrets) and `magicktls-dev` (`.dev.vars`), both Tokyo | Free tier | Database URL `libsql://…`, auth token | API secrets |
 | Upstash (upstash.com) | Free tier | Redis REST URL and token | API secrets |
-| Cloudflare (dash.cloudflare.com) | Free tier (Workers) | Account for `wrangler login`; worker URL after deploy | App: `EXPO_PUBLIC_API_URL` |
+| Cloudflare (dash.cloudflare.com) — company account `globalmagicko`, worker `magicktls` | Free tier (Workers) | Account for `wrangler login`; worker URL after deploy | App: `EXPO_PUBLIC_API_URL` |
 | Google AI Studio (aistudio.google.com/apikey) | Free tier; enable billing for production | Gemini API key | API secrets |
+
+Every production service is created under a company login, not a personal one (Cloudflare, Clerk and Turso were set up that way on 2026-10-08; personal logins are added as members where needed).
 
 Apple enrollment as a company requires a D-U-N-S number and can take days; as an individual it is usually same-day. Google Play identity verification also takes time. Start both first.
 
@@ -47,15 +49,17 @@ npx wrangler secret put GEMINI_MODEL              # optional, defaults to gemini
 npx wrangler deploy
 ```
 
-- Note the URL it prints (`https://tls-api.<account>.workers.dev`, or your custom domain). That is `EXPO_PUBLIC_API_URL`.
+- The worker is served on the custom domain `api.magicktls.generalmagickindustries.com` (`routes` in `wrangler.toml`; the DNS record and certificate are created by `wrangler deploy` because the zone is on the same Cloudflare account) as well as `https://magicktls.<account>.workers.dev`. Once `https://api.magicktls.generalmagickindustries.com/health` answers, use that as `EXPO_PUBLIC_API_URL`.
+- The earlier worker `tls-api` (`https://tls-api.<account>.workers.dev`) is stale: it still serves the old privacy page with placeholders and carries its own copy of the secrets. Delete it so nothing can point at it: `cd mobile/api && npx wrangler delete --name tls-api`.
 - Fill in `docs/privacy-policy.md` and make sure the worker serves it at `/privacy` and a support page at `/support`. Both are required by the stores. Open them in a browser.
 - Run the database migrations against the production Turso DB (whatever the API README says, e.g. `turso db shell tls < schema.sql`).
-- Use a **billing-enabled** Gemini key in production. On the free tier Google may use prompts to improve its models, which is inconsistent with the privacy policy.
+- Use a **billing-enabled** Gemini key in production. On the free tier Google may use prompts to improve its models. The privacy policy says Google processes AI inputs "under the Gemini API terms that apply to our account", so with a free-tier key that sentence is true but weak; a paid key is the right fix.
+- Photo-library permission: the `expo-image-picker` config plugin is **not** in `app.json` for 1.0 and the Android storage/media permissions are in `blockedPermissions`, because post media is hidden (`FEATURES.postMedia` in `mobile/app/constants/features.ts`). When the R2 bucket exists and the flag is turned on, re-add the plugin with its `photosPermission` text and remove those blocked permissions; the comment in `features.ts` lists the exact steps.
 - Local SEO uses Gemini's **Google Maps grounding**. Before submitting, read the "Grounding with Google Maps" section of the Gemini API terms (ai.google.dev/gemini-api/terms): check the monthly usage allowance for your tier, and exclude the terms' prohibited territories from the store availability lists.
 
 ## 3. Clerk production instance
 
-1. Dashboard → top-left instance switcher → **Create production instance** (clone from development). Production instances need a domain you own; add the DNS records Clerk lists (frontend API, accounts, email sending) and wait until they verify.
+1. Dashboard → top-left instance switcher → **Create production instance** (clone from development). Production instances need a domain you own: use `magicktls.generalmagickindustries.com` (DNS is on Cloudflare; the Resend records on `send.magicktls…` and `resend._domainkey.magicktls…` don't clash with Clerk's `clerk.`, `accounts.` and `clkmail.` records). Add the DNS records Clerk lists and wait until they verify.
 2. **User & authentication → Email, phone, username:** enable **Email address** with **Email verification code** as the sign-in method. Disable password, phone, username and passkeys.
 3. **SSO connections:** disable Google/Apple/etc. unless the app implements them. (Apple requires "Sign in with Apple" only if you offer another third-party social login; email-code alone does not trigger that rule.)
 4. Copy the production **publishable key** and **secret key**. Put the publishable key in the app env (section 4) and the secret key in the worker (section 2). Redeploy the worker.
@@ -100,7 +104,9 @@ eas build -p android --profile preview      # APK: install on a real phone, sign
 4. **Pricing and Availability:** Free, all territories (or Thailand + chosen countries).
 5. **App Privacy** (nutrition labels). "Yes, we collect data." Then:
    - **Contact Info → Name, Email Address, Phone Number:** collected, **linked to the user**, used for **App Functionality**, **not used for tracking**.
-   - **User Content → Other User Content** (measurements, notes, generated text): linked to the user, App Functionality, not for tracking.
+   - **User Content → Other User Content** (measurements, notes, orders, posts, generated text): linked to the user, App Functionality, not for tracking.
+   - **User Content → Emails or Text Messages** (the emails sent to clients are stored on their file): linked to the user, App Functionality, not for tracking.
+   - **Financial Info → Other Financial Info** (order price and deposit the tailor records; no payments are processed): linked to the user, App Functionality, not for tracking.
    - **Identifiers → User ID:** linked, App Functionality, not for tracking.
    - Everything else: not collected. "Do you or your third-party partners use data for tracking?" → **No**.
 6. **Version 1.0 page:** upload screenshots (`docs/store-listing.md`), description, keywords, support URL, marketing URL (optional), promotional text, copyright. What's New text.

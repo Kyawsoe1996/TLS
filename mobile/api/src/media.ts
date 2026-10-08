@@ -1,13 +1,22 @@
 import type { Context } from "hono";
 import { MEDIA_LIMITS, type MediaKind } from "../../shared/types";
-import type { AppEnv } from "./env";
+import type { AppEnv, Bindings } from "./env";
+import { badRequest } from "./errors";
 
 // Post photos / videos live in the R2 bucket bound as MEDIA. Keys are `<shopId>/<postId>/<uuid>.<ext>`:
 // the shop prefix makes "delete everything for this shop" a prefix listing, and the random uuid makes
 // the public GET /media/<key> URL unguessable (so it needs no auth).
+// The binding is optional (see wrangler.toml): without it uploads are refused with 400 and the
+// best-effort deletes become no-ops, so the worker deploys without a bucket.
 
 /** Public path prefix the file is served at (see routes/media.ts). */
 export const MEDIA_PATH = "/media/";
+
+/** The media bucket, or a 400 the app can show when uploads are switched off. */
+export function requireBucket(env: Bindings): R2Bucket {
+  if (!env.MEDIA) throw badRequest("Photo and video uploads are switched off in this version.");
+  return env.MEDIA;
+}
 
 /** Content type -> file extension, for every type PUT /posts/:id/media accepts. */
 const EXTENSIONS: Record<string, string> = {
@@ -101,8 +110,8 @@ export async function storeUpload(
 }
 
 /** Best-effort delete of one object; a failure here must never fail the request that already updated the DB. */
-export async function deleteMediaObject(bucket: R2Bucket, key: string | null | undefined): Promise<void> {
-  if (!key) return;
+export async function deleteMediaObject(bucket: R2Bucket | undefined, key: string | null | undefined): Promise<void> {
+  if (!key || !bucket) return;
   try {
     await bucket.delete(key);
   } catch (err) {
@@ -111,7 +120,8 @@ export async function deleteMediaObject(bucket: R2Bucket, key: string | null | u
 }
 
 /** Delete every object under a prefix (e.g. `${shopId}/` when an account is deleted), in pages. Returns the count. */
-export async function deleteMediaByPrefix(bucket: R2Bucket, prefix: string): Promise<number> {
+export async function deleteMediaByPrefix(bucket: R2Bucket | undefined, prefix: string): Promise<number> {
+  if (!bucket) return 0;
   let deleted = 0;
   let cursor: string | undefined;
   do {

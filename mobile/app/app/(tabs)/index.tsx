@@ -6,6 +6,7 @@ import { StyleSheet, Text, View } from "react-native";
 
 import { clientRoutes } from "@/components/clients";
 import { Button, Card, ErrorBanner, Eyebrow, KpiList, Screen, type IoniconName } from "@/components/ui";
+import { FEATURES } from "@/constants/features";
 import { colors, fonts, typography } from "@/constants/theme";
 import { useApi } from "@/lib/api";
 import { greeting, initials } from "@/lib/format";
@@ -15,11 +16,16 @@ import { useShop } from "@/lib/useShop";
 
 const INACTIVE_CLIENTS: Href = { pathname: "/(tabs)/clients", params: { inactive: "1" } };
 
+// The daily loop: measure, track the garment, post, bring clients back. Local SEO returns here when
+// FEATURES.localSeo is switched on.
 const TILES: { key: string; title: string; hint: string; icon: IoniconName; href: Href }[] = [
-  { key: "fit", title: "Smart Fitting", hint: "Open a client to log a fitting", icon: "body-outline", href: "/(tabs)/clients" },
-  { key: "seo", title: "Local SEO", hint: "Keyword ideas for your district", icon: "location-outline", href: "/(tabs)/grow/seo" },
+  { key: "fit", title: "Smart Fitting", hint: "Measure and get cutter notes", icon: "body-outline", href: "/(tabs)/clients" },
+  { key: "orders", title: "Orders", hint: "Every garment through the workshop", icon: "cube-outline", href: clientRoutes.orders },
   { key: "content", title: "Content Studio", hint: "Blog + social post in your tone", icon: "create-outline", href: "/(tabs)/grow/content" },
   { key: "winback", title: "Win-back", hint: "Email clients who drifted", icon: "mail-outline", href: INACTIVE_CLIENTS },
+  ...(FEATURES.localSeo
+    ? [{ key: "seo", title: "Local SEO", hint: "Keyword ideas for your district", icon: "location-outline" as IoniconName, href: "/(tabs)/grow/seo" as Href }]
+    : []),
 ];
 
 export default function HomeScreen() {
@@ -33,7 +39,6 @@ export default function HomeScreen() {
   const shopName = home?.shopName ?? shopQuery.data?.name ?? "Your shop";
   const inactive = home?.inactiveCount ?? 0;
   const dueSoon = home?.ordersDueSoon ?? 0;
-  const overdue = home?.ordersOverdue ?? 0;
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -67,27 +72,9 @@ export default function HomeScreen() {
         </View>
       ) : null}
 
-      {/* One card of rows instead of a tile grid: labels never wrap or truncate. */}
+      {/* One card of rows instead of a tile grid: labels never wrap or truncate. Order counts live on the Orders screen. */}
       <KpiList
         items={[
-          { key: "open", icon: "cube-outline", label: "Orders in progress", value: kpi(home?.ordersOpen), onPress: () => router.push(clientRoutes.orders) },
-          {
-            key: "overdue",
-            icon: "alert-circle-outline",
-            label: "Overdue",
-            value: kpi(home?.ordersOverdue),
-            accent: overdue > 0 ? "danger" : false,
-            onPress: () => router.push(clientRoutes.orders),
-          },
-          {
-            key: "due",
-            icon: "time-outline",
-            label: "Due this week",
-            value: kpi(home?.ordersDueSoon),
-            note: dueSoon > 0 ? "Check the workshop" : undefined,
-            accent: dueSoon > 0,
-            onPress: () => router.push(clientRoutes.orders),
-          },
           { key: "clients", icon: "people-outline", label: "Clients", value: kpi(home?.clientsCount), onPress: () => router.push("/(tabs)/clients") },
           { key: "fittings", icon: "body-outline", label: "Fittings this month", value: kpi(home?.fittingsThisMonth) },
           {

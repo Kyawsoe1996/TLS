@@ -8,6 +8,7 @@ import { ActivityIndicator, Alert, Image, Linking, Platform, Pressable, StyleShe
 import { MEDIA_LIMITS, type MediaKind, type Post, type PostMedia } from "@shared/types";
 
 import { Button, type IoniconName } from "@/components/ui";
+import { FEATURES } from "@/constants/features";
 import { colors, fonts, radii, typography } from "@/constants/theme";
 import { useApi, type MediaFile } from "@/lib/api";
 import { formatBytes, formatDuration } from "@/lib/format";
@@ -289,8 +290,12 @@ export interface PostMediaBlockProps {
   style?: StyleProp<ViewStyle>;
 }
 
-/** The post's media with Replace / Remove, or the Add tiles when it has none, plus an "Uploading…" row during an upload. */
+/**
+ * The post's media with Replace / Remove, or the Add tiles when it has none, plus an "Uploading…" row during an upload.
+ * Renders nothing while media is switched off for the release (constants/features.ts).
+ */
 export function PostMediaBlock({ post, attach, height, replaceLabel = "Replace", disabled = false, style }: PostMediaBlockProps) {
+  if (!FEATURES.postMedia) return null;
   const media = post.media;
   const locked = disabled || attach.busy;
   const label = typeof replaceLabel === "function" ? replaceLabel(media?.kind ?? "image") : replaceLabel;

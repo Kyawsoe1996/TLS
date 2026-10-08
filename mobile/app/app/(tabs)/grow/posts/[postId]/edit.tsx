@@ -7,6 +7,7 @@ import type { Post, UpdatePostRequest } from "@shared/types";
 import { ErrorBlock, LoadingBlock, isNotFoundError } from "@/components/clients";
 import { PostMediaBlock, afterPostChanged, cachePost, postRoutes, useAttachMedia, usePost } from "@/components/grow";
 import { Button, EmptyState, Eyebrow, Field, Screen } from "@/components/ui";
+import { FEATURES } from "@/constants/features";
 import { useApi } from "@/lib/api";
 import { showError } from "@/lib/toast";
 
@@ -115,10 +116,12 @@ function EditPostForm({ post, onDone }: { post: Post; onDone: () => void }) {
         </View>
       }
     >
-      <View style={styles.section}>
-        <Eyebrow>Photo or video</Eyebrow>
-        <PostMediaBlock post={post} attach={attach} disabled={saving} />
-      </View>
+      {FEATURES.postMedia ? (
+        <View style={styles.section}>
+          <Eyebrow>Photo or video</Eyebrow>
+          <PostMediaBlock post={post} attach={attach} disabled={saving} />
+        </View>
+      ) : null}
 
       <Field label="Title" value={draft.title} onChangeText={set("title")} placeholder="Blog title" autoCapitalize="sentences" returnKeyType="next" error={errors.title} editable={!locked} />
       <Field

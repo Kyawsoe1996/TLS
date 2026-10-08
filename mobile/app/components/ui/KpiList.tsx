@@ -16,6 +16,8 @@ export interface KpiListItem {
   /** `true` tints the icon disc sand when the row needs attention; "danger" turns it red (e.g. overdue orders). */
   accent?: boolean | "danger";
   onPress?: () => void;
+  /** Highlights the row and swaps the chevron for a close icon: the row is acting as an active filter. */
+  selected?: boolean;
 }
 
 export interface KpiListProps {
@@ -39,7 +41,7 @@ export function KpiList({ items, style }: KpiListProps) {
               <Ionicons name={item.icon} size={20} color={danger ? colors.dangerDeep : colors.goldDark} />
             </View>
             <View style={styles.text}>
-              <Text style={styles.label} numberOfLines={1}>
+              <Text style={[styles.label, item.selected && styles.labelSelected]} numberOfLines={1}>
                 {item.label}
               </Text>
               {item.note ? (
@@ -51,16 +53,21 @@ export function KpiList({ items, style }: KpiListProps) {
             <Text style={styles.value} numberOfLines={1} adjustsFontSizeToFit>
               {item.value}
             </Text>
-            {item.onPress ? <Ionicons name="chevron-forward" size={18} color={colors.muted} /> : <View style={styles.chevronGap} />}
+            {item.onPress ? (
+              <Ionicons name={item.selected ? "close" : "chevron-forward"} size={18} color={colors.muted} />
+            ) : (
+              <View style={styles.chevronGap} />
+            )}
           </>
         );
-        const rowStyle = [styles.row, !last && styles.rowBorder];
+        const rowStyle = [styles.row, !last && styles.rowBorder, item.selected && styles.rowSelected];
         return item.onPress ? (
           <Pressable
             key={item.key}
             onPress={item.onPress}
             accessibilityRole="button"
-            accessibilityLabel={`${item.label}: ${item.value}`}
+            accessibilityState={{ selected: !!item.selected }}
+            accessibilityLabel={`${item.label}: ${item.value}${item.selected ? ", filter on" : ""}`}
             style={({ pressed }) => [rowStyle, pressed && styles.pressed]}
           >
             {body}
@@ -79,6 +86,9 @@ const styles = StyleSheet.create({
   card: { paddingHorizontal: 14, paddingVertical: 4 },
   row: { flexDirection: "row", alignItems: "center", gap: 12, minHeight: 58, paddingVertical: 10 },
   rowBorder: { borderBottomWidth: 1, borderBottomColor: "#EFE8DA" },
+  // Bleeds to the card edge (the card has 14px side padding) so the highlight reads as a full row.
+  rowSelected: { backgroundColor: colors.sand, marginHorizontal: -14, paddingHorizontal: 14, borderRadius: 10 },
+  labelSelected: { fontFamily: fonts.bodyBold },
   pressed: { opacity: 0.7 },
   disc: {
     width: 38,
