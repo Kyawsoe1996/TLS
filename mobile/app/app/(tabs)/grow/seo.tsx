@@ -10,6 +10,7 @@ import { FEATURES } from "@/constants/features";
 import { AiResultCard, Button, Card, Eyebrow, Field, LoadingAI, Screen } from "@/components/ui";
 import { colors, fonts, typography } from "@/constants/theme";
 import { useApi } from "@/lib/api";
+import { useAiConsent } from "@/lib/useAiConsent";
 import { showError } from "@/lib/toast";
 import { useShop } from "@/lib/useShop";
 
@@ -50,9 +51,11 @@ function LocalSeoForm() {
   });
   const result = mutation.data ?? null;
 
-  const run = () => {
+  const ensureAiConsent = useAiConsent();
+  const run = async () => {
     const cleanDistrict = district.trim();
     if (!cleanDistrict) return;
+    if (!(await ensureAiConsent())) return;
     mutation.mutate({ district: cleanDistrict, competitorTier: tier, searchConsoleStatus: status });
   };
 
@@ -110,7 +113,7 @@ function LocalSeoForm() {
         title="Map my district with AI"
         icon="sparkles-outline"
         fullWidth
-        onPress={run}
+        onPress={() => void run()}
         loading={mutation.isPending}
         disabled={!district.trim()}
       />

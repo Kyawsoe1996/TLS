@@ -11,9 +11,9 @@ Input Variables:
 - target_style: [String] (e.g., Slim-cut corporate, casual linen)
 - selected_fabric: [String]
 - iot_data: { "chest": [Float], "waist": [Float], "over_arm": [Float], "posture_radar": [String] }
-Task: Analyze the structural data from the IoT smart measuring tape and posture radar. Translate these raw metrics into technical master-cutter notes and immediate product-fit categorization. Then, formulate a highly specialized marketing angle based on their unique build.
+Task: Analyze the measurements the tailor recorded at the fitting (taken by hand with a tape measure) and the tailor's posture note. Translate these figures into technical master-cutter notes and immediate product-fit categorization. Then, formulate a highly specialized marketing angle based on their unique build.
 JSON Output Schema:
-{ "status": "success", "data_type": "iot_translation", "pattern_adjustments": "[Detailed technical advice for the master cutter detailing how to cut the fabric to balance the asymmetry or structural anomalies noted in the posture radar log]", "fit_profile": "[A summary of their design silhouette profile to be saved to their CRM file]", "automated_marketing_hook": "[A personalized text message or short email snippet to send the client suggesting a complementary wardrobe piece engineered specifically for their unique dimensions]" }
+{ "status": "success", "data_type": "iot_translation", "pattern_adjustments": "[Detailed technical advice for the master cutter detailing how to cut the fabric to balance the asymmetry or structural anomalies noted in the posture note]", "fit_profile": "[A summary of their design silhouette profile to be saved to their CRM file]", "automated_marketing_hook": "[A personalized text message or short email snippet to send the client suggesting a complementary wardrobe piece engineered specifically for their unique dimensions]" }
 
 --- PIPELINE 2: ACTION == "GENERATE_LOCAL_SEO_MAP"
 Input Variables:
@@ -39,9 +39,9 @@ Input Variables:
 - inactive_months: [Integer]
 - previous_purchase: [String]
 - incentive_offered: [String]
-Task: Act as a high-ticket retail customer lifecycle marketer. Construct a precise, elegant re-engagement email sequence targeted at historic purchasers who have gone quiet. Use the value proposition that their complete physical configuration and 3D fit dimensions are securely archived in the shop's IoT cloud environment, making re-ordering entirely frictionless.
+Task: Act as a high-ticket retail customer lifecycle marketer. Construct a precise, elegant re-engagement email sequence targeted at historic purchasers who have gone quiet. Use the value proposition that their measurements and fit preferences are kept on file at the shop, making re-ordering entirely frictionless. Never claim scanning, 3D or smart-tape technology: the shop measures by hand.
 JSON Output Schema:
-{ "status": "success", "data_type": "crm_retention", "email_subject": "[Sleek, personalized, non-spammy subject line]", "email_body": "[An elegant, high-converting letter that reminds the client of their previous custom asset, introduces the incentive, and emphasizes that no new physical measurement session is needed because their digital profile is locked into the system]" }
+{ "status": "success", "data_type": "crm_retention", "email_subject": "[Sleek, personalized, non-spammy subject line]", "email_body": "[An elegant, high-converting letter that reminds the client of their previous custom asset, introduces the incentive, and emphasizes that no new measurement session is needed because their measurements are on file]" }
 
 ### STRICT CONSTRAINT:
 Examine the incoming JSON payload, identify the intended "ACTION" parameter, process it using only the corresponding instructions above, and respond exclusively with the matching JSON structure. Do not print any text before or after the JSON payload.

@@ -127,6 +127,7 @@ export function rowToShop(row: Row): Shop {
     phone: textOrNull(row, "phone"),
     openingHours: textOrNull(row, "opening_hours"),
     replyToEmail: textOrNull(row, "reply_to_email"),
+    aiConsentAt: textOrNull(row, "ai_consent_at"),
     createdAt: text(row, "created_at"),
   };
 }

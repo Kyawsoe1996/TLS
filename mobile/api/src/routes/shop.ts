@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import type { BrandTone, GetShopResponse, UpsertShopRequest, UpsertShopResponse } from "../../../shared/types";
+import type { AiConsentResponse, BrandTone, GetShopResponse, UpsertShopRequest, UpsertShopResponse } from "../../../shared/types";
 import { getShopByOwner, newId, nowIso } from "../db";
 import { emailStatus } from "../email";
 import type { AppEnv } from "../env";
@@ -80,6 +80,25 @@ shopRoutes.put("/", async (c) => {
   const shop = await getShopByOwner(db, userId);
   if (!shop) throw serverError("Could not save your shop. Please try again.");
   const body: UpsertShopResponse = { shop, email: emailStatus(c.env, shop.name) };
+  return c.json(body);
+});
+
+/**
+ * POST /shop/ai-consent -> { shop, email }
+ * Records that the owner agreed to send client details to Google Gemini. Idempotent: a second call keeps the
+ * first timestamp. 404 if the shop doesn't exist yet. The /ai/* routes require this (403 consent_required).
+ */
+shopRoutes.post("/ai-consent", async (c) => {
+  const db = c.get("db");
+  const userId = c.get("userId");
+  const existing = await getShopByOwner(db, userId);
+  if (!existing) throw notFound("Set up your shop first.");
+  if (!existing.aiConsentAt) {
+    await db.execute({ sql: "UPDATE shops SET ai_consent_at = ? WHERE id = ?", args: [nowIso(), existing.id] });
+  }
+  const shop = await getShopByOwner(db, userId);
+  if (!shop) throw serverError();
+  const body: AiConsentResponse = { shop, email: emailStatus(c.env, shop.name) };
   return c.json(body);
 });
 

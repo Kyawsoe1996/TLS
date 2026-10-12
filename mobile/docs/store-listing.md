@@ -97,6 +97,7 @@ Sign in with:
   Code:  424242
 (this address is a test account and the code above is accepted instead of an emailed one)
 
+The first AI action shows a one-time permission prompt ("Use AI with Google Gemini?") explaining which details are sent to Google; tap Continue.
 The demo shop ("Sathorn Bespoke Demo") already contains five clients, two fittings with AI cutter notes, two orders (one overdue) and a saved post, so every feature can be tried:
   Clients → open any client → Fittings → "AI cutter notes"
   Content Studio → Generate

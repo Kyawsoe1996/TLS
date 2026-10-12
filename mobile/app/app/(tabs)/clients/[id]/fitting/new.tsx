@@ -24,6 +24,7 @@ import {
 import { Button, Card, Chip, ErrorBanner, Eyebrow, Field, LoadingAI, NumberField, Screen, SectionTitle } from "@/components/ui";
 import { colors, typography } from "@/constants/theme";
 import { useApi } from "@/lib/api";
+import { useAiConsent } from "@/lib/useAiConsent";
 import { showError } from "@/lib/toast";
 
 const STYLE_PRESETS = ["Slim-cut corporate", "Classic business", "Casual linen", "Wedding"] as const;
@@ -79,13 +80,15 @@ export default function NewFittingScreen() {
     onSettled: () => setPhase("idle"),
   });
 
-  const submit = (analyse: boolean) => {
+  const ensureAiConsent = useAiConsent();
+  const submit = async (analyse: boolean) => {
     const style = (styleChoice === CUSTOM_STYLE ? customStyle : styleChoice).trim();
     const fabricText = fabric.trim();
     if (!style) return setError("Name the style — pick one above or describe your own.");
     if (!fabricText) return setError("Add the fabric so the cutter knows what they're working with.");
     if (analyse && !analysable) return setError(requirement);
     setError(null);
+    if (analyse && !(await ensureAiConsent())) return;
     mutation.mutate({
       body: {
         garmentType,
@@ -114,12 +117,12 @@ export default function NewFittingScreen() {
             title="Save & analyse with AI"
             icon="sparkles"
             fullWidth
-            onPress={() => submit(true)}
+            onPress={() => void submit(true)}
             loading={analyseIntent}
             disabled={busy || !analysable}
           />
           {!analysable ? <Text style={styles.hint}>{requirement}</Text> : null}
-          <Button title="Save fitting" variant="secondary" fullWidth onPress={() => submit(false)} loading={busy && !analyseIntent} disabled={busy} />
+          <Button title="Save fitting" variant="secondary" fullWidth onPress={() => void submit(false)} loading={busy && !analyseIntent} disabled={busy} />
         </View>
       }
     >

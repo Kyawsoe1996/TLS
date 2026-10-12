@@ -18,6 +18,7 @@ import type {
   CreateOrderRequest,
   CreatePostRequest,
   FittingResponse,
+  AiConsentResponse,
   GetShopResponse,
   HomeResponse,
   ListClientsResponse,
@@ -69,6 +70,10 @@ export class ApiClientError extends Error {
   }
   get isRateLimited() {
     return this.status === 429 || this.code === "rate_limited";
+  }
+  /** /ai/* refused because the owner hasn't agreed to the AI data sharing yet (see useAiConsent). */
+  get isConsentRequired() {
+    return this.status === 403 || this.code === "consent_required";
   }
 }
 
@@ -217,6 +222,8 @@ export function createApi(getToken: GetToken) {
     // ---- Shop ----
     getShop: () => request<GetShopResponse>("/shop"),
     upsertShop: (body: UpsertShopRequest) => request<UpsertShopResponse>("/shop", { method: "PUT", body }),
+    /** Records the owner's agreement to send client details to Google Gemini; required before any ai* call. */
+    recordAiConsent: () => request<AiConsentResponse>("/shop/ai-consent", { method: "POST" }),
 
     // ---- Home ----
     getHome: () => request<HomeResponse>("/home"),

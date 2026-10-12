@@ -23,6 +23,7 @@ import {
 import { AiResultCard, Button, Card, EmptyState, Eyebrow, LoadingAI, Screen, SectionTitle } from "@/components/ui";
 import { colors, typography } from "@/constants/theme";
 import { useApi } from "@/lib/api";
+import { useAiConsent } from "@/lib/useAiConsent";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { useShop } from "@/lib/useShop";
 
@@ -41,6 +42,7 @@ export default function FittingDetailScreen() {
 
   const fitting = fittingsQuery.data?.find((f) => f.id === fittingId);
 
+  const ensureAiConsent = useAiConsent();
   const analyse = useMutation({
     mutationFn: () => api.aiFit({ fittingId }),
     onSuccess: (res) => cacheFitting(queryClient, res.fitting),
@@ -104,7 +106,7 @@ export default function FittingDetailScreen() {
         {!analysis ? (
           !analyse.isPending ? (
             <View style={styles.analyseBlock}>
-              <Button title="Analyse with AI" icon="sparkles" fullWidth onPress={() => analyse.mutate()} disabled={!analysable} />
+              <Button title="Analyse with AI" icon="sparkles" fullWidth onPress={() => void ensureAiConsent().then((ok) => ok && analyse.mutate())} disabled={!analysable} />
               <Text style={styles.hint}>
                 {analysable ? "Pattern adjustments for the cutter, a fit profile for the file and a follow-up message." : requirement}
               </Text>
@@ -154,7 +156,7 @@ export default function FittingDetailScreen() {
               title="Re-run analysis"
               variant="ghost"
               icon="refresh-outline"
-              onPress={() => analyse.mutate()}
+              onPress={() => void ensureAiConsent().then((ok) => ok && analyse.mutate())}
               disabled={analyse.isPending || !analysable}
               style={styles.rerun}
             />

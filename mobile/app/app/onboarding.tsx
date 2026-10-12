@@ -94,6 +94,13 @@ export default function OnboardingScreen() {
         </View>
       </View>
 
+      {!isEdit ? (
+        <Text style={[typography.small, styles.aiNote]}>
+          The AI features write with Google Gemini. The app asks for your permission before the first one sends a
+          client&apos;s details to Google.
+        </Text>
+      ) : null}
+
       <Button
         title={isEdit ? "Save changes" : "Continue"}
         onPress={submit}
@@ -119,6 +126,7 @@ export default function OnboardingScreen() {
 const styles = StyleSheet.create({
   toneBlock: { gap: 6, marginTop: 4 },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 6 },
+  aiNote: { marginTop: 10 },
   submit: { marginTop: 8 },
   signOut: { alignSelf: "center" },
 });

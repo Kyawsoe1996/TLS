@@ -23,6 +23,7 @@ import {
 import { AiResultCard, Button, Card, Chip, EmptyState, Eyebrow, LoadingAI, Screen } from "@/components/ui";
 import { colors, typography } from "@/constants/theme";
 import { useApi } from "@/lib/api";
+import { useAiConsent } from "@/lib/useAiConsent";
 import { formatMonthsSince, monthsSince } from "@/lib/format";
 import { useEmailStatus, useShop } from "@/lib/useShop";
 
@@ -41,6 +42,7 @@ export default function WinbackScreen() {
   const [draftText, setDraftText] = useState<EmailDraft | null>(null);
   const [editing, setEditing] = useState(false);
   const { send, sending, sent, reset } = useSendEmail(client);
+  const ensureAiConsent = useAiConsent();
 
   const draft = useMutation({
     mutationFn: (chosen: Incentive) => api.aiWinback({ clientId: id, incentive: chosen }),
@@ -107,7 +109,7 @@ export default function WinbackScreen() {
             icon="sparkles"
             variant={draftText ? "secondary" : "primary"}
             fullWidth
-            onPress={() => draft.mutate(incentive)}
+            onPress={() => void ensureAiConsent().then((ok) => ok && draft.mutate(incentive))}
             disabled={sending}
           />
         )}

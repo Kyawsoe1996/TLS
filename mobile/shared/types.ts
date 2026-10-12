@@ -6,7 +6,7 @@ export type ISODate = string; // ISO 8601, e.g. "2026-09-29T10:00:00.000Z"
 
 export interface ApiError {
   error: {
-    code: "unauthorized" | "not_found" | "bad_request" | "rate_limited" | "ai_failed" | "server_error";
+    code: "unauthorized" | "not_found" | "bad_request" | "consent_required" | "rate_limited" | "ai_failed" | "server_error";
     message: string; // human-readable, safe to show in the app
   };
 }
@@ -25,6 +25,9 @@ export interface Shop {
   phone: string | null;
   openingHours: string | null; // free text, e.g. "Mon–Sat 10:00–19:00"; used in the order-ready email
   replyToEmail: string | null; // Reply-To on outgoing emails so client replies reach the shop
+  // When the owner agreed to send client details to Google Gemini (POST /shop/ai-consent); null until then.
+  // Every /ai/* route answers 403 consent_required while this is null, so the app asks first.
+  aiConsentAt: ISODate | null;
   createdAt: ISODate;
 }
 
@@ -46,6 +49,8 @@ export interface UpsertShopRequest {
   replyToEmail?: string; // validated as an email when non-empty
 }
 export type UpsertShopResponse = GetShopResponse;
+/** POST /shop/ai-consent — records the owner's agreement to the AI data sharing (idempotent) → { shop, email } */
+export type AiConsentResponse = GetShopResponse;
 
 // ---------- Home ----------
 /** GET /home */

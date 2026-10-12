@@ -1,11 +1,13 @@
 import { isClerkAPIResponseError, useSignUp } from "@clerk/clerk-expo";
 import { Link } from "expo-router";
 import { useState } from "react";
+import * as WebBrowser from "expo-web-browser";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { Button, Card, ErrorBanner, Field, Screen } from "@/components/ui";
 import { colors, fonts, typography } from "@/constants/theme";
-import { errorMessage } from "@/lib/toast";
+import { API_URL } from "@/lib/api";
+import { errorMessage, showError } from "@/lib/toast";
 
 type Step = "email" | "code";
 
@@ -135,6 +137,18 @@ export default function SignUpScreen() {
           </Card>
         </>
       )}
+
+      <View style={styles.footer}>
+        <Text style={typography.bodyMuted}>By continuing you agree to our</Text>
+        <Pressable
+          hitSlop={6}
+          onPress={() => {
+            WebBrowser.openBrowserAsync(`${API_URL}/privacy`).catch((err) => showError(err, "Couldn't open the page"));
+          }}
+        >
+          <Text style={styles.link}>Privacy Policy</Text>
+        </Pressable>
+      </View>
 
       <View style={styles.footer}>
         <Text style={typography.bodyMuted}>Already have an account?</Text>

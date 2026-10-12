@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
 import type { ApiError } from "../../shared/types";
-import { requireAuth, requireShop } from "./auth";
+import { requireAiConsent, requireAuth, requireShop } from "./auth";
 import { createDb } from "./db";
 import type { AppEnv } from "./env";
 import { ApiHttpError } from "./errors";
@@ -54,6 +54,7 @@ app.use("/orders/*", requireShop);
 app.use("/posts", requireShop);
 app.use("/posts/*", requireShop);
 app.use("/ai/*", requireShop);
+app.use("/ai/*", requireAiConsent);
 
 app.route("/home", homeRoutes);
 app.route("/clients", clientRoutes);

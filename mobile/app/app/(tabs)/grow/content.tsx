@@ -11,6 +11,7 @@ import { AiResultCard, Button, Card, Eyebrow, Field, LoadingAI, Screen } from "@
 import { FEATURES } from "@/constants/features";
 import { colors, fonts, typography } from "@/constants/theme";
 import { useApi } from "@/lib/api";
+import { useAiConsent } from "@/lib/useAiConsent";
 import { formatDateTime } from "@/lib/format";
 import { showError, showToast } from "@/lib/toast";
 import { useShop } from "@/lib/useShop";
@@ -62,9 +63,11 @@ export default function ContentStudioScreen() {
   });
   const result = mutation.data ?? null;
 
-  const write = () => {
+  const ensureAiConsent = useAiConsent();
+  const write = async () => {
     const cleanTopic = topic.trim();
     if (!cleanTopic) return;
+    if (!(await ensureAiConsent())) return;
     mutation.mutate({ brandTone: tone, topic: cleanTopic, audience });
   };
 
@@ -105,7 +108,7 @@ export default function ContentStudioScreen() {
         placeholder="Linen suits for Bangkok's hot season"
         autoCapitalize="sentences"
         returnKeyType="done"
-        onSubmitEditing={write}
+        onSubmitEditing={() => void write()}
         editable={!mutation.isPending}
       />
 
@@ -113,7 +116,7 @@ export default function ContentStudioScreen() {
         title="Write with AI"
         icon="sparkles-outline"
         fullWidth
-        onPress={write}
+        onPress={() => void write()}
         loading={mutation.isPending}
         disabled={!topic.trim()}
       />

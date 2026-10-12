@@ -5,6 +5,19 @@ All notable changes to TLS, newest first. Written in plain language so anyone on
 ## Unreleased
 
 ### Changed
+- **Permission before the first AI feature.** The app now asks once, before the first AI request, whether
+  it may send the details involved (a client's first name and measurements for a fitting, the client's
+  name and last order for a win-back email, the shop's name, tone and topic for a post) to Google
+  Gemini, and explains what is sent. Tapping Continue records the agreement on the shop
+  (`POST /shop/ai-consent`, new `ai_consent_at` column, migration 0006); "Not now" sends nothing. The
+  API refuses every `/ai/*` call with 403 `consent_required` until the shop has agreed, so no client
+  detail reaches Google unasked. Onboarding mentions the prompt, the sign-up screen links to the
+  privacy policy, and the served privacy page says the app asks first and that database backups are
+  purged within 30 days. (App Store guideline 5.1.2(i), from the submission review.)
+- **Truthful AI prompts.** The Gemini instructions no longer describe an "IoT smart measuring tape",
+  "posture radar" or "3D fit dimensions in the shop's IoT cloud"; measurements are taken by hand, and
+  the win-back email now says the client's measurements are kept on file. Generated emails sent on a
+  tailor's behalf no longer claim technology the shop doesn't have.
 - **New app icon: the Atelier crest.** The placeholder gold-ring "TLS" monogram is replaced by the
   "J · Atelier crest" chosen from the MagickTLS Logo design canvas: a stitched M under three sparkles
   inside a round frame, with a measuring-tape banner reading MAGICKTLS, in the app's navy, gold and

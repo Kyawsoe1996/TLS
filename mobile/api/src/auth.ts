@@ -2,7 +2,7 @@ import { verifyToken } from "@clerk/backend";
 import type { MiddlewareHandler } from "hono";
 import { getShopByOwner } from "./db";
 import type { AppEnv } from "./env";
-import { notFound, serverError, unauthorized } from "./errors";
+import { consentRequired, notFound, serverError, unauthorized } from "./errors";
 
 /**
  * Requires `Authorization: Bearer <Clerk session token>`.
@@ -41,5 +41,14 @@ export const requireShop: MiddlewareHandler<AppEnv> = async (c, next) => {
   const shop = await getShopByOwner(c.get("db"), c.get("userId"));
   if (!shop) throw notFound("Set up your shop first.");
   c.set("shop", shop);
+  await next();
+};
+
+/**
+ * For the /ai/* routes, after requireShop: the owner must have agreed to the AI data sharing
+ * (POST /shop/ai-consent). 403 consent_required otherwise, so no client detail reaches Gemini unasked.
+ */
+export const requireAiConsent: MiddlewareHandler<AppEnv> = async (c, next) => {
+  if (!c.get("shop").aiConsentAt) throw consentRequired();
   await next();
 };

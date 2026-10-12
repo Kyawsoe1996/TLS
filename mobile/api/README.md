@@ -120,7 +120,7 @@ Before release, replace the `[COMPANY NAME]`, `[SUPPORT EMAIL]`, `[DATE]` and `[
 
 ## Endpoints
 
-All routes except `GET /health`, `GET /privacy`, `GET /support` and `GET /media/<key>` require `Authorization: Bearer <Clerk session token>`. Errors are always `{ "error": { "code", "message" } }` with codes `unauthorized` (401), `not_found` (404), `bad_request` (400, also used for 413 on oversized uploads), `rate_limited` (429), `ai_failed` (502), `server_error` (500). Request/response types are in `../shared/types.ts`.
+All routes except `GET /health`, `GET /privacy`, `GET /support` and `GET /media/<key>` require `Authorization: Bearer <Clerk session token>`. Errors are always `{ "error": { "code", "message" } }` with codes `unauthorized` (401), `not_found` (404), `bad_request` (400, also used for 413 on oversized uploads), `consent_required` (403, `/ai/*` before `POST /shop/ai-consent`), `rate_limited` (429), `ai_failed` (502), `server_error` (500). Request/response types are in `../shared/types.ts`.
 
 | Method | Path | Body | Response |
 |---|---|---|---|
@@ -129,6 +129,7 @@ All routes except `GET /health`, `GET /privacy`, `GET /support` and `GET /media/
 | GET | `/support` | - | HTML support page |
 | GET | `/shop` | - | `{ shop, email }` or 404 if not onboarded (`email: EmailStatus` = whether sending is configured + the sender) |
 | PUT | `/shop` | `UpsertShopRequest` (`address`, `phone`, `openingHours`, `replyToEmail` optional: omit = unchanged, `""` = clear) | `{ shop, email }` (creates on first call, updates after) |
+| POST | `/shop/ai-consent` | - | `{ shop, email }`; records `shop.aiConsentAt` (the owner agreed to send client details to Gemini); idempotent |
 | GET | `/home` | - | `HomeResponse` (`clientsCount`, `fittingsThisMonth`, `inactiveCount`, `ordersOpen`, `ordersDueSoon`, `ordersOverdue`) |
 | GET | `/clients?search=&inactive=true` | - | `{ clients }` (name search, optional inactive-only filter) |
 | POST | `/clients` | `CreateClientRequest` | 201 `{ client }` |
@@ -174,7 +175,7 @@ Notes:
 - Order prices: `price` and `deposit` (THB, 0 to 10,000,000, columns `orders.price` / `deposit` as REAL) are optional; `PATCH` accepts `null` to clear either. `balance` is computed, never stored: `max(price - deposit, 0)` when `price` is set (a missing deposit counts as 0), otherwise `null`.
 - `GET /orders` defaults to open orders sorted overdue first, then by `dueAt` ascending, then undated (newest first). `open=false` or `status=delivered` lists delivered orders, most recently delivered first; any other `status=` filters to that status.
 - Messages: `POST /clients/:id/messages` sends an email to the client's `email` right away and logs it. 400 `bad_request` ("Add an email address to this client's file first.") when the client has no email; `orderId` must be an order of the same client (404 if unknown, 400 if it belongs to another client). With `RESEND_API_KEY` set the row is `sent` (or `failed` with `error` = Resend's message when the provider rejects it - still 201, so the app can show it); without a key it is `simulated`. Sending does not change the client's `lastOrderAt`. Limited to 60 per user per rolling day (429 `rate_limited`) when Upstash is configured.
-- `/ai/*` routes are limited to 30 requests per user per rolling day (429 `rate_limited`); the limit is checked after validation so bad requests don't consume quota. Responses carry `X-RateLimit-*` headers.
+- `/ai/*` routes answer 403 `consent_required` until the shop has `aiConsentAt` (`POST /shop/ai-consent`, migration 0006); the app shows the consent prompt before its first AI request. They are limited to 30 requests per user per rolling day (429 `rate_limited`); the limit is checked after validation so bad requests don't consume quota. Responses carry `X-RateLimit-*` headers.
 - `/ai/fit` needs `chest` + `waist` for `jacket`, `suit` and `shirt` fittings and `waist` + `hip` for `trousers`; otherwise 400 `bad_request` naming the missing measurements (checked before the rate limit). The pipeline-1 payload's `iot_data` keeps the prompt's `chest`, `waist`, `over_arm`, `posture_radar` and adds `garment_type` plus every other measurement that was taken, under its snake_case name (`hip`, `inseam`, `outseam`, `thigh`, `hem`, `neck`, `cuff`, `shirt_length`, `shoulder`, `sleeve`, `jacket_length`).
 - Gemini output is validated against a zod schema per pipeline; on failure the call is retried once, then 502 `ai_failed`. Each call times out after 25s.
 - `/ai/seo` makes two Gemini calls. The first (`ai/maps.ts`) uses Gemini's Google Maps grounding to find tailor shops near the district; its summary is passed to pipeline 2 as `nearby_competitors` and the shops are returned as `places`. If that lookup fails or returns no Maps sources, pipeline 2 runs without it and `places` is `null`. The Maps findings and places are not stored in `generations`. Google's terms require showing each place with its Maps link and the text "Google Maps", only to the user who asked.
