@@ -6,12 +6,11 @@ export const FEATURES = {
   /** Local SEO (district keyword ideas + nearby tailor lookup). Hidden for v1; switch on later. */
   localSeo: false,
   /**
-   * Photo / video attached to a post. Hidden for v1 because the API has no R2 bucket yet (see the
-   * `[[r2_buckets]]` note in mobile/api/wrangler.toml). Switch on together with the bucket, and at the
-   * same time: re-add the `expo-image-picker` plugin (with its `photosPermission` text) to app.json
-   * `plugins`, and remove the READ_EXTERNAL_STORAGE / WRITE_EXTERNAL_STORAGE / READ_MEDIA_IMAGES /
-   * READ_MEDIA_VIDEO entries from `android.blockedPermissions`. Both were taken out so v1 ships without
-   * a photo-library permission for a feature users can't reach.
+   * Photo / video attached to a post, stored by the API in the company's Amazon S3 bucket (the S3_* settings
+   * in mobile/api). If it ever has to be hidden again, also take the `expo-image-picker` plugin (and its
+   * `photosPermission` text) out of app.json `plugins` and put READ_EXTERNAL_STORAGE / WRITE_EXTERNAL_STORAGE /
+   * READ_MEDIA_IMAGES / READ_MEDIA_VIDEO back into `android.blockedPermissions`, so the app doesn't ask for a
+   * photo-library permission it can't use.
    */
-  postMedia: false,
+  postMedia: true,
 } as const;

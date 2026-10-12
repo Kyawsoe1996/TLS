@@ -32,7 +32,7 @@ import {
 } from "../db";
 import type { AppEnv } from "../env";
 import { badRequest, notFound } from "../errors";
-import { requestOrigin } from "../media";
+import { publicOrigin } from "../media";
 import { enforceAiRateLimit } from "../ratelimit";
 import { oneOf, parseBody, requiredText } from "../validate";
 import { AUDIENCES, insertPost } from "./posts";
@@ -233,7 +233,7 @@ aiRoutes.post("/post", async (c) => {
     blog_body: result.blog_body,
     social_caption: result.social_caption,
     call_to_action: result.call_to_action,
-    post: rowToPost(row, requestOrigin(c)),
+    post: rowToPost(row, publicOrigin(c)),
   };
   return c.json(body);
 });

@@ -9,20 +9,20 @@ compatibility_flags = ["nodejs_compat"]
 # `wrangler deploy` creates the DNS record and certificate). The workers.dev URL keeps working too.
 routes = [{ pattern = "api.magicktls.generalmagickindustries.com", custom_domain = true }]
 
-# Non-secret config. Secrets (CLERK_SECRET_KEY, TURSO_*, UPSTASH_*, GEMINI_API_KEY, RESEND_*)
-# go in .dev.vars for local dev and `wrangler secret put <NAME>` for production.
+# Non-secret config. Secrets (CLERK_SECRET_KEY, TURSO_*, UPSTASH_*, GEMINI_API_KEY, RESEND_*, S3_ACCESS_KEY_ID,
+# S3_SECRET_ACCESS_KEY) go in .dev.vars for local dev and `wrangler secret put <NAME>` for production.
 [vars]
 GEMINI_MODEL = "gemini-3.1-flash-lite"
-
-# Post photos / videos (PUT /posts/:id/media, served at GET /media/<key>).
-# SWITCHED OFF for this release: R2 isn't enabled on the company Cloudflare account yet (it needs a
-# payment method on file). Without the binding, uploads answer 400 and the app hides the media UI
-# (`postMedia` in mobile/app/constants/features.ts). To bring it back: enable R2 in the dashboard,
-# run `wrangler r2 bucket create tls-media`, uncomment the block below, deploy, and set `postMedia: true`.
-# `wrangler dev` would use a local simulated bucket under .wrangler/state, so local dev needs no real bucket.
-# [[r2_buckets]]
-# binding = "MEDIA"
-# bucket_name = "tls-media"
+# Origin baked into the media links the API hands to the app. Must be set because `wrangler dev` rewrites
+# request URLs to the custom domain above; .dev.vars overrides it with http://localhost:8787 locally.
+PUBLIC_URL = "https://api.magicktls.generalmagickindustries.com"
+# Post photos / videos (PUT /posts/:id/media, served at GET /media/<key>) live in the company's Amazon S3
+# bucket, under S3_PREFIX. The access keys are secrets (above); .dev.vars overrides these three locally
+# (S3_PREFIX = "magicktls/dev" there, so local uploads never mix with production files). Leave any of the
+# S3_* values unset and the API deploys with media switched off (uploads answer 400, media links 404).
+S3_BUCKET = "magicktls"
+S3_REGION = "ap-southeast-7"
+S3_PREFIX = "magicktls/prod"
 
 [observability]
 enabled = true

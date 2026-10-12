@@ -235,7 +235,7 @@ export function rowToMessage(row: Row): Message {
 }
 
 /**
- * `origin` (scheme + host of the current request, see media.ts requestOrigin) turns the stored R2 key into
+ * `origin` (scheme + host of the current request, see media.ts publicOrigin) turns the stored R2 key into
  * the absolute `media.url`. `media` is null when the post has no file attached.
  */
 export function rowToPost(row: Row, origin: string): Post {

@@ -16,13 +16,13 @@ TLS is an app for tailor shops. It stores the shop's client, fitting and order r
 
 **Shop profile.** The shop name, district, city and brand tone you enter during onboarding, plus the shop details you can add in Settings: address, phone number, opening hours and a reply-to email. The shop details are printed at the bottom of every email you send.
 
-**Client records you enter.** Client names, phone numbers, email addresses, LINE IDs, free-text notes, last-order dates, and fitting records: the garment type, the measurements that garment needs in centimetres (for example chest, waist, hip, shoulder, sleeve, inseam, outseam, thigh, hem, neck, cuff and lengths), style, fabric and posture notes. We only hold what you type in. The app does not read your contacts, camera, microphone, photos or location.
+**Client records you enter.** Client names, phone numbers, email addresses, LINE IDs, free-text notes, last-order dates, and fitting records: the garment type, the measurements that garment needs in centimetres (for example chest, waist, hip, shoulder, sleeve, inseam, outseam, thigh, hem, neck, cuff and lengths), style, fabric and posture notes. We only hold what you type in. The app does not read your contacts, camera, microphone or location, and it only opens your photo library when you choose to attach a photo or video to a post.
 
 **Orders.** Each order you record for a client: garment, status, due date, price and deposit.
 
 **Emails you send.** When you email a client from the app (a win-back offer, an order-ready notice or a follow-up) we keep a copy on the client's file: the address it was sent to, the subject, the text, whether the provider accepted it, and the provider's reference for the message.
 
-**AI outputs.** Text generated for you (cutter notes, fit profiles, marketing hooks, blog posts, captions, email drafts) is stored with the record it belongs to so you can see it again. Posts you write in Content Studio are saved to your content library.
+**AI outputs.** Text generated for you (cutter notes, fit profiles, marketing hooks, blog posts, captions, email drafts) is stored with the record it belongs to so you can see it again. Posts you write in Content Studio are saved to your content library, together with any photo or short video you attach to them.
 
 **Technical data.** Our API logs request metadata (time, route, response status, an anonymised user id) for security and debugging. Rate-limit counters are kept per account. We do not use advertising or analytics SDKs and do not build behavioural profiles.
 
@@ -43,6 +43,7 @@ We do not show ads, do not sell or rent data, and do not share it with anyone ex
 | Clerk | Sign-in and sessions | Email address, session tokens, device info |
 | Turso | Database | All shop, client, fitting and AI-output records |
 | Cloudflare | API hosting (Workers) | All data in transit through the API; request logs |
+| Amazon Web Services (S3) | Storage for the photos and videos attached to posts | The files you attach, kept privately under a random name and served only through the API |
 | Google (Gemini API) | AI text generation | The fields sent for each generation request (see §2) |
 | Resend | Delivering the emails you send to clients | The client's email address, the subject and text of the email, your shop's name and reply-to address |
 | Upstash | Rate limiting | Anonymised user id and request counters only |
@@ -56,7 +57,7 @@ Google processes the inputs of each AI request under the Gemini API terms that a
 
 Your data is kept for as long as your account exists.
 
-**Delete your account in the app:** Settings → Delete account. This permanently erases the shop and its details, every client, fitting and order record, the copies of emails you sent, all AI outputs, your posts and your login with Clerk. It cannot be undone. Backups held by our database provider are purged on their normal schedule, within 30 days.
+**Delete your account in the app:** Settings → Delete account. This permanently erases the shop and its details, every client, fitting and order record, the copies of emails you sent, all AI outputs, your posts and their photos and videos, and your login with Clerk. It cannot be undone. Backups held by our database provider are purged on their normal schedule, within 30 days.
 
 You can also delete individual clients (which deletes their fittings, orders and messages) and individual posts at any time.
 

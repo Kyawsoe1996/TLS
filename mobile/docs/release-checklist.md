@@ -22,7 +22,8 @@ Work top to bottom. The API must be live before the app is built, because the pr
 | Expo (expo.dev) | Free | Login for `eas login`; project id from `eas init` | `app.json` → `extra.eas.projectId` |
 | Clerk (clerk.com) — company login, app `Magick TLS` | Free tier | Production publishable key `pk_live_…`, secret key `sk_live_…`, JWT issuer / JWKS URL | App: `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY`; API: `wrangler secret put` |
 | Turso (turso.tech) — company login, databases `magicktls-prod` (worker secrets) and `magicktls-dev` (`.dev.vars`), both Tokyo | Free tier | Database URL `libsql://…`, auth token | API secrets |
-| Upstash (upstash.com) | Free tier | Redis REST URL and token | API secrets |
+| Upstash (upstash.com) — database `magicktls`, Singapore, set up 2026-10-12 (shared by local dev and the worker) | Free tier | Redis REST URL and token | API secrets (done) |
+| Amazon S3 — company bucket `magicktls`, `ap-southeast-7`, folders `magicktls/prod` (worker) and `magicktls/dev` (`.dev.vars`) | Company account | Access key id + secret with Put/Get/Delete/ListBucket | API secrets (done) |
 | Cloudflare (dash.cloudflare.com) — company account `globalmagicko`, worker `magicktls` | Free tier (Workers) | Account for `wrangler login`; worker URL after deploy | App: `EXPO_PUBLIC_API_URL` |
 | Google AI Studio (aistudio.google.com/apikey) | Free tier; enable billing for production | Gemini API key | API secrets |
 
@@ -54,7 +55,7 @@ npx wrangler deploy
 - Fill in `docs/privacy-policy.md` and make sure the worker serves it at `/privacy` and a support page at `/support`. Both are required by the stores. Open them in a browser.
 - Run the database migrations against the production Turso DB (whatever the API README says, e.g. `turso db shell tls < schema.sql`).
 - Use a **billing-enabled** Gemini key in production. On the free tier Google may use prompts to improve its models. The privacy policy says Google processes AI inputs "under the Gemini API terms that apply to our account", so with a free-tier key that sentence is true but weak; a paid key is the right fix.
-- Photo-library permission: the `expo-image-picker` config plugin is **not** in `app.json` for 1.0 and the Android storage/media permissions are in `blockedPermissions`, because post media is hidden (`FEATURES.postMedia` in `mobile/app/constants/features.ts`). When the R2 bucket exists and the flag is turned on, re-add the plugin with its `photosPermission` text and remove those blocked permissions; the comment in `features.ts` lists the exact steps.
+- Photo-library access: post media is on (`FEATURES.postMedia` in `mobile/app/constants/features.ts`), so the `expo-image-picker` plugin is in `app.json` with its `photosPermission` text. The files go to the company's Amazon S3 bucket: set `S3_BUCKET` / `S3_REGION` / `S3_PREFIX` in `wrangler.toml` and the two `S3_*` keys as worker secrets before deploying, and declare "Photos or videos" (user content, not shared with third parties) in the Play Data safety form and under App Privacy in App Store Connect.
 - Local SEO uses Gemini's **Google Maps grounding**. Before submitting, read the "Grounding with Google Maps" section of the Gemini API terms (ai.google.dev/gemini-api/terms): check the monthly usage allowance for your tier, and exclude the terms' prohibited territories from the store availability lists.
 
 ## 3. Clerk production instance

@@ -1,15 +1,18 @@
 import { Hono } from "hono";
 import type { AppEnv } from "../env";
-import { MEDIA_PATH } from "../media";
+import { serverError } from "../errors";
+import { MEDIA_PATH, mediaStore } from "../media";
 
-// GET /media/<key> - serves a post's photo / video straight from R2. No auth: keys contain a random uuid
-// (see media.ts), so a URL is only known to whoever the API handed it to. Mounted before requireAuth.
-// Supports Range (video players scrub with it) and If-None-Match, and tells caches the file never changes
-// (a replaced file gets a new key).
+// GET /media/<key> - serves a post's photo / video straight from the S3 bucket. No auth: keys contain a random
+// uuid (see media.ts), so a URL is only known to whoever the API handed it to. Mounted before requireAuth.
+// Range and If-None-Match are forwarded to S3 (video players scrub with Range), its 200 / 206 / 304 / 416 is
+// passed back, and caches are told the file never changes (a replaced file gets a new key).
 
 const mediaRoutes = new Hono<AppEnv>();
 
 const CACHE_CONTROL = "public, max-age=31536000, immutable";
+/** Response headers copied from S3; everything else (its request ids, server header, …) is dropped. */
+const PASS_THROUGH = ["Content-Type", "Content-Length", "Content-Range", "ETag", "Last-Modified"];
 
 /** The object key from the request path, or null when it isn't a plausible key. */
 function keyFromPath(pathname: string): string | null {
@@ -24,70 +27,38 @@ function keyFromPath(pathname: string): string | null {
   return key;
 }
 
-type ByteRange = { offset: number; length: number };
-
-/**
- * Resolve a `Range: bytes=a-b` / `bytes=a-` / `bytes=-n` header against the object size.
- * null = no usable range (absent, malformed or multi-range: serve the whole file, as RFC 9110 allows);
- * "unsatisfiable" = 416. Done here rather than by handing R2 the header, because the local simulation and
- * production R2 don't agree on what to do with out-of-bounds ranges.
- */
-function resolveRange(header: string | undefined, size: number): ByteRange | null | "unsatisfiable" {
-  if (!header) return null;
-  const m = /^bytes=(\d*)-(\d*)$/.exec(header.trim());
-  if (!m) return null;
-  const a = m[1] ?? "";
-  const b = m[2] ?? "";
-  if (a === "" && b === "") return null;
-  if (a === "") {
-    const suffix = Math.min(Number(b), size);
-    if (suffix === 0) return "unsatisfiable";
-    return { offset: size - suffix, length: suffix };
-  }
-  const start = Number(a);
-  if (start >= size) return "unsatisfiable";
-  const end = b === "" ? size - 1 : Math.min(Number(b), size - 1);
-  if (end < start) return "unsatisfiable";
-  return { offset: start, length: end - start + 1 };
-}
-
 mediaRoutes.get("/*", async (c) => {
   const key = keyFromPath(new URL(c.req.url).pathname);
-  const bucket = c.env.MEDIA;
-  if (!key || !bucket) return c.notFound();
+  const store = mediaStore(c.env);
+  if (!key || !store) return c.notFound();
 
-  let range: ByteRange | null = null;
-  const rangeHeader = c.req.header("Range");
-  if (rangeHeader) {
-    const head = await bucket.head(key);
-    if (!head) return c.notFound();
-    const resolved = resolveRange(rangeHeader, head.size);
-    if (resolved === "unsatisfiable") {
-      return new Response(null, { status: 416, headers: { "Content-Range": `bytes */${head.size}` } });
-    }
-    range = resolved;
+  const upstream = await store.get(key, { range: c.req.header("Range"), ifNoneMatch: c.req.header("If-None-Match") });
+  const status = upstream.status;
+
+  if (status === 404) return c.notFound();
+  if (status === 403) {
+    // Without s3:ListBucket, S3 answers 403 for a missing key as well as for bad credentials: log, serve 404.
+    await upstream.body?.cancel();
+    console.warn(`[media] S3 refused ${key} (403): check the S3_* settings and the IAM policy`);
+    return c.notFound();
+  }
+  if (status !== 200 && status !== 206 && status !== 304 && status !== 416) {
+    await upstream.body?.cancel();
+    console.warn(`[media] unexpected ${status} from S3 for ${key}`);
+    throw serverError("That file can't be loaded right now. Please try again.");
   }
 
-  const onlyIf = c.req.raw.headers; // If-None-Match / If-Modified-Since
-  const object = await bucket.get(key, range ? { range, onlyIf } : { onlyIf });
-  if (!object) return c.notFound();
-
   const headers = new Headers();
-  object.writeHttpMetadata(headers); // Content-Type etc. from the upload
-  headers.set("ETag", object.httpEtag);
+  for (const name of PASS_THROUGH) {
+    const value = upstream.headers.get(name);
+    if (value) headers.set(name, value);
+  }
   headers.set("Cache-Control", CACHE_CONTROL);
   headers.set("Accept-Ranges", "bytes");
 
-  // The precondition didn't match: R2 returns the metadata without a body.
-  if (!("body" in object)) return new Response(null, { status: 304, headers });
-
-  if (range) {
-    headers.set("Content-Range", `bytes ${range.offset}-${range.offset + range.length - 1}/${object.size}`);
-    headers.set("Content-Length", String(range.length));
-    return new Response(object.body, { status: 206, headers });
-  }
-  headers.set("Content-Length", String(object.size));
-  return new Response(object.body, { status: 200, headers });
+  const hasBody = status === 200 || status === 206;
+  if (!hasBody) await upstream.body?.cancel();
+  return new Response(hasBody ? upstream.body : null, { status, headers });
 });
 
 export default mediaRoutes;

@@ -22,3 +22,19 @@ RESEND_API_KEY=re_xxxxxxxxxxxxxxxxxxxxxxxx
 # Optional sender, e.g. "Shop <hello@yourdomain.com>"; must be a verified Resend domain.
 # Default onboarding@resend.dev (Resend's test sender: only delivers to your own Resend account email).
 RESEND_FROM=
+
+# Origin used in the media links handed to the app. Required locally: wrangler dev rewrites request URLs to
+# the custom domain in wrangler.toml, so without this the app would try to load dev photos from production.
+# iOS simulator: http://localhost:8787 - Android emulator: http://10.0.2.2:8787
+PUBLIC_URL=http://localhost:8787
+
+# Amazon S3 bucket for post photos / videos - optional; without all four, uploads are switched off (400).
+# The IAM user needs s3:PutObject, s3:GetObject, s3:DeleteObject and s3:ListBucket on the bucket.
+S3_BUCKET=company-bucket-name
+S3_REGION=ap-southeast-1
+S3_ACCESS_KEY_ID=AKIAxxxxxxxxxxxxxxxx
+S3_SECRET_ACCESS_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+# Folder inside the bucket; keep dev and production apart.
+S3_PREFIX=magicktls/dev
+# Only for S3-compatible storage (MinIO etc.), path-style: https://s3.example.com. Leave unset for AWS.
+# S3_ENDPOINT=

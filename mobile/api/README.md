@@ -8,14 +8,14 @@ Backend API for the TLS mobile app (bespoke tailor shops).
 - **AI:** Google Gemini REST API (`GEMINI_MODEL`, default `gemini-3.1-flash-lite`) using the 4-pipeline prompt in `../shared/ai-engine-prompt.md`
 - **Rate limiting:** Upstash Redis + `@upstash/ratelimit`, sliding windows of 30 AI requests and 60 emails per user per day
 - **Email:** [Resend](https://resend.com) REST API (`RESEND_API_KEY`, optional - without it emails are logged as `simulated`)
-- **Media:** Cloudflare R2 bucket `tls-media` (binding `MEDIA`) for the photo / video attached to a post, served back at `GET /media/<key>`
+- **Media:** the company's Amazon S3 bucket (signed requests via aws4fetch, `S3_*` settings) for the photo / video attached to a post, served back at `GET /media/<key>`
 - **Contract:** every request/response shape lives in [`../shared/types.ts`](../shared/types.ts); the API imports those types so it can't drift from the app.
 
 ## Layout
 
 ```
 api/
-  wrangler.toml            worker config (name, compat flags, non-secret vars, R2 bucket binding)
+  wrangler.toml            worker config (name, compat flags, non-secret vars incl. S3 bucket / region / prefix)
   .dev.vars.example        every secret the worker needs (copy to .dev.vars for local dev)
   migrations/*.sql         database schema (0001 shops/clients/fittings/generations, 0002 orders, 0003 messages,
                            0004 shop details + fitting garment types/measurements + order prices, 0005 posts)
@@ -29,7 +29,7 @@ api/
     ratelimit.ts           Upstash sliding-window limiters for /ai/* and POST .../messages
     errors.ts              ApiHttpError + helpers (401/404/400/413/429/502/500)
     email.ts               Resend sender (sendEmail, emailStatus, buildEmailFooter), 20s timeout
-    media.ts               R2 helpers: object keys, size-limited streaming upload, prefix delete, media URLs
+    media.ts               S3 store (put/get/head/delete/copy/list via aws4fetch), object keys, size-limited streaming upload, prefix delete, media URLs
     ai/prompt.ts           the Gemini system prompt (copy of ../shared/ai-engine-prompt.md)
     ai/gemini.ts           REST call, JSON parsing, zod validation, 1 retry, 25s timeout
     ai/schemas.ts          zod output schemas for the 4 pipelines
@@ -81,17 +81,13 @@ The sender defaults to `<shop name> via Magick TLS <onboarding@resend.dev>`. Res
 
 **Footer and Reply-To.** Every email goes out with a footer built from the shop's details (`PUT /shop`: `address`, `phone`, `openingHours`, `replyToEmail`, all optional). After a blank line: `— <shop name>`, then the address (if set), then `<phone> · <opening hours>` (whichever are set), then `Reply to this email to reach the shop.` only when `replyToEmail` is set - in which case it is also sent to Resend as `reply_to`, so client replies land in the shop's inbox instead of the sender address. The HTML version carries the same footer as a muted paragraph. The footer is presentation only: `messages.body` stores the text exactly as the app sent it. `buildEmailFooter(shop)` in `src/email.ts` is pure and can be unit-tested.
 
-### 7. Media storage (Cloudflare R2)
+### 7. Media storage (Amazon S3)
 
-**Switched off for the current release.** The `[[r2_buckets]]` block in `wrangler.toml` is commented out because R2 isn't enabled on the company Cloudflare account yet. Without the binding the worker still deploys: `PUT /posts/:id/media` answers 400 "Photo and video uploads are switched off in this version", `GET /media/<key>` answers 404, duplicates are made without media, and the best-effort media deletes are no-ops. The app hides the media UI with `postMedia: false` in `mobile/app/constants/features.ts`. To re-enable: enable R2, create the bucket as below, uncomment the block, deploy, set `postMedia: true`.
+Post photos / videos are stored in the company's Amazon S3 bucket, reached with signed HTTPS requests through [aws4fetch](https://github.com/mhart/aws4fetch) (`src/media.ts`; no AWS SDK). Settings: `S3_BUCKET`, `S3_REGION` and `S3_PREFIX` (the folder inside the bucket, `magicktls/prod` in `wrangler.toml` `[vars]`, `magicktls/dev` in `.dev.vars`) plus the secrets `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY`. The IAM user needs `s3:PutObject`, `s3:GetObject`, `s3:DeleteObject` and `s3:ListBucket` on the bucket; nothing in the bucket needs to be public. `S3_ENDPOINT` (path-style, e.g. `https://s3.example.com`) switches to S3-compatible storage such as MinIO.
 
-Post photos / videos are stored in an R2 bucket bound as `MEDIA` (`[[r2_buckets]]` in `wrangler.toml`, bucket `tls-media`). R2 has to be enabled on the Cloudflare account first (dashboard → R2 → enable; it asks for a payment method but the free tier covers 10 GB). Then create the bucket once:
+Leave any of the four required values unset and the worker still deploys with media switched off: `PUT /posts/:id/media` answers 400 "Photo and video uploads are switched off in this version", `GET /media/<key>` answers 404, duplicates are made without media, and the best-effort media deletes are no-ops (hide the UI with `postMedia: false` in `mobile/app/constants/features.ts` in that case).
 
-```bash
-wrangler r2 bucket create tls-media
-```
-
-Deploying before the bucket exists fails with "R2 bucket tls-media does not exist". No bucket is needed for local development: `wrangler dev` simulates R2 on disk under `.wrangler/state/` (same place as the rest of its local state; delete the folder to start empty). Files are private in R2; the API serves them itself at `GET /media/<key>`, where `<key>` is `<shopId>/<postId>/<random uuid>.<ext>` - unguessable, so the route needs no token and the app can hand the URL straight to an `<Image>` / video player.
+Objects are stored as `<S3_PREFIX>/<shopId>/<postId>/<random uuid>.<ext>` with their `Content-Type` and `x-amz-meta-shopid` / `x-amz-meta-postid`. The API serves them itself at `GET /media/<key>` (`<key>` without the prefix) - unguessable, so the route needs no token and the app can hand the URL straight to an `<Image>` / video player. Local development uses the real bucket under the dev prefix, so `.dev.vars` needs the S3 values too.
 
 ### 8. Local development
 
@@ -103,7 +99,7 @@ npm run typecheck                # tsc --noEmit
 
 ### 9. Deploy
 
-Set each secret once on the deployed worker, create the R2 bucket (see 7), then deploy:
+Set each secret once on the deployed worker, fill in `S3_BUCKET` / `S3_REGION` in `wrangler.toml` (see 7), then deploy:
 
 ```bash
 wrangler secret put CLERK_SECRET_KEY
@@ -115,7 +111,8 @@ wrangler secret put UPSTASH_REDIS_REST_TOKEN
 wrangler secret put GEMINI_API_KEY
 wrangler secret put RESEND_API_KEY     # optional, see 6
 wrangler secret put RESEND_FROM        # optional
-wrangler r2 bucket create tls-media    # once, see 7
+wrangler secret put S3_ACCESS_KEY_ID   # post media, see 7
+wrangler secret put S3_SECRET_ACCESS_KEY
 npm run deploy
 ```
 
@@ -168,8 +165,8 @@ Notes:
 
 - `/home`, `/clients*`, `/orders*`, `/posts*` and `/ai/*` return 404 `not_found` ("Set up your shop first.") until `PUT /shop` has been called.
 - Posts (`posts` table): `title`, `body`, `caption`, `callToAction` plus the brief they came from (`topic`, `tone`, `audience`); all required text (limits 200 / 20,000 / 2,000 / 1,000 / 200 characters). `status` is `draft` until `POST /posts/:id/shared` sets it to `shared` and stamps `sharedAt` (sharing itself happens on the phone via the OS share sheet). `POST /ai/post` always inserts a draft from what it generated, so the Content Studio result is never lost. `GET /posts?q=` is a case-insensitive `LIKE` on title or topic with wildcards escaped, like the client search.
-- Post media: `PUT /posts/:id/media` takes the raw file as the body. `Content-Type` must be `image/jpeg`, `image/png`, `image/webp`, `video/mp4` or `video/quicktime` (else 400 "Use a JPEG, PNG or WebP photo, or an MP4/MOV video."). Limits are in `MEDIA_LIMITS` (`../shared/types.ts`): photos 10 MB, videos 60 MB and 60 seconds. Size is checked twice - `Content-Length` up front (413, code `bad_request`, "Photos up to 10 MB, videos up to 60 MB.") and again while streaming into R2, so a chunked upload or a wrong header can't get around it (the object is not stored). Duration can only be checked from `X-Media-Duration` (the API doesn't decode the video); over 60 s is a 400. The file is stored under a fresh key `<shopId>/<postId>/<uuid>.<ext>` with `Content-Type` as its `httpMetadata`, the previous file (if any) is deleted, and the `media_*` columns are updated. `media.url` is built from the request's own origin (`http://localhost:8787/media/...` in dev, the workers.dev host in production) so no config is needed. `DELETE /posts/:id/media` clears the columns and deletes the object (no-op when there was none). Deleting a post, and deleting the account (`MEDIA.list({ prefix: "<shopId>/" })` + batched `delete`), also removes the files, best effort.
-- `GET /media/<key>` streams the object with its stored `Content-Type`, `ETag`, `Accept-Ranges: bytes` and a one-year immutable `Cache-Control` (a replaced file always gets a new key). A single-range `Range` request gets 206 + `Content-Range` (video players need this to scrub; the range is resolved by the API, not R2, so local and production behave the same), an out-of-bounds one 416, and `If-None-Match` gets 304. Unknown keys and keys containing `..` are 404.
+- Post media: `PUT /posts/:id/media` takes the raw file as the body. `Content-Type` must be `image/jpeg`, `image/png`, `image/webp`, `video/mp4` or `video/quicktime` (else 400 "Use a JPEG, PNG or WebP photo, or an MP4/MOV video."). Limits are in `MEDIA_LIMITS` (`../shared/types.ts`): photos 10 MB, videos 60 MB and 60 seconds. Size is checked twice - `Content-Length` up front (413, code `bad_request`, "Photos up to 10 MB, videos up to 60 MB.") and again while streaming into S3, so a chunked upload or a wrong header can't get around it (the object is not stored). Duration can only be checked from `X-Media-Duration` (the API doesn't decode the video); over 60 s is a 400. The file is stored under a fresh key `<shopId>/<postId>/<uuid>.<ext>` with its `Content-Type`, the previous file (if any) is deleted, and the `media_*` columns are updated. `media.url` is built from `PUBLIC_URL` (`https://api.magicktls.generalmagickindustries.com` in `wrangler.toml`; `http://localhost:8787` in `.dev.vars`, or `http://10.0.2.2:8787` for the Android emulator - needed because `wrangler dev` rewrites request URLs and the Host header to the custom domain), falling back to the request's own origin when unset. `DELETE /posts/:id/media` clears the columns and deletes the object (no-op when there was none). Duplicating a post copies the object server-side (`x-amz-copy-source`). Deleting a post, and deleting the account (ListObjectsV2 under `<shopId>/` + one DELETE per key), also removes the files, best effort.
+- `GET /media/<key>` fetches the object from S3 and streams it back with its `Content-Type`, `Content-Length`, `ETag`, `Last-Modified`, `Accept-Ranges: bytes` and a one-year immutable `Cache-Control` (a replaced file always gets a new key). `Range` and `If-None-Match` are forwarded to S3, so a single-range request gets 206 + `Content-Range` (video players need this to scrub), an out-of-bounds one 416, and an unchanged ETag 304. Unknown keys and keys containing `..` are 404; a 403 from S3 (bad keys / IAM policy, or a missing object when `s3:ListBucket` isn't granted) is logged and served as 404.
 - A client is `inactive` when `coalesce(lastOrderAt, createdAt)` is 90+ days ago. `fittingsThisMonth` counts fittings created in the current calendar month (UTC).
 - Shop details: `address`, `phone`, `openingHours` and `replyToEmail` (`shops.address`, `phone`, `opening_hours`, `reply_to_email`) are `null` until set. `replyToEmail` must be a valid email address when non-empty. They feed the email footer / Reply-To (see Setup 6).
 - Fittings: `garmentType` (`jacket` | `trousers` | `shirt` | `suit`, column `fittings.garment_type`, default `jacket` so older rows read as jackets) says which measurement set applies. `measurements` always comes back with all 14 keys (`chest`, `waist`, `overArm`, `shoulder`, `sleeve`, `jacketLength`, `hip`, `inseam`, `outseam`, `thigh`, `hem`, `neck`, `cuff`, `shirtLength`; columns are the snake_case names), `null` when not taken; the request may send any subset.

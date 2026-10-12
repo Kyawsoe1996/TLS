@@ -16,11 +16,12 @@ import {
   deleteMediaObject,
   mediaByteLimit,
   mediaKindFor,
+  mediaStore,
   MediaTooLarge,
   newMediaKey,
   normalizeContentType,
-  requestOrigin,
-  requireBucket,
+  publicOrigin,
+  requireMediaStore,
   storeUpload,
 } from "../media";
 import { type AssertAccepts, oneOf, parseBody, requiredText } from "../validate";
@@ -137,7 +138,7 @@ postRoutes.get("/", async (c) => {
   sql += " ORDER BY created_at DESC";
 
   const rs = await db.execute({ sql, args });
-  const origin = requestOrigin(c);
+  const origin = publicOrigin(c);
   const body: ListPostsResponse = { posts: rs.rows.map((row) => rowToPost(row, origin)) };
   return c.json(body);
 });
@@ -152,7 +153,7 @@ postRoutes.post("/", async (c) => {
 
   const row = await getPostRow(db, shop.id, id);
   if (!row) throw notFound("Post not found.");
-  const body: PostResponse = { post: rowToPost(row, requestOrigin(c)) };
+  const body: PostResponse = { post: rowToPost(row, publicOrigin(c)) };
   return c.json(body, 201);
 });
 
@@ -160,7 +161,7 @@ postRoutes.post("/", async (c) => {
 postRoutes.get("/:id", async (c) => {
   const row = await getPostRow(c.get("db"), c.get("shop").id, c.req.param("id"));
   if (!row) throw notFound("Post not found.");
-  const body: PostResponse = { post: rowToPost(row, requestOrigin(c)) };
+  const body: PostResponse = { post: rowToPost(row, publicOrigin(c)) };
   return c.json(body);
 });
 
@@ -197,7 +198,7 @@ postRoutes.patch("/:id", async (c) => {
 
   const row = await getPostRow(db, shop.id, id);
   if (!row) throw notFound("Post not found.");
-  const body: PostResponse = { post: rowToPost(row, requestOrigin(c)) };
+  const body: PostResponse = { post: rowToPost(row, publicOrigin(c)) };
   return c.json(body);
 });
 
@@ -211,7 +212,7 @@ postRoutes.delete("/:id", async (c) => {
   if (!existing) throw notFound("Post not found.");
 
   await db.execute({ sql: "DELETE FROM posts WHERE id = ? AND shop_id = ?", args: [id, shop.id] });
-  await deleteMediaObject(c.env.MEDIA, existing["media_key"] as string | null);
+  await deleteMediaObject(mediaStore(c.env), existing["media_key"] as string | null);
   return c.body(null, 204);
 });
 
@@ -226,7 +227,7 @@ postRoutes.post("/:id/duplicate", async (c) => {
 
   const source = await getPostRow(db, shop.id, id);
   if (!source) throw notFound("Post not found.");
-  const sourcePost = rowToPost(source, requestOrigin(c));
+  const sourcePost = rowToPost(source, publicOrigin(c));
 
   const suffix = " (copy)";
   const title = `${sourcePost.title.slice(0, TITLE_MAX - suffix.length).trimEnd()}${suffix}`;
@@ -243,28 +244,22 @@ postRoutes.post("/:id/duplicate", async (c) => {
   // The copy's id goes into its media key, so allocate it before inserting.
   const copyId = newId();
   const sourceKey = source["media_key"] as string | null;
-  const bucket = c.env.MEDIA;
+  const store = mediaStore(c.env);
   let media: MediaColumns | null = null;
-  if (sourceKey && sourcePost.media && bucket) {
+  if (sourceKey && sourcePost.media && store) {
     const key = newMediaKey(shop.id, copyId, sourcePost.media.contentType);
     try {
-      const object = await bucket.get(sourceKey);
-      if (object) {
-        // R2 put needs a known-length stream; FixedLengthStream gives the copied body one.
-        await bucket.put(key, object.body.pipeThrough(new FixedLengthStream(object.size)), {
-          httpMetadata: object.httpMetadata,
-          customMetadata: { shopId: shop.id, postId: copyId },
-        });
-        media = {
-          key,
-          kind: sourcePost.media.kind,
-          contentType: sourcePost.media.contentType,
-          width: sourcePost.media.width,
-          height: sourcePost.media.height,
-          duration: sourcePost.media.durationSec,
-          size: object.size,
-        };
-      }
+      // Server-side copy inside the bucket; the bytes never pass through the Worker.
+      await store.copy(sourceKey, key, { contentType: sourcePost.media.contentType, metadata: { shopId: shop.id, postId: copyId } });
+      media = {
+        key,
+        kind: sourcePost.media.kind,
+        contentType: sourcePost.media.contentType,
+        width: sourcePost.media.width,
+        height: sourcePost.media.height,
+        duration: sourcePost.media.durationSec,
+        size: sourcePost.media.sizeBytes,
+      };
     } catch (err) {
       console.warn(`[posts] could not copy media ${sourceKey}:`, err instanceof Error ? err.message : err);
     }
@@ -273,7 +268,7 @@ postRoutes.post("/:id/duplicate", async (c) => {
   await insertPost(db, shop.id, input, { id: copyId, media });
   const row = await getPostRow(db, shop.id, copyId);
   if (!row) throw notFound("Post not found.");
-  const body: PostResponse = { post: rowToPost(row, requestOrigin(c)) };
+  const body: PostResponse = { post: rowToPost(row, publicOrigin(c)) };
   return c.json(body, 201);
 });
 
@@ -294,7 +289,7 @@ postRoutes.post("/:id/shared", async (c) => {
 
   const row = await getPostRow(db, shop.id, id);
   if (!row) throw notFound("Post not found.");
-  const body: PostResponse = { post: rowToPost(row, requestOrigin(c)) };
+  const body: PostResponse = { post: rowToPost(row, publicOrigin(c)) };
   return c.json(body);
 });
 
@@ -310,7 +305,7 @@ postRoutes.put("/:id/media", async (c) => {
 
   const existing = await getPostRow(db, shop.id, id);
   if (!existing) throw notFound("Post not found.");
-  const bucket = requireBucket(c.env);
+  const store = requireMediaStore(c.env);
 
   const contentType = normalizeContentType(c.req.header("Content-Type"));
   const kind = mediaKindFor(contentType);
@@ -336,19 +331,16 @@ postRoutes.put("/:id/media", async (c) => {
 
   // Stored under a fresh key (never overwriting), then the row is pointed at it and the old file removed.
   const key = newMediaKey(shop.id, id, contentType);
-  let stored: R2Object;
+  let stored: { size: number };
   try {
-    stored = await storeUpload(bucket, key, raw, declared, limit, {
-      httpMetadata: { contentType },
-      customMetadata: { shopId: shop.id, postId: id },
-    });
+    stored = await storeUpload(store, key, raw, declared, limit, { contentType, metadata: { shopId: shop.id, postId: id } });
   } catch (err) {
     if (err instanceof MediaTooLarge) throw payloadTooLarge();
     console.warn(`[posts] media upload for ${id} failed:`, err instanceof Error ? err.message : err);
     throw badRequest("The upload didn't complete. Please try again.");
   }
   if (stored.size === 0) {
-    await deleteMediaObject(c.env.MEDIA, key);
+    await deleteMediaObject(mediaStore(c.env), key);
     throw badRequest("The file is empty.");
   }
 
@@ -361,11 +353,11 @@ postRoutes.put("/:id/media", async (c) => {
   });
   // The previous file is unreachable now that the row points elsewhere; remove it best effort.
   const previousKey = existing["media_key"] as string | null;
-  if (previousKey && previousKey !== key) await deleteMediaObject(c.env.MEDIA, previousKey);
+  if (previousKey && previousKey !== key) await deleteMediaObject(mediaStore(c.env), previousKey);
 
   const row = await getPostRow(db, shop.id, id);
   if (!row) throw notFound("Post not found.");
-  const body: PostResponse = { post: rowToPost(row, requestOrigin(c)) };
+  const body: PostResponse = { post: rowToPost(row, publicOrigin(c)) };
   return c.json(body);
 });
 
@@ -387,12 +379,12 @@ postRoutes.delete("/:id/media", async (c) => {
             WHERE id = ? AND shop_id = ?`,
       args: [nowIso(), id, shop.id],
     });
-    await deleteMediaObject(c.env.MEDIA, key);
+    await deleteMediaObject(mediaStore(c.env), key);
   }
 
   const row = await getPostRow(db, shop.id, id);
   if (!row) throw notFound("Post not found.");
-  const body: PostResponse = { post: rowToPost(row, requestOrigin(c)) };
+  const body: PostResponse = { post: rowToPost(row, publicOrigin(c)) };
   return c.json(body);
 });
 

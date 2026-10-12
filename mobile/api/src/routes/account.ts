@@ -2,7 +2,7 @@ import { createClerkClient } from "@clerk/backend";
 import { Hono } from "hono";
 import { getShopByOwner } from "../db";
 import type { AppEnv } from "../env";
-import { deleteMediaByPrefix } from "../media";
+import { deleteMediaByPrefix, mediaStore } from "../media";
 
 const accountRoutes = new Hono<AppEnv>();
 
@@ -16,7 +16,7 @@ accountRoutes.delete("/", async (c) => {
     // Media first, while the posts rows (and their keys) still exist; best effort - every key for this shop
     // sits under `<shopId>/`, so a retry or a later sweep can find anything left behind.
     try {
-      await deleteMediaByPrefix(c.env.MEDIA, `${shop.id}/`);
+      await deleteMediaByPrefix(mediaStore(c.env), `${shop.id}/`);
     } catch (err) {
       console.warn(`[account] could not delete media for shop ${shop.id}:`, err instanceof Error ? err.message : err);
     }

@@ -5,6 +5,16 @@ All notable changes to TLS, newest first. Written in plain language so anyone on
 ## Unreleased
 
 ### Changed
+- **Post photos and videos are back, stored on Amazon S3.** The content library's photo / video
+  attachment is switched on again (`postMedia: true`), and the API now keeps the files in the company's
+  Amazon S3 bucket instead of a Cloudflare R2 bucket (which the Cloudflare account can't enable).
+  Uploads, the `GET /media/<key>` links, duplicates and deletes behave as before; the bucket stays
+  private and the API serves the files itself. The `expo-image-picker` plugin and its photo-library
+  prompt are back in `app.json`, and the privacy pages name Amazon Web Services as the storage
+  provider. The worker needs the `S3_*` settings (see `mobile/api/.dev.vars.example`); without them
+  media stays switched off. Media links are now built from a `PUBLIC_URL` setting instead of the
+  request URL, because `wrangler dev` rewrites local requests to the production domain (local photos
+  were pointing at the live API and never loaded).
 - **Store-readiness fixes from the submission review.** The served privacy and support pages and
   `docs/privacy-policy.md` now describe everything the app stores (shop details, orders with prices,
   the copies of emails sent to clients, posts) and name Resend as the email provider; the last
@@ -94,7 +104,8 @@ All notable changes to TLS, newest first. Written in plain language so anyone on
 - Reviewer login for Apple's app review (Clerk test mode or a reviewer-only fallback).
 - Create the `support@generalmagickindustries.com` mailbox (or alias) named on the privacy and support
   pages, and fill the company address in `mobile/docs/privacy-policy.md`.
-- Switch the mobile API to Clerk production keys and add Upstash rate limiting for the AI routes.
+- Switch the mobile API to Clerk production keys. (Upstash rate limiting for the AI and email routes is
+  now on: database `magicktls`, Singapore region, secrets set locally and on the worker on 2026-10-12.)
 - Store listing: screenshots, icon polish, TestFlight check on a real iPhone.
 
 ## v0.1-mvp — 2026-09-30

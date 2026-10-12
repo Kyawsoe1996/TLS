@@ -57,7 +57,7 @@ const PRIVACY_HTML = `
   <li><strong>Orders.</strong> Each order's garment, status, due date, price and deposit.</li>
   <li><strong>Emails you send.</strong> When you email a client from the app (win-back, order ready, follow-up) we keep a copy on the client's file: the address it went to, the subject, the text, whether it was delivered and the provider's reference.</li>
   <li><strong>AI outputs.</strong> The fit analyses, marketing posts and email drafts generated for you, so you can find them again.</li>
-  <li><strong>Posts.</strong> The posts in your content library.</li>
+  <li><strong>Posts and media.</strong> The posts in your content library and any photo or video you attach to them.</li>
 </ul>
 <p>We do not collect anything you don't enter yourself. We don't use advertising trackers.</p>
 
@@ -67,6 +67,7 @@ const PRIVACY_HTML = `
   <li><strong>Clerk</strong> - sign-in and account security.</li>
   <li><strong>Turso</strong> - the database where your shop, client, fitting and AI data is stored.</li>
   <li><strong>Cloudflare</strong> - hosting for the API that the app talks to.</li>
+  <li><strong>Amazon Web Services (S3)</strong> - storage for the photos and videos you attach to posts. Files are kept privately under a random name and only served through the API.</li>
   <li><strong>Google Gemini</strong> - AI generation. When you tap an AI feature, the relevant inputs (for example a client's first name, style, fabric and measurements, or your district and brand tone) are sent to Google to produce the result.</li>
   <li><strong>Resend</strong> - delivers the emails you send to clients. Each email goes out from the app's own sender address, shows your shop's name, and uses your shop's reply-to email so replies reach you. Resend receives the client's address, the subject and the text.</li>
   <li><strong>Upstash</strong> - counts your AI requests and emails so we can apply the daily usage limits. It only sees an anonymous user identifier, not your data.</li>
@@ -80,7 +81,7 @@ const PRIVACY_HTML = `
 <p>You are responsible for making sure you're allowed to record your clients' details and measurements in the app. Please only enter what you need to serve them.</p>
 
 <h2>Deleting your data</h2>
-<p>You can delete your account at any time from inside the app: <strong>Settings &rarr; Delete account</strong>. This permanently erases your shop and its details, all client records, all fittings and measurements, all orders, the copies of emails you sent, all AI outputs, your posts, and your sign-in account. It cannot be undone.</p>
+<p>You can delete your account at any time from inside the app: <strong>Settings &rarr; Delete account</strong>. This permanently erases your shop and its details, all client records, all fittings and measurements, all orders, the copies of emails you sent, all AI outputs, your posts and their photos and videos, and your sign-in account. It cannot be undone.</p>
 
 <h2>Security</h2>
 <p>Data is sent over encrypted connections (HTTPS) and stored with providers that encrypt data at rest. Access to the API always requires your signed-in session.</p>
