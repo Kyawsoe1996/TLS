@@ -5,6 +5,12 @@ All notable changes to TLS, newest first. Written in plain language so anyone on
 ## Unreleased
 
 ### Changed
+- **New app icon: the Atelier crest.** The placeholder gold-ring "TLS" monogram is replaced by the
+  "J · Atelier crest" chosen from the MagickTLS Logo design canvas: a stitched M under three sparkles
+  inside a round frame, with a measuring-tape banner reading MAGICKTLS, in the app's navy, gold and
+  ivory. `mobile/docs/brand/make-icons.mjs` now draws it and renders the iOS icon, Android adaptive
+  foreground, splash mark and favicon in `mobile/app/assets/`. One icon set is used by every build
+  (simulator, preview and production).
 - **Local SEO fully hidden for v1 (it comes back in a later release).** The feature switches moved to
   `mobile/shared/features.ts` so the app and the API read the same ones. While `localSeo` is off the
   screen redirects to the Grow hub if someone deep-links to it, `POST /ai/seo` answers 404, the

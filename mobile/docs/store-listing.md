@@ -82,7 +82,7 @@ Sizes:
 | Apple iPhone 6.9" (required) | 1320 × 2868 | iPhone 16 Pro Max / 17 Pro Max simulator, `Cmd+S` saves at native size |
 | Apple iPhone 6.5" (recommended) | 1284 × 2778 | iPhone 11 Pro Max / XS Max class; Apple scales it for older sizes |
 | Google Play phone | 1080 × 1920 minimum; 1080 × 2340 fine | 2–8 images, 16:9 or 9:16, JPEG or 24-bit PNG, ≤ 8 MB each |
-| Google Play feature graphic (required) | 1024 × 500 | Navy background, gold monogram from `docs/brand/icon.svg`, app name; no screenshots inside it |
+| Google Play feature graphic (required) | 1024 × 500 | Navy background, the crest from `docs/brand/icon.svg`, app name; no screenshots inside it |
 | Google Play hi-res icon (required) | 512 × 512 | `sips -z 512 512 app/assets/icon.png --out play-icon-512.png` |
 
 Apple only requires the 6.9" set for iPhone; iPad screenshots are not needed because `supportsTablet` is false. Google may additionally ask for 7" and 10" tablet screenshots; these can be reused phone captures if the app is phone-only, but the listing will note limited tablet support.

@@ -1,6 +1,21 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
   <rect width="1024" height="1024" fill="#14213A"/>
-  <circle cx="512" cy="512" r="372" fill="none" stroke="#D1AC66" stroke-width="14" opacity="1"/>
-  <circle cx="512" cy="512" r="346" fill="none" stroke="#D1AC66" stroke-width="3" opacity="0.6"/>
-  <text x="512" y="616" text-anchor="middle" font-family="Georgia, 'Times New Roman', 'DejaVu Serif', 'Noto Serif', serif" font-size="300" font-weight="bold" letter-spacing="10" fill="#D1AC66">TLS</text>
+<g transform="translate(512 512) scale(2) translate(-256 -258)">
+<circle cx="256" cy="258" r="190" fill="none" stroke="#D1AC66" stroke-width="6"/>
+<circle cx="256" cy="258" r="174" fill="none" stroke="#F4EFE6" stroke-width="3" stroke-dasharray="10 9" stroke-linecap="round" opacity="0.7"/>
+<path d="M256 96 Q259 115 271 118 Q259 121 256 140 Q253 121 241 118 Q253 115 256 96 Z" fill="#D1AC66"/>
+<path d="M214 118 Q216 130 224 132 Q216 134 214 146 Q212 134 204 132 Q212 130 214 118 Z" fill="#D1AC66"/>
+<path d="M298 118 Q300 130 308 132 Q300 134 298 146 Q296 134 288 132 Q296 130 298 118 Z" fill="#D1AC66"/>
+<g transform="translate(256 254) scale(0.66) translate(-256 -256)">
+<polygon points="146,352 146,160 186,160 256,262 326,160 366,160 366,352 326,352 326,236 256,338 186,236 186,352" fill="#D1AC66"/>
+<rect x="130" y="344" width="72" height="8" fill="#D1AC66"/>
+<rect x="310" y="344" width="72" height="8" fill="#D1AC66"/>
+<polyline points="166,336 166,176 256,300 346,176 346,336" fill="none" stroke="#F4EFE6" stroke-width="5" stroke-dasharray="12 10" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>
+</g>
+<polygon points="138,374 94,374 108,391 94,408 138,408" fill="#A8843F"/>
+<polygon points="374,374 418,374 404,391 418,408 374,408" fill="#A8843F"/>
+<rect x="128" y="364" width="256" height="38" fill="#D1AC66"/>
+<path d="M140 364L140 370 M152 364L152 368 M164 364L164 368 M176 364L176 368 M188 364L188 370 M200 364L200 368 M212 364L212 368 M224 364L224 368 M236 364L236 370 M248 364L248 368 M260 364L260 368 M272 364L272 368 M284 364L284 370 M296 364L296 368 M308 364L308 368 M320 364L320 368 M332 364L332 370 M344 364L344 368 M356 364L356 368 M368 364L368 368" fill="none" stroke="#14213A" stroke-width="2"/>
+<text x="256" y="394" text-anchor="middle" font-family="'Cormorant Garamond', Georgia, serif" font-weight="700" font-size="19" letter-spacing="6" fill="#14213A">MAGICKTLS</text>
+</g>
 </svg>
