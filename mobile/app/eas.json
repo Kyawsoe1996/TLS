@@ -27,9 +27,9 @@
   "submit": {
     "production": {
       "ios": {
-        "appleId": "[APPLE ID EMAIL]",
-        "ascAppId": "[APP STORE CONNECT APP ID]",
-        "appleTeamId": "[TEAM ID]"
+        "appleId": "shamu@globalmagicko.com",
+        "ascAppId": "6821898831",
+        "appleTeamId": "K936SW2MTN"
       },
       "android": {
         "serviceAccountKeyPath": "./google-service-account.json",
