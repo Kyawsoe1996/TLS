@@ -2,7 +2,7 @@
 
 **Effective date:** 8 October 2026
 **Operator:** General Magick Industries Pte Ltd ("we", "us")
-**Contact:** support@generalmagickindustries.com
+**Contact:** account@globalmagicko.com
 
 This policy is served at `https://api.magicktls.generalmagickindustries.com/privacy` (the HTML in `mobile/api/src/routes/public.ts`) and linked from both app stores. Keep this file and the served HTML saying the same things; the HTML is the shorter, plain-English version.
 
@@ -61,7 +61,7 @@ Your data is kept for as long as your account exists.
 
 You can also delete individual clients (which deletes their fittings, orders and messages) and individual posts at any time.
 
-To request deletion or a copy of your data by email, write to support@generalmagickindustries.com from the address you signed up with. We reply within 2 business days.
+To request deletion or a copy of your data by email, write to account@globalmagicko.com from the address you signed up with. We reply within 2 business days.
 
 ## 5. Your clients' data and Thailand's PDPA
 
@@ -92,5 +92,5 @@ We will post changes here with a new effective date and, for material changes, t
 
 ## 10. Contact
 
-Questions, corrections or deletion requests: support@generalmagickindustries.com
+Questions, corrections or deletion requests: account@globalmagicko.com
 General Magick Industries Pte Ltd

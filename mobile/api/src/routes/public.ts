@@ -91,7 +91,7 @@ const PRIVACY_HTML = `
 <p>If we change this policy in a meaningful way we will update the date at the top and let you know in the app.</p>
 
 <h2>Contact</h2>
-<p>Questions about privacy or your data? Email <a href="mailto:support@generalmagickindustries.com">support@generalmagickindustries.com</a>.</p>
+<p>Questions about privacy or your data? Email <a href="mailto:account@globalmagicko.com">account@globalmagicko.com</a>.</p>
 `;
 
 const SUPPORT_HTML = `
@@ -99,7 +99,7 @@ const SUPPORT_HTML = `
 <p class="meta">Magick TLS - the app for bespoke tailor shops. Provided by General Magick Industries Pte Ltd.</p>
 
 <h2>Get help</h2>
-<p>Email us at <a href="mailto:support@generalmagickindustries.com">support@generalmagickindustries.com</a>. We reply within 2 business days.</p>
+<p>Email us at <a href="mailto:account@globalmagicko.com">account@globalmagicko.com</a>. We reply within 2 business days.</p>
 <p>To help us solve things quickly, please include:</p>
 <ul>
   <li>The email address you sign in with</li>

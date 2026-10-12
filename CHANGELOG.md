@@ -5,6 +5,9 @@ All notable changes to TLS, newest first. Written in plain language so anyone on
 ## Unreleased
 
 ### Changed
+- **Contact email is now `account@globalmagicko.com`** on the served privacy and support pages and in
+  `docs/privacy-policy.md` (it replaces the `support@generalmagickindustries.com` address, which was never
+  created). Changed 2026-10-12.
 - **Permission before the first AI feature.** The app now asks once, before the first AI request, whether
   it may send the details involved (a client's first name and measurements for a fitting, the client's
   name and last order for a win-back email, the shop's name, tone and topic for a post) to Google
@@ -130,8 +133,8 @@ All notable changes to TLS, newest first. Written in plain language so anyone on
 - Remove the preview-only social-posting controls from the mobile app (the platform switches, the
   "Shared to N apps" screen and the "coming soon" buttons); keep "Post now" via the phone's share sheet.
 - Reviewer login for Apple's app review (Clerk test mode or a reviewer-only fallback).
-- Create the `support@generalmagickindustries.com` mailbox (or alias) named on the privacy and support
-  pages, and fill the company address in `mobile/docs/privacy-policy.md`.
+- Done 2026-10-12: the privacy and support pages now name `account@globalmagicko.com` (an existing mailbox)
+  instead of a new `support@` alias, and fill the company address in `mobile/docs/privacy-policy.md`.
 - Switch the mobile API to Clerk production keys. (Upstash rate limiting for the AI and email routes is
   now on: database `magicktls`, Singapore region, secrets set locally and on the worker on 2026-10-12.)
 - Store listing: screenshots, icon polish, TestFlight check on a real iPhone.
