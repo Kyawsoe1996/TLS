@@ -102,7 +102,7 @@ eas build -p ios --profile preview          # simulator .app against production;
 
 1. **Certificates, Identifiers & Profiles:** nothing to do by hand; `eas build` registers the bundle id and manages the distribution certificate and provisioning profile (choose "Let EAS handle" when prompted, sign in with the Apple ID).
 2. **My Apps → + → New App:** platform iOS, name `Magick TLS – Tailor Growth`, primary language English, bundle id (select the one EAS registered), SKU `tls-ios`, full access.
-3. **App Information:** category Business / Productivity; Content rights: does not contain third-party content; Age rating: answer No to everything → 4+. Privacy policy URL `https://<worker>/privacy`.
+3. **App Information:** category Business / Productivity; Content rights: does not contain third-party content; Age rating: answer No to everything → 4+. Privacy policy URL `https://api.magicktls.generalmagickindustries.com/privacy`.
 4. **Pricing and Availability:** Free, all territories (or Thailand + chosen countries).
 5. **App Privacy** (nutrition labels). "Yes, we collect data." Then:
    - **Contact Info → Name, Email Address, Phone Number:** collected, **linked to the user**, used for **App Functionality**, **not used for tracking**.
