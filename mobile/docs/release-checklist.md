@@ -123,6 +123,7 @@ Both stores reject apps they cannot get past the login screen. Because sign-in i
 
 1. In the production Clerk instance enable test mode (section 3, step 5). Test addresses use the form `reviewer+clerk_test@[YOURDOMAIN]` and accept the code `424242` without any email being sent.
 2. Sign in to the production app with that address, complete onboarding as a fictional shop (for example "Demo Tailor, Sathorn, Bangkok"), add four or five fictional clients, at least one with `lastOrderAt` older than 90 days, and one or two fittings with measurements and a posture note. Run each AI feature once so results are already saved.
+   Done 2026-10-12: `reviewer+clerk_test@generalmagickindustries.com`, shop "Sathorn Bespoke Demo", 5 clients (Oliver Grant and Henrik Lund inactive), 2 fittings, 2 orders, AI fit notes and a saved post. Seeded through the production API with the same calls the app makes.
 3. Put the email and code in App Store Connect → App Review Information and in Play Console → App content → App access ("All or some functionality is restricted" → add instructions).
 4. Do not delete this account between releases; reviewers reuse it for every update.
 

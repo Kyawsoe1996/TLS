@@ -93,16 +93,16 @@ Apple only requires the 6.9" set for iPhone; iPad screenshots are not needed bec
 TLS is a business tool for tailor shops; an account is required to reach any screen.
 
 Sign in with:
-  Email: [REVIEWER TEST EMAIL]
-  Code:  [FIXED TEST CODE]
+  Email: reviewer+clerk_test@generalmagickindustries.com
+  Code:  424242
 (this address is a test account and the code above is accepted instead of an emailed one)
 
-The demo shop already contains clients and fittings so the AI features can be tried:
+The demo shop ("Sathorn Bespoke Demo") already contains five clients, two fittings with AI cutter notes, two orders (one overdue) and a saved post, so every feature can be tried:
   Clients → open any client → Fittings → "AI cutter notes"
   Content Studio → Generate
   Clients → a client → Orders (add an order, mark it ready, email the client)
   Clients → an inactive client → Win-back → Draft email with AI → Send
-Emails are delivered for real; the demo client's address is a mailbox we control, so test sends go nowhere else.
+Emails are delivered for real; the demo clients' addresses (reviewer+client1…5@generalmagickindustries.com) are mailboxes we control, so test sends go nowhere else.
 
 Account deletion: Settings → Delete account (removes the shop, all clients, fittings, orders, sent emails, posts and the login).
 Privacy policy: https://api.magicktls.generalmagickindustries.com/privacy
