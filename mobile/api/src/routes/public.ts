@@ -58,9 +58,9 @@ const PRIVACY_HTML = `
   <li><strong>Emails you send.</strong> When you email a client from the app (win-back, order ready, follow-up) we keep a copy on the client's file: the address it went to, the subject, the text, whether it was delivered and the provider's reference.</li>
   <li><strong>AI outputs.</strong> The fit analyses, marketing posts and email drafts generated for you, so you can find them again.</li>
   <li><strong>Posts and media.</strong> The posts in your content library and any photo or video you attach to them.</li>
-  <li><strong>Technical logs.</strong> Our API records the time, route, response status and an anonymised user id of each request, for security and debugging, plus per-account counters for the daily usage limits. No advertising or analytics trackers.</li>
+  <li><strong>Technical data.</strong> Clerk keeps the session and device information needed to keep you signed in. Cloudflare, which hosts our API, keeps request logs (time, route, response status) for security and debugging, and Upstash keeps per-account counters for the daily usage limits. No advertising or analytics trackers.</li>
 </ul>
-<p>Beyond those logs, we do not collect anything you don't enter yourself.</p>
+<p>Beyond that technical data, we do not collect anything you don't enter yourself.</p>
 
 <h2>Who processes it</h2>
 <p>We rely on a small number of service providers to run the app. Each one only receives what it needs to do its job:</p>

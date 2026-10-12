@@ -55,7 +55,7 @@ npx wrangler deploy
 - Fill in `docs/privacy-policy.md` and make sure the worker serves it at `/privacy` and a support page at `/support`. Both are required by the stores. Open them in a browser.
 - Run the database migrations against the production Turso DB (whatever the API README says, e.g. `turso db shell tls < schema.sql`).
 - Use a **billing-enabled** Gemini key in production. On the free tier Google may use prompts to improve its models. The privacy policy says Google processes AI inputs "under the Gemini API terms that apply to our account", so with a free-tier key that sentence is true but weak; a paid key is the right fix.
-- Photo-library access: post media is on (`FEATURES.postMedia` in `mobile/app/constants/features.ts`), so the `expo-image-picker` plugin is in `app.json` with its `photosPermission` text. The files go to the company's Amazon S3 bucket: set `S3_BUCKET` / `S3_REGION` / `S3_PREFIX` in `wrangler.toml` and the two `S3_*` keys as worker secrets before deploying, and declare "Photos or videos" (user content, not shared with third parties) in the Play Data safety form and under App Privacy in App Store Connect.
+- Photo-library access: post media is on (`FEATURES.postMedia` in `mobile/shared/features.ts`), so the `expo-image-picker` plugin is in `app.json` with its `photosPermission` text. The files go to the company's Amazon S3 bucket: set `S3_BUCKET` / `S3_REGION` / `S3_PREFIX` in `wrangler.toml` and the two `S3_*` keys as worker secrets before deploying, and declare "Photos or videos" (user content, not shared with third parties) in the Play Data safety form and under App Privacy in App Store Connect.
 - Local SEO uses Gemini's **Google Maps grounding**. Before submitting, read the "Grounding with Google Maps" section of the Gemini API terms (ai.google.dev/gemini-api/terms): check the monthly usage allowance for your tier, and exclude the terms' prohibited territories from the store availability lists.
 
 ## 3. Clerk production instance
@@ -107,6 +107,7 @@ eas build -p ios --profile preview          # simulator .app against production;
 5. **App Privacy** (nutrition labels). "Yes, we collect data." Then:
    - **Contact Info → Name, Email Address, Phone Number:** collected, **linked to the user**, used for **App Functionality**, **not used for tracking**.
    - **User Content → Other User Content** (measurements, notes, orders, posts, generated text): linked to the user, App Functionality, not for tracking.
+   - **User Content → Photos or Videos** (the photo or video attached to a post, stored in the company S3 bucket): linked to the user, App Functionality, not for tracking.
    - **User Content → Emails or Text Messages** (the emails sent to clients are stored on their file): linked to the user, App Functionality, not for tracking.
    - **Financial Info → Other Financial Info** (order price and deposit the tailor records; no payments are processed): linked to the user, App Functionality, not for tracking.
    - **Identifiers → User ID:** linked, App Functionality, not for tracking.

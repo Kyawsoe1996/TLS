@@ -9,7 +9,7 @@ Copy for App Store Connect and Google Play Console. Character limits are noted; 
 | App name (both stores) | 30 | `Magick TLS – Tailor Growth` |
 | Subtitle (Apple) | 30 | `AI growth for bespoke tailors` |
 | Short description (Google) | 80 | `Fittings, orders, AI cutter notes and win-back emails for bespoke tailors` |
-| Promotional text (Apple, editable without a new build) | 170 | `Keep every client's measurements and cutter notes in one place, publish local content that gets found, and bring quiet clients back. Built for bespoke tailor shops.` |
+| Promotional text (Apple, editable without a new build) | 170 | `Keep every client's measurements and cutter notes in one place, publish content in your shop's own voice, and bring quiet clients back. Built for bespoke tailor shops.` |
 | Keywords (Apple) | 100 | `bespoke,suit,fitting,measurements,clients,CRM,marketing,orders,Bangkok,atelier,menswear,shirt` |
 | Category | | Primary **Business**; secondary Productivity |
 | Age rating | | Apple **4+** (answer "No" to every content descriptor). Google IARC questionnaire → **Everyone** (no user-generated content shared publicly, no ads, no purchases). |

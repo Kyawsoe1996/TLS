@@ -24,7 +24,7 @@ TLS is an app for tailor shops. It stores the shop's client, fitting and order r
 
 **AI outputs.** Text generated for you (cutter notes, fit profiles, marketing hooks, blog posts, captions, email drafts) is stored with the record it belongs to so you can see it again. Posts you write in Content Studio are saved to your content library, together with any photo or short video you attach to them.
 
-**Technical data.** Our API logs request metadata (time, route, response status, an anonymised user id) for security and debugging. Rate-limit counters are kept per account. We do not use advertising or analytics SDKs and do not build behavioural profiles.
+**Technical data.** Cloudflare, which hosts our API, keeps request logs (time, route, response status) for security and debugging. Rate-limit counters are kept per account by Upstash. We do not use advertising or analytics SDKs and do not build behavioural profiles.
 
 ## 2. How we use it
 
