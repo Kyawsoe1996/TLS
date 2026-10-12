@@ -49,7 +49,7 @@ We do not show ads, do not sell or rent data, and do not share it with anyone ex
 | Upstash | Rate limiting | Anonymised user id and request counters only |
 | Expo (EAS) | Building and distributing the app | No user data; used to compile the app binaries |
 
-Each provider processes data only on our instructions under its own terms and data-processing agreement. Data is stored in Tokyo, Japan.
+Each provider processes data only on our instructions under its own terms and data-processing agreement. Shop, client, fitting, order, message and AI records are stored in Tokyo, Japan (Turso). Photos and videos attached to posts are stored in Thailand (Amazon S3, Bangkok region). Rate-limit counters are kept in Singapore (Upstash).
 
 Google processes the inputs of each AI request under the Gemini API terms that apply to our account.
 
@@ -84,7 +84,7 @@ TLS is a business tool and is not directed at children. We do not knowingly coll
 
 ## 8. International transfers
 
-The processors above operate in several countries, including the United States, Singapore and Japan. By using TLS you accept that data is processed where they operate, under their contractual safeguards.
+The processors above operate in several countries, including the United States, Japan, Thailand and Singapore. By using TLS you accept that data is processed where they operate, under their contractual safeguards.
 
 ## 9. Changes
 

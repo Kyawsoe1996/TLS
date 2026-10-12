@@ -4,7 +4,7 @@ Work top to bottom. The API must be live before the app is built, because the pr
 
 ## 0. Pre-flight (do not build until every box is ticked)
 
-- [x] Bundle id / package in `app.json` is `com.generalmagickindustries.magicktls` (confirmed 2026-10-07, `docs/app-config.md`).
+- [x] Bundle id / package in `app.json` is `com.generalmagickindustries.magicktls` (confirmed 2026-10-07).
 - [ ] `app.json` `version` is `1.0.0`; `extra.eas.projectId` is a real id (written by `eas init`).
 - [ ] Icons in `app/assets/` are final, not the gold-ring placeholders from `docs/brand/make-icons.mjs` (or the placeholders have been signed off as the 1.0 icon).
 - [ ] No `[BRACKET]` placeholders remain: `grep -rn '\[[A-Z][A-Z ]*\]' mobile/api/src mobile/docs/privacy-policy.md` returns nothing that ships. Check the `/privacy` and `/support` pages in a browser.
@@ -73,28 +73,29 @@ npm i -g eas-cli
 eas login
 cd mobile/app
 eas init --force            # writes extra.eas.projectId (force overwrites the placeholder)
-eas build:configure         # accept; keep the eas.json from docs/app-config.md if it asks to overwrite
+eas build:configure         # not needed: eas.json already exists; say no if it offers to overwrite
 ```
 
 Environment variables (baked into the JS bundle; not secret):
 
 ```bash
 eas env:create --environment production --scope project --visibility plaintext \
-  --name EXPO_PUBLIC_API_URL --value "https://tls-api.<account>.workers.dev"
+  --name EXPO_PUBLIC_API_URL --value "https://api.magicktls.generalmagickindustries.com"
 eas env:create --environment production --scope project --visibility plaintext \
   --name EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY --value "pk_live_..."
-# repeat with --environment preview / development and the test-instance values
+# repeat both with --environment preview, same production values: the preview profile builds a simulator app against production for the smoke test
 eas env:list --environment production
 ```
 
-Or put them in `eas.json` under each build profile's `env` (see `docs/app-config.md`). Either way the names must match what the app reads.
+Or put them in `eas.json` under each build profile's `env`. Either way the names must match what the app reads (`mobile/app/.env.example`).
 
 Sanity check before any store build:
 
 ```bash
 npx expo-doctor
 npx tsc --noEmit && npx expo lint
-eas build -p android --profile preview      # APK: install on a real phone, sign in against production API
+eas build -p ios --profile preview          # simulator .app against production; install with: xcrun simctl install booted <path to .app>
+# v1 ships to the App Store only; Android is deferred, so the Play sections below are for later.
 ```
 
 ## 5. App Store Connect

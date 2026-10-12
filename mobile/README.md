@@ -9,7 +9,7 @@ The TLS mobile MVP: an Expo app for bespoke tailor shops, backed by a small Clou
 | `app/` | Expo SDK 54 app (Expo Router, TypeScript, TanStack Query, Clerk for sign-in). Screens are under `app/app/`, the UI kit under `app/components/`, design tokens in `app/constants/theme.ts`, the API client and hooks in `app/lib/`. |
 | `api/` | Cloudflare Worker (Hono) that the app talks to. Turso (libSQL) for data, Clerk for token verification, Google Gemini for the four AI pipelines, Upstash Redis for the daily AI rate limit. Also serves the public `/privacy` and `/support` pages. See `api/README.md` for the endpoint table and deploy steps. |
 | `shared/` | `types.ts` is the API contract: every request/response shape, imported by both `app/` (as `@shared/types`) and `api/`, so the two cannot drift. `ai-engine-prompt.md` is the Gemini system prompt (mirrored in `api/src/ai/prompt.ts`). |
-| `docs/` | `release-checklist.md` (store submission, top to bottom), `store-listing.md` (App Store / Play copy), `privacy-policy.md` (source for `/privacy`), `app-config.md` (`app.json` / `eas.json` notes), `brand/` (icon sources and the script that renders them). |
+| `docs/` | `release-checklist.md` (store submission, top to bottom), `store-listing.md` (App Store / Play copy), `privacy-policy.md` (source for `/privacy`), `brand/` (icon sources and the script that renders them). |
 
 ## Local development
 

@@ -15,6 +15,7 @@ import type {
   Measurements,
   SearchConsoleStatus,
 } from "../../../shared/types";
+import { FEATURES } from "../../../shared/features";
 import { runPipeline } from "../ai/gemini";
 import { findNearbyTailors } from "../ai/maps";
 import { fitAnalysisSchema, postSchema, seoSchema, winbackSchema } from "../ai/schemas";
@@ -168,6 +169,7 @@ aiRoutes.post("/fit", async (c) => {
 
 /** POST /ai/seo -> Google Maps lookup, then pipeline 2 -> { target_market, keywords, places } */
 aiRoutes.post("/seo", async (c) => {
+  if (!FEATURES.localSeo) throw notFound("Local SEO is not available in this release.");
   const db = c.get("db");
   const shop = c.get("shop");
   const input = await parseBody(c, aiSeoSchema);

@@ -35,7 +35,7 @@ ORDERS
 Track every order on the client's file: the garment, its status, the due date, the price and the deposit. Overdue orders are flagged, and when a garment is ready you can email the client straight from the order.
 
 CONTENT STUDIO
-Choose a topic, an audience (expatriates, local executives, grooms or tourists) and your brand tone. TLS drafts a blog post, a social caption and a call to action. Everything you write is saved to your content library, where you can edit it, duplicate it and share it through your phone's share sheet.
+Choose a topic, an audience (expatriates, local executives, grooms or tourists) and your brand tone. TLS drafts a blog post, a social caption and a call to action. Everything you write is saved to your content library, where you can attach a photo or a short video, edit it, duplicate it and share it through your phone's share sheet.
 
 WIN-BACK
 Clients who have not ordered in 90 days are flagged on the home screen. Pick an incentive and TLS writes a courteous re-engagement email and sends it to the client for you, keeping a copy on their file.
@@ -53,7 +53,7 @@ First release.
 • Client list with search and a 90-day inactive filter
 • Manual fitting records with AI cutter notes and fit profile
 • Orders with status, due dates, price and deposit
-• Content Studio: blog post, social caption and call to action, saved to a content library
+• Content Studio: blog post, social caption and call to action, saved to a content library with a photo or video
 • Email clients from the app: win-back, order ready and follow-up
 • Delete your account and all data from Settings
 ```
@@ -70,7 +70,7 @@ Order (first two matter most; the stores show them in search results):
 | 2 | Clients | List with a few clients, one marked inactive, search field |
 | 3 | New fitting | Measurement form partly filled (cm), style, fabric, posture note |
 | 4 | AI fitting result | Pattern adjustments, fit profile, marketing hook |
-| 5 | Content Studio | Generated blog title/body and social caption |
+| 5 | Content Studio | Generated blog title/body and social caption, a post with a photo attached |
 | 6 | Orders | A client's orders with statuses, one overdue, prices |
 | 7 | Win-back | Inactive client, chosen incentive, generated subject and body |
 | 8 | Messages | A client's file with a sent email and its status |

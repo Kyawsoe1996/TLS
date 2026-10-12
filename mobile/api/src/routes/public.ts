@@ -58,8 +58,9 @@ const PRIVACY_HTML = `
   <li><strong>Emails you send.</strong> When you email a client from the app (win-back, order ready, follow-up) we keep a copy on the client's file: the address it went to, the subject, the text, whether it was delivered and the provider's reference.</li>
   <li><strong>AI outputs.</strong> The fit analyses, marketing posts and email drafts generated for you, so you can find them again.</li>
   <li><strong>Posts and media.</strong> The posts in your content library and any photo or video you attach to them.</li>
+  <li><strong>Technical logs.</strong> Our API records the time, route, response status and an anonymised user id of each request, for security and debugging, plus per-account counters for the daily usage limits. No advertising or analytics trackers.</li>
 </ul>
-<p>We do not collect anything you don't enter yourself. We don't use advertising trackers.</p>
+<p>Beyond those logs, we do not collect anything you don't enter yourself.</p>
 
 <h2>Who processes it</h2>
 <p>We rely on a small number of service providers to run the app. Each one only receives what it needs to do its job:</p>
@@ -107,7 +108,7 @@ const SUPPORT_HTML = `
 </ul>
 
 <h2>Common questions</h2>
-<p><strong>The AI says I've reached today's limit.</strong> Each account can run up to 30 AI generations per day (fit analysis, SEO map, posts and win-back emails combined). The limit resets over a rolling 24 hours.</p>
+<p><strong>The AI says I've reached today's limit.</strong> Each account can run up to 30 AI generations per day (fit analysis, posts and win-back emails combined). The limit resets over a rolling 24 hours.</p>
 <p><strong>The AI couldn't produce a result.</strong> This happens occasionally. Wait a moment and try again; if it keeps failing, email us with the time it happened.</p>
 <p><strong>How do I delete my account?</strong> In the app go to <strong>Settings &rarr; Delete account</strong>. This erases your shop, clients, fittings, orders, sent emails, posts, AI outputs and your sign-in account immediately and permanently.</p>
 <p><strong>An email to a client shows "Failed".</strong> Check the client's email address on their file and send again. If it still fails, email us with the client's address and the time you sent it.</p>

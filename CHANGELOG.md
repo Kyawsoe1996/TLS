@@ -5,6 +5,15 @@ All notable changes to TLS, newest first. Written in plain language so anyone on
 ## Unreleased
 
 ### Changed
+- **Local SEO fully hidden for v1 (it comes back in a later release).** The feature switches moved to
+  `mobile/shared/features.ts` so the app and the API read the same ones. While `localSeo` is off the
+  screen redirects to the Grow hub if someone deep-links to it, `POST /ai/seo` answers 404, the
+  onboarding message no longer mentions SEO and the support page's daily-limit answer no longer lists
+  the SEO map. The served privacy page now also mentions the API's technical logs, and the markdown
+  policy says where each kind of data is stored (Turso in Tokyo, S3 in Thailand, Upstash in Singapore).
+  The store listing mentions the photo / video attachment. The preview EAS profile builds an iOS
+  simulator app (v1 ships to the App Store only; Android is deferred); the stale `docs/app-config.md`
+  is gone because `app.json` and `eas.json` are the real thing.
 - **Post photos and videos are back, stored on Amazon S3.** The content library's photo / video
   attachment is switched on again (`postMedia: true`), and the API now keeps the files in the company's
   Amazon S3 bucket instead of a Cloudflare R2 bucket (which the Cloudflare account can't enable).

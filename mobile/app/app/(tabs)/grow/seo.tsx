@@ -1,11 +1,12 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useMutation } from "@tanstack/react-query";
-import { useRouter } from "expo-router";
+import { Redirect, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { Linking, StyleSheet, Text, View } from "react-native";
 import type { AiSeoRequest, CompetitorTier, SearchConsoleStatus, SeoKeyword } from "@shared/types";
 
 import { ChoiceChips, KeywordCard, NearbyPlaces } from "@/components/grow";
+import { FEATURES } from "@/constants/features";
 import { AiResultCard, Button, Card, Eyebrow, Field, LoadingAI, Screen } from "@/components/ui";
 import { colors, fonts, typography } from "@/constants/theme";
 import { useApi } from "@/lib/api";
@@ -21,8 +22,14 @@ function shopDistrict(shop: { district: string; city: string } | null): string {
   return [shop.district, shop.city].filter(Boolean).join(", ");
 }
 
-/** Local SEO — pipeline 2 (POST /ai/seo). The last result lives in component state only. */
+/** Local SEO — pipeline 2 (POST /ai/seo). Hidden while FEATURES.localSeo is off: a deep link lands on the Grow hub. */
 export default function LocalSeoScreen() {
+  if (!FEATURES.localSeo) return <Redirect href="/(tabs)/grow" />;
+  return <LocalSeoForm />;
+}
+
+/** The last result lives in component state only. */
+function LocalSeoForm() {
   const router = useRouter();
   const api = useApi();
   const shop = useShop().data ?? null;

@@ -64,7 +64,7 @@ export default function OnboardingScreen() {
       tone,
     };
     if (!body.name) return setError("Give your shop a name.");
-    if (!body.district) return setError("Add your district so local SEO can target it.");
+    if (!body.district) return setError("Add your district. It appears in your content and emails.");
     setError(null);
     mutation.mutate(body);
   };
