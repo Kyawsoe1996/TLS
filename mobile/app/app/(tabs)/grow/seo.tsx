@@ -92,7 +92,7 @@ function LocalSeoForm() {
         editable={!mutation.isPending}
       />
       <ChoiceChips label="Competitor tier" hint="Who you're up against for the same searches." options={TIERS} value={tier} onChange={setTier} disabled={mutation.isPending} />
-      <ChoiceChips label="Where are you on Google today?" hint="Your best guess. TLS doesn't check Google for you." options={STATUSES} value={status} onChange={setStatus} disabled={mutation.isPending} />
+      <ChoiceChips label="Where are you on Google today?" hint="Your best guess. Magick TLS doesn't check Google for you." options={STATUSES} value={status} onChange={setStatus} disabled={mutation.isPending} />
 
       <Card variant="soft" style={styles.infoCard}>
         <View style={styles.infoRow}>

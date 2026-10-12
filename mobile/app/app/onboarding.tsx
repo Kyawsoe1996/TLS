@@ -71,7 +71,7 @@ export default function OnboardingScreen() {
 
   return (
     <Screen
-      eyebrow={isEdit ? "Settings" : "Welcome to TLS"}
+      eyebrow={isEdit ? "Settings" : "Welcome to Magick TLS"}
       title={isEdit ? "Edit shop" : "Set up your shop"}
       subtitle={isEdit ? undefined : "A few details so the AI can speak in your voice and target your neighbourhood."}
       back={isEdit}
