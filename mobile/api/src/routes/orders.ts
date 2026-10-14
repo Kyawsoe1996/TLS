@@ -193,7 +193,7 @@ orderRoutes.patch("/:clientId/orders/:orderId", async (c) => {
   return c.json(body);
 });
 
-/** DELETE /clients/:clientId/orders/:orderId -> 204 */
+/** DELETE /clients/:clientId/orders/:orderId -> 204. Appointments linked to the order stay, unlinked. */
 orderRoutes.delete("/:clientId/orders/:orderId", async (c) => {
   const db = c.get("db");
   const shop = c.get("shop");
@@ -203,10 +203,16 @@ orderRoutes.delete("/:clientId/orders/:orderId", async (c) => {
   const existing = await getClientOrderRow(db, shop.id, clientId, orderId);
   if (!existing) throw notFound("Order not found.");
 
-  await db.execute({
-    sql: "DELETE FROM orders WHERE id = ? AND client_id = ? AND shop_id = ?",
-    args: [orderId, clientId, shop.id],
-  });
+  await db.batch(
+    [
+      {
+        sql: "UPDATE appointments SET order_id = NULL, updated_at = ? WHERE order_id = ? AND shop_id = ?",
+        args: [nowIso(), orderId, shop.id],
+      },
+      { sql: "DELETE FROM orders WHERE id = ? AND client_id = ? AND shop_id = ?", args: [orderId, clientId, shop.id] },
+    ],
+    "write",
+  );
   return c.body(null, 204);
 });
 

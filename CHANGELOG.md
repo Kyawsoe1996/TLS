@@ -4,6 +4,21 @@ All notable changes to TLS, newest first. Written in plain language so anyone on
 
 ## Unreleased
 
+### Added
+- **Appointments.** A tailor can schedule a fitting, collection or consultation with a client from the
+  client's file (date, time, optional link to an order, private notes). Home shows "This week" with the
+  next five scheduled appointments and a link to the full diary; the client file lists upcoming and past
+  ones; an appointment can be marked done, cancelled, reopened, rescheduled, unlinked from its order or
+  deleted; and a reminder email can be sent from it, saved to the client's file like every other email
+  (new message kind `appointment_reminder`, which also stamps the appointment's `reminderSentAt`). A ready
+  order offers "Schedule collection". New `appointments` table and `messages.appointment_id` column
+  (migration 0007), new `/clients/:id/appointments` and `/appointments` routes, and `/home` now returns
+  `appointmentsThisWeek` and `upcomingAppointments`. Times are stored in UTC and shown in the phone's time
+  zone; "this week" runs from 12 hours ago to 7 days ahead so a slot earlier today stays listed until it is
+  marked done. No push notifications or device-calendar integration in this version. Built 2026-10-14 on
+  the development API only; before release: run migration 0007 on `magicktls-prod` ahead of the worker
+  deploy, and add appointments to the store listing, privacy pages and release checklist.
+
 ### Changed
 - **First TestFlight build.** Version 1.0.0 (2) was built with EAS and uploaded to App Store Connect on
   2026-10-14; it runs against the live API and is available to the internal TestFlight group.

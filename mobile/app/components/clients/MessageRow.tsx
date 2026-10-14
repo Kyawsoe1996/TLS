@@ -12,6 +12,7 @@ const KIND_LABELS: Record<MessageKind, string> = {
   winback: "Win-back email",
   order_ready: "Order ready",
   followup: "Fitting follow-up",
+  appointment_reminder: "Appointment reminder",
 };
 
 const STATUS: Record<MessageStatus, { label: string; tone: TagTone; icon?: IoniconName }> = {

@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
 
 import {
+  AppointmentRow,
   ErrorBlock,
   FittingRow,
   InactiveTag,
@@ -14,6 +15,8 @@ import {
   OrderRow,
   clientRoutes,
   isNotFoundError,
+  splitUpcomingPast,
+  useAppointments,
   useClient,
   useFittings,
   useMessages,
@@ -24,7 +27,10 @@ import { colors, fonts, typography } from "@/constants/theme";
 import { formatDate, formatMonthsSince, monthsSince } from "@/lib/format";
 import { showError } from "@/lib/toast";
 
-/** Client file: contact details, actions, orders and fittings (both newest first). */
+/** How many past appointments the client file shows before pointing at the count. */
+const PAST_APPOINTMENTS_SHOWN = 3;
+
+/** Client file: contact details, actions, appointments, orders, messages and fittings. */
 export default function ClientDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -32,13 +38,14 @@ export default function ClientDetailScreen() {
   const ordersQuery = useOrders(id);
   const fittingsQuery = useFittings(id);
   const messagesQuery = useMessages(id);
+  const appointmentsQuery = useAppointments(id);
   const [refreshing, setRefreshing] = useState(false);
   const client = clientQuery.data;
 
   const onRefresh = async () => {
     setRefreshing(true);
     try {
-      await Promise.all([clientQuery.refetch(), ordersQuery.refetch(), fittingsQuery.refetch(), messagesQuery.refetch()]);
+      await Promise.all([clientQuery.refetch(), ordersQuery.refetch(), fittingsQuery.refetch(), messagesQuery.refetch(), appointmentsQuery.refetch()]);
     } finally {
       setRefreshing(false);
     }
@@ -83,6 +90,7 @@ export default function ClientDetailScreen() {
   const orders = ordersQuery.data ?? [];
   const fittings = fittingsQuery.data ?? [];
   const messages = messagesQuery.data ?? [];
+  const { upcoming, past } = splitUpcomingPast(appointmentsQuery.data ?? []);
 
   return (
     <Screen
@@ -144,10 +152,49 @@ export default function ClientDetailScreen() {
       <View style={styles.actions}>
         <Button variant="gold" icon="cube-outline" title="New order" fullWidth onPress={() => router.push(clientRoutes.newOrder(id))} />
         <Button variant="secondary" icon="body-outline" title="New fitting" fullWidth onPress={() => router.push(clientRoutes.newFitting(id))} />
+        <Button variant="secondary" icon="calendar-outline" title="Schedule" fullWidth onPress={() => router.push(clientRoutes.newAppointment(id))} />
         <View style={styles.actionRow}>
           <Button variant="secondary" icon="mail-outline" title="Win-back email" style={styles.grow} onPress={() => router.push(clientRoutes.winback(id))} />
           <Button variant="ghost" icon="pencil-outline" title="Edit" onPress={() => router.push(clientRoutes.edit(id))} />
         </View>
+      </View>
+
+      <View>
+        <SectionTitle title="Appointments" right={upcoming.length > 0 ? <Text style={typography.small}>{upcoming.length} upcoming</Text> : undefined} />
+        {appointmentsQuery.isPending ? (
+          <LoadingBlock />
+        ) : appointmentsQuery.isError ? (
+          <ErrorBlock error={appointmentsQuery.error} onRetry={() => void appointmentsQuery.refetch()} retrying={appointmentsQuery.isFetching} />
+        ) : upcoming.length === 0 && past.length === 0 ? (
+          <EmptyState
+            icon="calendar-outline"
+            title="No appointments yet"
+            body="Schedule a fitting, collection or consultation and remind the client by email."
+            action={<Button size="sm" variant="secondary" icon="add" title="Schedule" onPress={() => router.push(clientRoutes.newAppointment(id))} />}
+          />
+        ) : (
+          <View style={styles.list}>
+            {upcoming.map((a) => (
+              <AppointmentRow key={a.id} appointment={a} onPress={() => router.push(clientRoutes.appointment(id, a.id))} />
+            ))}
+            {upcoming.length === 0 ? <Text style={typography.small}>Nothing upcoming.</Text> : null}
+            {past.length > 0 ? (
+              <>
+                <Eyebrow tone="muted" style={styles.pastEyebrow}>
+                  Past
+                </Eyebrow>
+                {past.slice(0, PAST_APPOINTMENTS_SHOWN).map((a) => (
+                  <AppointmentRow key={a.id} appointment={a} onPress={() => router.push(clientRoutes.appointment(id, a.id))} />
+                ))}
+                {past.length > PAST_APPOINTMENTS_SHOWN ? (
+                  <Text style={typography.small}>
+                    +{past.length - PAST_APPOINTMENTS_SHOWN} earlier {past.length - PAST_APPOINTMENTS_SHOWN === 1 ? "appointment" : "appointments"}
+                  </Text>
+                ) : null}
+              </>
+            ) : null}
+          </View>
+        )}
       </View>
 
       <View>
@@ -303,5 +350,6 @@ const styles = StyleSheet.create({
   actionRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   grow: { flex: 1 },
   list: { gap: 10 },
+  pastEyebrow: { marginTop: 6 },
   simulatedHint: { ...typography.small, paddingHorizontal: 4, marginTop: 2 },
 });

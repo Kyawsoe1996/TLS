@@ -23,6 +23,7 @@ accountRoutes.delete("/", async (c) => {
     await db.batch(
       [
         { sql: "DELETE FROM posts WHERE shop_id = ?", args: [shop.id] },
+        { sql: "DELETE FROM appointments WHERE shop_id = ?", args: [shop.id] },
         { sql: "DELETE FROM messages WHERE shop_id = ?", args: [shop.id] },
         { sql: "DELETE FROM orders WHERE shop_id = ?", args: [shop.id] },
         { sql: "DELETE FROM fittings WHERE shop_id = ?", args: [shop.id] },

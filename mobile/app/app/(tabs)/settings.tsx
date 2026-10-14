@@ -59,7 +59,7 @@ export default function SettingsScreen() {
   const onDeleteAccount = async () => {
     const ok = await confirm({
       title: "Delete account?",
-      message: "This permanently deletes your shop, clients, fittings, orders, sent emails, posts and sign-in. It can't be undone.",
+      message: "This permanently deletes your shop, clients, fittings, orders, appointments, sent emails, posts and sign-in. It can't be undone.",
       confirmText: "Delete",
       destructive: true,
     });

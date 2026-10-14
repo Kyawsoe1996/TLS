@@ -12,7 +12,9 @@ import type {
   AiWinbackRequest,
   AiWinbackResponse,
   ApiError,
+  AppointmentResponse,
   ClientResponse,
+  CreateAppointmentRequest,
   CreateClientRequest,
   CreateFittingRequest,
   CreateOrderRequest,
@@ -21,6 +23,7 @@ import type {
   AiConsentResponse,
   GetShopResponse,
   HomeResponse,
+  ListAppointmentsResponse,
   ListClientsResponse,
   ListFittingsResponse,
   ListMessagesResponse,
@@ -31,6 +34,7 @@ import type {
   PostResponse,
   PostStatus,
   SendMessageRequest,
+  UpdateAppointmentRequest,
   UpdateClientRequest,
   UpdateOrderRequest,
   UpdatePostRequest,
@@ -141,6 +145,8 @@ function buildUrl(path: string, query?: Record<string, QueryValue>): string {
 export function createApi(getToken: GetToken) {
   const clientPath = (id: string) => `/clients/${encodeURIComponent(id)}`;
   const orderPath = (clientId: string, orderId: string) => `${clientPath(clientId)}/orders/${encodeURIComponent(orderId)}`;
+  const appointmentPath = (clientId: string, appointmentId: string) =>
+    `${clientPath(clientId)}/appointments/${encodeURIComponent(appointmentId)}`;
   const postPath = (id: string) => `/posts/${encodeURIComponent(id)}`;
 
   /** Sends a prepared fetch and turns the response into `T` or an ApiClientError. */
@@ -255,6 +261,19 @@ export function createApi(getToken: GetToken) {
     /** Shop-wide: open orders (overdue first, then by due date, no date last) or, with `status: "delivered"`, the delivered ones. */
     listShopOrders: (params?: { status?: "delivered" }) =>
       request<ListOrdersResponse>("/orders", { query: { status: params?.status } }),
+
+    // ---- Appointments (a dated visit: fitting, collection or consultation) ----
+    listAppointments: (clientId: string) => request<ListAppointmentsResponse>(`${clientPath(clientId)}/appointments`),
+    createAppointment: (clientId: string, body: CreateAppointmentRequest) =>
+      request<AppointmentResponse>(`${clientPath(clientId)}/appointments`, { method: "POST", body }),
+    getAppointment: (clientId: string, appointmentId: string) => request<AppointmentResponse>(appointmentPath(clientId, appointmentId)),
+    updateAppointment: (clientId: string, appointmentId: string, body: UpdateAppointmentRequest) =>
+      request<AppointmentResponse>(appointmentPath(clientId, appointmentId), { method: "PATCH", body }),
+    deleteAppointment: (clientId: string, appointmentId: string) =>
+      request<void>(appointmentPath(clientId, appointmentId), { method: "DELETE" }),
+    /** Shop-wide agenda: scheduled appointments from 12 h ago onwards, soonest first, with `clientName`. */
+    listShopAppointments: (params?: { from?: string; to?: string; status?: "scheduled" | "done" | "cancelled" | "all" }) =>
+      request<ListAppointmentsResponse>("/appointments", { query: { from: params?.from, to: params?.to, status: params?.status } }),
 
     // ---- Messages (emails sent to a client) ----
     listMessages: (clientId: string) => request<ListMessagesResponse>(`${clientPath(clientId)}/messages`),

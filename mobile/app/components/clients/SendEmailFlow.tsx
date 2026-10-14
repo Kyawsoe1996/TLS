@@ -24,6 +24,8 @@ export interface EmailDraft {
 export interface SendEmailInput extends EmailDraft {
   kind: MessageKind;
   orderId?: string;
+  /** For appointment_reminder: the API stamps the appointment's reminderSentAt. */
+  appointmentId?: string;
 }
 
 /**

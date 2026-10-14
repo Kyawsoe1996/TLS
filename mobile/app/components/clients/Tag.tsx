@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
-import type { OrderStatus } from "@shared/types";
+import type { AppointmentStatus, OrderStatus } from "@shared/types";
 
 import type { IoniconName } from "@/components/ui";
 import { colors, fonts } from "@/constants/theme";
@@ -71,6 +71,28 @@ export function orderStatusLabel(status: OrderStatus): string {
 /** Workshop status pill: in-progress steps in gold, "Ready" in green, the ends neutral. */
 export function OrderStatusTag({ status, style }: { status: OrderStatus; style?: StyleProp<ViewStyle> }) {
   return <Tag label={ORDER_STATUS_LABELS[status]} tone={ORDER_STATUS_TONES[status]} style={style} />;
+}
+
+const APPOINTMENT_STATUS_LABELS: Record<AppointmentStatus, string> = {
+  scheduled: "Scheduled",
+  done: "Done",
+  cancelled: "Cancelled",
+};
+
+const APPOINTMENT_STATUS_TONES: Record<AppointmentStatus, TagTone> = {
+  scheduled: "neutral",
+  done: "success",
+  cancelled: "danger",
+};
+
+/** Display label for an appointment status ("done" → "Done"). */
+export function appointmentStatusLabel(status: AppointmentStatus): string {
+  return APPOINTMENT_STATUS_LABELS[status];
+}
+
+/** Appointment status pill: "Done" in green, "Cancelled" in red, "Scheduled" neutral. */
+export function AppointmentStatusTag({ status, style }: { status: AppointmentStatus; style?: StyleProp<ViewStyle> }) {
+  return <Tag label={APPOINTMENT_STATUS_LABELS[status]} tone={APPOINTMENT_STATUS_TONES[status]} style={style} />;
 }
 
 /** Convenience: the red "Overdue" tag on order rows and the order screen. */

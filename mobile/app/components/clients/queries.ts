@@ -2,7 +2,7 @@
 import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import type { Href } from "expo-router";
 import { useEffect, useState } from "react";
-import type { Client, Fitting, Message, Order } from "@shared/types";
+import type { Appointment, Client, Fitting, HomeResponse, Message, Order } from "@shared/types";
 
 import { ApiClientError, isApiClientError, useApi } from "@/lib/api";
 import { queryKeys } from "@/lib/queryKeys";
@@ -12,6 +12,8 @@ import { showError } from "@/lib/toast";
 export const CLIENT_LISTS_KEY = ["clients", "list"] as const;
 /** Prefix shared by the shop-wide order lists (open and delivered). */
 export const SHOP_ORDERS_KEY = ["orders"] as const;
+/** The shop-wide agenda (GET /appointments). */
+export const SHOP_APPOINTMENTS_KEY = queryKeys.shopAppointments;
 
 export type ShopOrdersFilter = "open" | "delivered";
 
@@ -42,6 +44,17 @@ export const clientRoutes = {
   message: (id: string, messageId: string): Href => ({
     pathname: "/(tabs)/clients/[id]/messages/[messageId]",
     params: { id, messageId },
+  }),
+  /** Shop-wide agenda: every scheduled appointment, soonest first. */
+  appointments: "/(tabs)/clients/appointments" as const satisfies Href,
+  /** New appointment for a client; `orderId` preselects a collection for that order. */
+  newAppointment: (id: string, orderId?: string): Href => ({
+    pathname: "/(tabs)/clients/[id]/appointments/new",
+    params: { id, ...(orderId ? { orderId } : {}) },
+  }),
+  appointment: (id: string, appointmentId: string): Href => ({
+    pathname: "/(tabs)/clients/[id]/appointments/[appointmentId]",
+    params: { id, appointmentId },
   }),
 };
 
@@ -113,6 +126,53 @@ export function useShopOrders(status: ShopOrdersFilter = "open") {
   });
 }
 
+/** GET /clients/:id/appointments (latest start first). */
+export function useAppointments(clientId: string | undefined) {
+  const api = useApi();
+  return useQuery<Appointment[]>({
+    queryKey: queryKeys.appointments(clientId ?? ""),
+    queryFn: async () => (await api.listAppointments(clientId as string)).appointments,
+    enabled: !!clientId,
+    retry: (count, err) => !(isApiClientError(err) && err.isNotFound) && count < 1,
+  });
+}
+
+/** The appointment the user tapped, from any cached list that holds it (client list, agenda, Home's upcoming rows). */
+function findCachedAppointment(qc: QueryClient, clientId: string, appointmentId: string): { appointment: Appointment; updatedAt: number } | undefined {
+  const lists: readonly (readonly unknown[])[] = [queryKeys.appointments(clientId), SHOP_APPOINTMENTS_KEY];
+  for (const key of lists) {
+    const appointment = qc.getQueryData<Appointment[]>(key)?.find((a) => a.id === appointmentId);
+    if (appointment) return { appointment, updatedAt: qc.getQueryState(key)?.dataUpdatedAt ?? 0 };
+  }
+  const fromHome = qc.getQueryData<HomeResponse>(queryKeys.home)?.upcomingAppointments?.find((a) => a.id === appointmentId);
+  if (fromHome) return { appointment: fromHome, updatedAt: qc.getQueryState(queryKeys.home)?.dataUpdatedAt ?? 0 };
+  return undefined;
+}
+
+/** GET /clients/:id/appointments/:appointmentId. Seeds from a cached row, then refreshes in the background. */
+export function useAppointment(clientId: string | undefined, appointmentId: string | undefined) {
+  const api = useApi();
+  const qc = useQueryClient();
+  const enabled = !!clientId && !!appointmentId;
+  return useQuery<Appointment>({
+    queryKey: queryKeys.appointment(clientId ?? "", appointmentId ?? ""),
+    queryFn: async () => (await api.getAppointment(clientId as string, appointmentId as string)).appointment,
+    enabled,
+    initialData: () => (enabled ? findCachedAppointment(qc, clientId, appointmentId)?.appointment : undefined),
+    initialDataUpdatedAt: () => (enabled ? findCachedAppointment(qc, clientId, appointmentId)?.updatedAt : undefined),
+    retry: (count, err) => !(isApiClientError(err) && err.isNotFound) && count < 1,
+  });
+}
+
+/** GET /appointments — every scheduled appointment from 12 h ago onwards, soonest first. Rows carry `clientName`. */
+export function useShopAppointments() {
+  const api = useApi();
+  return useQuery<Appointment[]>({
+    queryKey: SHOP_APPOINTMENTS_KEY,
+    queryFn: async () => (await api.listShopAppointments()).appointments,
+  });
+}
+
 /** GET /clients/:id/messages — emails sent to the client, newest first. */
 export function useMessages(clientId: string | undefined) {
   const api = useApi();
@@ -158,10 +218,15 @@ export function cacheMessage(qc: QueryClient, message: Message): void {
   });
 }
 
-/** After an email is sent: refresh the client's messages (the list only — sent messages don't change), the client file and Home. */
+/**
+ * After an email is sent: refresh the client's messages (the list only — sent messages don't change), the client file and Home.
+ * A reminder also stamps its appointment's reminderSentAt, so the client's appointments (detail keys share the prefix) and the agenda refresh too.
+ */
 export function afterMessageSent(qc: QueryClient, clientId: string): void {
   void qc.invalidateQueries({ queryKey: queryKeys.messages(clientId), exact: true });
   void qc.invalidateQueries({ queryKey: queryKeys.client(clientId), exact: true });
+  void qc.invalidateQueries({ queryKey: queryKeys.appointments(clientId) });
+  void qc.invalidateQueries({ queryKey: SHOP_APPOINTMENTS_KEY });
   void qc.invalidateQueries({ queryKey: queryKeys.home });
 }
 
@@ -177,11 +242,12 @@ export function cacheClient(qc: QueryClient, client: Client): void {
   void qc.invalidateQueries({ queryKey: queryKeys.home });
 }
 
-/** After DELETE /clients/:id: drop the detail + fittings + orders caches (same key prefix), refresh lists, orders + Home. */
+/** After DELETE /clients/:id: drop the detail + fittings + orders + appointments caches (same key prefix), refresh lists, orders, agenda + Home. */
 export function forgetClient(qc: QueryClient, id: string): void {
   qc.removeQueries({ queryKey: queryKeys.client(id) });
   void qc.invalidateQueries({ queryKey: CLIENT_LISTS_KEY });
   void qc.invalidateQueries({ queryKey: SHOP_ORDERS_KEY });
+  void qc.invalidateQueries({ queryKey: SHOP_APPOINTMENTS_KEY });
   void qc.invalidateQueries({ queryKey: queryKeys.home });
 }
 
@@ -230,6 +296,30 @@ export function forgetOrder(qc: QueryClient, clientId: string, orderId: string):
   qc.removeQueries({ queryKey: queryKeys.order(clientId, orderId), exact: true });
   qc.setQueryData<Order[]>(queryKeys.orders(clientId), (old) => old?.filter((o) => o.id !== orderId));
   afterOrderChanged(qc, clientId);
+}
+
+/** After POST/PATCH an appointment: cache the detail and upsert it into the client's list (kept latest start first). */
+export function cacheAppointment(qc: QueryClient, appointment: Appointment): void {
+  qc.setQueryData<Appointment>(queryKeys.appointment(appointment.clientId, appointment.id), appointment);
+  qc.setQueryData<Appointment[]>(queryKeys.appointments(appointment.clientId), (old) => {
+    if (!old) return old;
+    const rest = old.filter((a) => a.id !== appointment.id);
+    return [appointment, ...rest].sort((a, b) => b.startsAt.localeCompare(a.startsAt));
+  });
+}
+
+/** After any appointment write: refresh the client's appointments (detail keys share the prefix), the agenda and Home's "This week". */
+export function afterAppointmentChanged(qc: QueryClient, clientId: string): void {
+  void qc.invalidateQueries({ queryKey: queryKeys.appointments(clientId) });
+  void qc.invalidateQueries({ queryKey: SHOP_APPOINTMENTS_KEY });
+  void qc.invalidateQueries({ queryKey: queryKeys.home });
+}
+
+/** After DELETE /clients/:id/appointments/:appointmentId: drop the detail, pull it from the cached list, refresh the rest. */
+export function forgetAppointment(qc: QueryClient, clientId: string, appointmentId: string): void {
+  qc.removeQueries({ queryKey: queryKeys.appointment(clientId, appointmentId), exact: true });
+  qc.setQueryData<Appointment[]>(queryKeys.appointments(clientId), (old) => old?.filter((a) => a.id !== appointmentId));
+  afterAppointmentChanged(qc, clientId);
 }
 
 /** AI routes are rate limited: surface the server's own message with a calmer title. */

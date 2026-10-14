@@ -3,6 +3,7 @@ import type { PostStatus } from "@shared/types";
 
 const ordersKey = (clientId: string) => ["clients", "detail", clientId, "orders"] as const;
 const messagesKey = (clientId: string) => ["clients", "detail", clientId, "messages"] as const;
+const appointmentsKey = (clientId: string) => ["clients", "detail", clientId, "appointments"] as const;
 
 export const queryKeys = {
   shop: ["shop"] as const,
@@ -18,6 +19,11 @@ export const queryKeys = {
   message: (clientId: string, messageId: string) => [...messagesKey(clientId), messageId] as const,
   /** Shop-wide lists (GET /orders): open orders by default, or the delivered ones. */
   openOrders: (status?: "open" | "delivered") => ["orders", status ?? "open"] as const,
+  /** A client's appointments (latest start first); under the client-detail prefix so forgetClient drops them too. */
+  appointments: appointmentsKey,
+  appointment: (clientId: string, appointmentId: string) => [...appointmentsKey(clientId), appointmentId] as const,
+  /** Shop-wide agenda (GET /appointments): scheduled appointments from 12 h ago onwards. */
+  shopAppointments: ["appointments"] as const,
   /** Content library (GET /posts) — one entry per status / search combination. */
   posts: (params?: { status?: PostStatus; q?: string }) => ["posts", "list", params ?? {}] as const,
   post: (id: string) => ["posts", "detail", id] as const,

@@ -8,6 +8,7 @@ import type { AppEnv } from "./env";
 import { ApiHttpError } from "./errors";
 import accountRoutes from "./routes/account";
 import aiRoutes from "./routes/ai";
+import appointmentRoutes, { shopAppointmentRoutes } from "./routes/appointments";
 import clientRoutes from "./routes/clients";
 import fittingRoutes from "./routes/fittings";
 import homeRoutes from "./routes/home";
@@ -51,6 +52,8 @@ app.use("/clients", requireShop);
 app.use("/clients/*", requireShop);
 app.use("/orders", requireShop);
 app.use("/orders/*", requireShop);
+app.use("/appointments", requireShop);
+app.use("/appointments/*", requireShop);
 app.use("/posts", requireShop);
 app.use("/posts/*", requireShop);
 app.use("/ai/*", requireShop);
@@ -61,7 +64,9 @@ app.route("/clients", clientRoutes);
 app.route("/clients", fittingRoutes); // /clients/:clientId/fittings
 app.route("/clients", orderRoutes); // /clients/:clientId/orders[/:orderId]
 app.route("/clients", messageRoutes); // /clients/:clientId/messages
+app.route("/clients", appointmentRoutes); // /clients/:clientId/appointments[/:appointmentId]
 app.route("/orders", shopOrderRoutes); // shop-wide list
+app.route("/appointments", shopAppointmentRoutes); // shop-wide agenda
 app.route("/posts", postRoutes); // content library + /posts/:id/media upload
 app.route("/ai", aiRoutes);
 

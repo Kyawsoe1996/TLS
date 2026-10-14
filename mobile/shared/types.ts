@@ -62,6 +62,8 @@ export interface HomeResponse {
   ordersOpen: number; // orders with status != "delivered"
   ordersDueSoon: number; // open orders that are overdue or due within the next 7 days
   ordersOverdue: number; // open orders whose due date is before today (shown as the Clients tab badge)
+  appointmentsThisWeek: number; // scheduled appointments from 12 h ago to 7 days ahead
+  upcomingAppointments: Appointment[]; // the first 5 of those, soonest first, with clientName
 }
 
 // ---------- Clients ----------
@@ -96,7 +98,7 @@ export type UpdateClientRequest = Partial<CreateClientRequest>;
 export interface ClientResponse {
   client: Client;
 }
-/** DELETE /clients/:id → 204 (also deletes its fittings) */
+/** DELETE /clients/:id → 204 (also deletes its fittings, orders, messages and appointments) */
 
 // ---------- Fittings (manual measurements, cm) ----------
 /** Which measurement set a fitting uses. "suit" = jacket + trousers fields. */
@@ -209,9 +211,52 @@ export interface OrderResponse {
 }
 /** DELETE /clients/:id/orders/:orderId → 204 */
 
+// ---------- Appointments (a dated visit by a client: fitting, collection or consultation) ----------
+export const APPOINTMENT_KINDS = ["fitting", "collection", "consultation"] as const;
+export type AppointmentKind = (typeof APPOINTMENT_KINDS)[number];
+/** scheduled → done (the client came) or cancelled. Either can go back to scheduled. */
+export const APPOINTMENT_STATUSES = ["scheduled", "done", "cancelled"] as const;
+export type AppointmentStatus = (typeof APPOINTMENT_STATUSES)[number];
+
+export interface Appointment {
+  id: string;
+  clientId: string;
+  orderId: string | null; // the order being collected / fitted, if linked
+  kind: AppointmentKind;
+  startsAt: ISODate; // UTC instant; the app shows it in the device's (= shop's) time zone
+  notes: string | null;
+  status: AppointmentStatus;
+  reminderSentAt: ISODate | null; // set when an appointment_reminder email was sent for it
+  createdAt: ISODate;
+  updatedAt: ISODate;
+  clientName?: string; // only on GET /appointments and HomeResponse.upcomingAppointments
+}
+
+/**
+ * GET /clients/:id/appointments (latest start first) and
+ * GET /appointments?from=&to=&status= (shop-wide, soonest first, with clientName; defaults: status=scheduled, from=12 h ago)
+ */
+export interface ListAppointmentsResponse {
+  appointments: Appointment[];
+}
+/** POST /clients/:id/appointments → 201 (status "scheduled"). Does not touch the client's lastOrderAt. */
+export interface CreateAppointmentRequest {
+  kind: AppointmentKind;
+  startsAt: ISODate;
+  orderId?: string; // must belong to the same client
+  notes?: string;
+}
+/** PATCH /clients/:id/appointments/:appointmentId — any subset; `status` moves it to done / cancelled / back to scheduled */
+export type UpdateAppointmentRequest = Partial<CreateAppointmentRequest> & { status?: AppointmentStatus };
+/** GET/POST/PATCH single appointment */
+export interface AppointmentResponse {
+  appointment: Appointment;
+}
+/** DELETE /clients/:id/appointments/:appointmentId → 204 */
+
 // ---------- Messages (emails sent to a client from the app) ----------
 /** What prompted the email. */
-export type MessageKind = "winback" | "order_ready" | "followup";
+export type MessageKind = "winback" | "order_ready" | "followup" | "appointment_reminder";
 /** Email only for now; kept as a field so LINE/WhatsApp can be added later. */
 export type MessageChannel = "email";
 /**
@@ -224,6 +269,7 @@ export interface Message {
   id: string;
   clientId: string;
   orderId: string | null; // set for order_ready
+  appointmentId: string | null; // set for appointment_reminder
   kind: MessageKind;
   channel: MessageChannel;
   to: string; // the email address it was sent to
@@ -247,6 +293,7 @@ export interface SendMessageRequest {
   subject: string;
   body: string;
   orderId?: string; // must belong to the same client when given
+  appointmentId?: string; // must belong to the same client when given; stamps the appointment's reminderSentAt
 }
 export interface MessageResponse {
   message: Message;

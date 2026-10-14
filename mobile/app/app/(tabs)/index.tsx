@@ -2,10 +2,10 @@ import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter, type Href } from "expo-router";
 import { useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { clientRoutes } from "@/components/clients";
-import { Button, Card, ErrorBanner, Eyebrow, KpiList, Screen, type IoniconName } from "@/components/ui";
+import { AppointmentRow, clientRoutes } from "@/components/clients";
+import { Button, Card, ErrorBanner, Eyebrow, KpiList, Screen, SectionTitle, type IoniconName } from "@/components/ui";
 import { FEATURES } from "@/constants/features";
 import { colors, fonts, typography } from "@/constants/theme";
 import { useApi } from "@/lib/api";
@@ -39,6 +39,8 @@ export default function HomeScreen() {
   const shopName = home?.shopName ?? shopQuery.data?.name ?? "Your shop";
   const inactive = home?.inactiveCount ?? 0;
   const dueSoon = home?.ordersDueSoon ?? 0;
+  const upcoming = home?.upcomingAppointments ?? [];
+  const appointmentsThisWeek = home?.appointmentsThisWeek ?? 0;
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -87,6 +89,31 @@ export default function HomeScreen() {
           },
         ]}
       />
+
+      <View>
+        <SectionTitle
+          title="This week"
+          right={
+            <Pressable accessibilityRole="button" onPress={() => router.push(clientRoutes.appointments)} hitSlop={8}>
+              <Text style={styles.seeAll}>{appointmentsThisWeek > upcoming.length ? `See all ${appointmentsThisWeek}` : "See all"}</Text>
+            </Pressable>
+          }
+        />
+        {homeQuery.isPending ? (
+          <Text style={typography.small}>Loading appointments…</Text>
+        ) : upcoming.length === 0 ? (
+          <Card variant="soft" style={styles.emptyWeek}>
+            <Ionicons name="calendar-outline" size={18} color={colors.goldDark} />
+            <Text style={styles.emptyWeekText}>No appointments in the next 7 days. Schedule one from a client&apos;s file.</Text>
+          </Card>
+        ) : (
+          <View style={styles.list}>
+            {upcoming.map((a) => (
+              <AppointmentRow key={a.id} appointment={a} onPress={() => router.push(clientRoutes.appointment(a.clientId, a.id))} />
+            ))}
+          </View>
+        )}
+      </View>
 
       {dueSoon > 0 ? (
         <Card variant="dark" style={styles.aiCard}>
@@ -144,6 +171,10 @@ const styles = StyleSheet.create({
   },
   avatarText: { fontFamily: fonts.serif, fontSize: 20, color: colors.ivory },
   errorBlock: { gap: 10 },
+  seeAll: { fontFamily: fonts.bodySemi, fontSize: 13, color: colors.goldDark, paddingBottom: 2 },
+  list: { gap: 10 },
+  emptyWeek: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 12 },
+  emptyWeekText: { ...typography.small, flex: 1, color: colors.ink },
   aiCard: { gap: 12 },
   aiText: { fontFamily: fonts.body, fontSize: 15, lineHeight: 23, color: colors.ivorySoft },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },

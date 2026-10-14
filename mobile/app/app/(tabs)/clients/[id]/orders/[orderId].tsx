@@ -240,7 +240,19 @@ function OrderDetails({ order, client, onDeleted }: { order: Order; client: Clie
 
       <PaymentCard order={order} disabled={deleteMutation.isPending} onSaved={onSaved} />
 
-      {order.status === "ready" ? <NotifyClientCard order={order} client={client} /> : null}
+      {order.status === "ready" ? (
+        <>
+          <NotifyClientCard order={order} client={client} />
+          <Button
+            variant="secondary"
+            icon="calendar-outline"
+            title="Schedule collection"
+            fullWidth
+            onPress={() => router.push(clientRoutes.newAppointment(clientId, orderId))}
+            disabled={deleteMutation.isPending}
+          />
+        </>
+      ) : null}
 
       <Card style={styles.card}>
         <Field

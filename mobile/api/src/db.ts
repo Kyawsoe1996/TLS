@@ -1,5 +1,8 @@
 import { createClient, type Client as DbClient, type ResultSet, type Row } from "@libsql/client/web";
 import {
+  type Appointment,
+  type AppointmentKind,
+  type AppointmentStatus,
   type Audience,
   type BrandTone,
   type Client,
@@ -60,6 +63,19 @@ export function startOfTodayUtc(now: Date = new Date()): string {
 /** Start of today + 7 days (UTC). Open orders with due_at before this are "due soon" (includes overdue). */
 export function dueSoonCutoff(now: Date = new Date()): string {
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + DUE_SOON_DAYS)).toISOString();
+}
+
+export const UPCOMING_DAYS = 7;
+/** How far back "upcoming" reaches, so a slot earlier today stays listed until it is marked done, whatever the shop's time zone. */
+export const UPCOMING_GRACE_HOURS = 12;
+
+/** Window for "this week" appointments: 12 h back to 7 days ahead, as UTC ISO bounds (`from` inclusive, `to` exclusive). */
+export function upcomingWindow(now: Date = new Date()): { from: string; to: string } {
+  const t = now.getTime();
+  return {
+    from: new Date(t - UPCOMING_GRACE_HOURS * 3_600_000).toISOString(),
+    to: new Date(t + UPCOMING_DAYS * 86_400_000).toISOString(),
+  };
 }
 
 // ---------- Row readers ----------
@@ -218,12 +234,31 @@ export function rowToOrder(row: Row, opts: { clientName?: string; today?: string
   return order;
 }
 
+/** `clientName` is only attached on the shop-wide list (GET /appointments) and the Home summary. */
+export function rowToAppointment(row: Row, opts: { clientName?: string } = {}): Appointment {
+  const appointment: Appointment = {
+    id: text(row, "id"),
+    clientId: text(row, "client_id"),
+    orderId: textOrNull(row, "order_id"),
+    kind: text(row, "kind") as AppointmentKind,
+    startsAt: text(row, "starts_at"),
+    notes: textOrNull(row, "notes"),
+    status: text(row, "status") as AppointmentStatus,
+    reminderSentAt: textOrNull(row, "reminder_sent_at"),
+    createdAt: text(row, "created_at"),
+    updatedAt: text(row, "updated_at"),
+  };
+  if (opts.clientName !== undefined) appointment.clientName = opts.clientName;
+  return appointment;
+}
+
 /** `provider_id` (Resend's email id) is internal and not part of the API shape. */
 export function rowToMessage(row: Row): Message {
   return {
     id: text(row, "id"),
     clientId: text(row, "client_id"),
     orderId: textOrNull(row, "order_id"),
+    appointmentId: textOrNull(row, "appointment_id"),
     kind: text(row, "kind") as MessageKind,
     channel: text(row, "channel") as MessageChannel,
     to: text(row, "to_address"),
@@ -297,6 +332,14 @@ export async function getOrderRow(db: Db, shopId: string, orderId: string): Prom
   const rs = await db.execute({
     sql: "SELECT * FROM orders WHERE id = ? AND shop_id = ?",
     args: [orderId, shopId],
+  });
+  return rs.rows[0] ?? null;
+}
+
+export async function getAppointmentRow(db: Db, shopId: string, appointmentId: string): Promise<Row | null> {
+  const rs = await db.execute({
+    sql: "SELECT * FROM appointments WHERE id = ? AND shop_id = ?",
+    args: [appointmentId, shopId],
   });
   return rs.rows[0] ?? null;
 }
