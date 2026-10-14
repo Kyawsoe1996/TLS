@@ -154,10 +154,17 @@ If Clerk test mode is not available on your plan, create a real mailbox (e.g. `r
 
 ```bash
 cd mobile/app
-eas build -p all --profile production          # ~15–25 min each; iOS asks for Apple login the first time
+eas build -p ios --profile production --auto-submit   # ~15 min; builds and uploads to TestFlight in one go
+# or in two steps:
+eas build -p ios --profile production          # iOS asks for Apple login the first time
 eas submit -p ios --profile production --latest
-eas submit -p android --profile production --latest   # only after the manual first upload (7.6)
+eas submit -p android --profile production --latest   # Android deferred; only after the manual first upload (7.6)
 ```
+
+**Done 2026-10-14:** first TestFlight build 1.0.0 (2), commit `795c958`. Distribution certificate,
+provisioning profile and the App Store Connect API key ("[Expo] EAS Submit", App Manager role) were
+created by EAS and live on Expo's servers, so later runs ask nothing. Internal group "Magick TLS - Test
+Gp" is live; the external group waits for Beta App Review.
 
 - `autoIncrement` bumps the build number / version code on EAS each time. Bump `version` in `app.json` yourself for each store release.
 - iOS submit uploads to TestFlight. The build appears in App Store Connect after Apple processes it (10–30 min), then attach it to version 1.0 and click **Add for Review → Submit**.

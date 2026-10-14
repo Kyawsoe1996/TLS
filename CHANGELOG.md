@@ -5,6 +5,8 @@ All notable changes to TLS, newest first. Written in plain language so anyone on
 ## Unreleased
 
 ### Changed
+- **First TestFlight build.** Version 1.0.0 (2) was built with EAS and uploaded to App Store Connect on
+  2026-10-14; it runs against the live API and is available to the internal TestFlight group.
 - **Contact email is now `account@globalmagicko.com`** on the served privacy and support pages and in
   `docs/privacy-policy.md` (it replaces the `support@generalmagickindustries.com` address, which was never
   created). Changed 2026-10-12.
