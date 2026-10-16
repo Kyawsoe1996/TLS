@@ -63,17 +63,30 @@ npx wrangler deploy
 
 1. Dashboard → top-left instance switcher → **Create production instance** (clone from development). Production instances need a domain you own: use `magicktls.generalmagickindustries.com` (DNS is on Cloudflare; the Resend records on `send.magicktls…` and `resend._domainkey.magicktls…` don't clash with Clerk's `clerk.`, `accounts.` and `clkmail.` records). Add the DNS records Clerk lists and wait until they verify.
 2. **User & authentication → Email, phone, username:** enable **Email address** with **Email verification code** as the sign-in method. Disable password, phone, username and passkeys.
-3. **SSO connections (1.1+):** enable **Google**, **Facebook** and **Apple**. Development instances use Clerk's
-   shared credentials (nothing to configure); the production instance needs custom credentials for each:
-   - Google: Google Cloud Console → APIs & Services → Credentials → OAuth client (Web application) with
-     Clerk's redirect URI; paste client id + secret into the Google connection.
-   - Facebook: Meta for Developers → app → Facebook Login → Valid OAuth Redirect URIs = Clerk's redirect
-     URI; add the `email` permission; set the app to Live; paste App ID + secret into the Facebook connection.
-   - Apple: Apple Developer → Identifiers → **Services ID** (web authentication on the domain
-     `magicktls.generalmagickindustries.com`, return URL from Clerk) and a **Sign in with Apple key** (.p8);
-     paste Services ID, Team ID `K936SW2MTN`, Key ID and the key into the Apple connection.
-   - **Native applications** (both instances): add the iOS app with Team ID `K936SW2MTN` and bundle id
-     `com.generalmagickindustries.magicktls` so the native Sign in with Apple sheet is accepted.
+3. **SSO connections (1.1+):** Google, Facebook and Apple are enabled on the development instance (Google on
+   Clerk's shared credentials; Facebook on our own Meta app because Clerk's shared Facebook app was disabled
+   by Meta on 2026-10-16; Apple on shared credentials with the native iOS app registered). The production
+   instance needs custom credentials for all three. Every redirect URI below is shown read-only in the Clerk
+   production connection after switching on **Use custom credentials**; for production it is
+   `https://clerk.magicktls.generalmagickindustries.com/v1/oauth_callback` (dev: `https://trusted-tuna-7465.clerk.accounts.dev/v1/oauth_callback`).
+   - **Google:** Google Cloud Console → APIs & Services → OAuth consent screen (External, app name "Magick
+     Tailor", support email, privacy policy URL `https://api.magicktls.generalmagickindustries.com/privacy`,
+     publish the consent screen so it is not limited to test users) → Credentials → Create OAuth client ID,
+     type **Web application**, Authorized redirect URI = the production Clerk URI. Paste client ID + secret into
+     Clerk production → Google → Use custom credentials.
+   - **Facebook:** reuse Meta app 1580139670009585 ("Magick Tailor"). App settings → Basic → App Domains: add
+     `clerk.magicktls.generalmagickindustries.com`; Use cases → Facebook Login → Settings → Valid OAuth
+     Redirect URIs: add the production Clerk URI. Paste the same App ID + secret into Clerk production. Then
+     complete **Business verification** and **App Review** for `email` + `public_profile` and switch **App
+     Mode** to **Live**; until Live only app admins/testers can log in.
+   - **Apple:** Apple Developer → Identifiers → the app id `com.generalmagickindustries.magicktls` has the
+     Sign in with Apple capability (EAS adds it on the first 1.1 build). Create a **Services ID** (e.g.
+     `com.generalmagickindustries.magicktls.signin`), enable Sign in with Apple on it, Configure → primary
+     App ID = the app, Domains = `clerk.magicktls.generalmagickindustries.com`, Return URL = the production
+     Clerk URI. Keys → create a key with Sign in with Apple, download the `.p8` once. In Clerk production →
+     Apple → Use custom credentials: Services ID, Team ID `K936SW2MTN`, Key ID, private key, and the
+     native-app Bundle ID. Also Native applications → add iOS app (Team ID + bundle id).
+   - Email code stays enabled as the fallback; Test mode stays on for the reviewer account.
    Apple requires "Sign in with Apple" whenever another third-party login is offered, which is why the three
    ship together.
 4. Copy the production **publishable key** and **secret key**. Put the publishable key in the app env (section 4) and the secret key in the worker (section 2). Redeploy the worker.
