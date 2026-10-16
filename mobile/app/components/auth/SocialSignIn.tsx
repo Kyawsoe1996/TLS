@@ -1,6 +1,6 @@
 import { useSSO, useSignInWithApple } from "@clerk/clerk-expo";
-import * as AppleAuthentication from "expo-apple-authentication";
 import * as AuthSession from "expo-auth-session";
+import Constants, { ExecutionEnvironment } from "expo-constants";
 import * as WebBrowser from "expo-web-browser";
 import { useEffect, useState } from "react";
 import { Platform, StyleSheet, Text, View } from "react-native";
@@ -11,6 +11,10 @@ import { errorMessage } from "@/lib/toast";
 
 // Lets the browser sheet hand the OAuth result back to the app when it returns via the `tls://` scheme.
 WebBrowser.maybeCompleteAuthSession();
+
+// Sign in with Apple needs the app's own entitlement, which Expo Go doesn't have; a development or
+// production build does. Hidden in Expo Go so testers aren't shown a button that can't work.
+const SHOW_APPLE = Platform.OS === "ios" && Constants.executionEnvironment !== ExecutionEnvironment.StoreClient;
 
 type Provider = "apple" | "google" | "facebook";
 
@@ -30,12 +34,6 @@ export function SocialSignIn({ onError, disabled = false }: SocialSignInProps) {
   const { startSSOFlow } = useSSO();
   const { startAppleAuthenticationFlow } = useSignInWithApple();
   const [busy, setBusy] = useState<Provider | null>(null);
-  // iOS 13+ only; hidden elsewhere (Android, or a device without Apple ID support).
-  const [appleAvailable, setAppleAvailable] = useState(false);
-  useEffect(() => {
-    if (Platform.OS !== "ios") return;
-    AppleAuthentication.isAvailableAsync().then(setAppleAvailable, () => setAppleAvailable(false));
-  }, []);
 
   // Pre-warm the Android custom tab / iOS auth session so the Google and Facebook sheets open faster.
   useEffect(() => {
@@ -70,9 +68,9 @@ export function SocialSignIn({ onError, disabled = false }: SocialSignInProps) {
     } catch (err) {
       const code = appleErrorCode(err);
       if (code === "ERR_REQUEST_CANCELED") return;
-      if (code === "ERR_REQUEST_UNKNOWN" || code === "ERR_REQUEST_NOT_HANDLED") {
-        // No Apple ID on the device (or the simulator): iOS already showed its own prompt.
-        onError("Sign in with Apple isn't set up on this device. Use Google, Facebook or your email.");
+      if (code === "ERR_REQUEST_UNKNOWN" || code === "ERR_REQUEST_NOT_HANDLED" || /not available/i.test(errorMessage(err, ""))) {
+        // No Apple ID on the device, or a build without the entitlement: iOS has already shown its own prompt.
+        onError("Sign in with Apple isn't available on this device. Use Google, Facebook or your email.");
         return;
       }
       onError(errorMessage(err, "Sign-in didn't finish. Please try again."));
@@ -85,7 +83,7 @@ export function SocialSignIn({ onError, disabled = false }: SocialSignInProps) {
 
   return (
     <View style={styles.root}>
-      {appleAvailable ? (
+      {SHOW_APPLE ? (
         <View>
           <Button
             title="Sign in with Apple"
