@@ -102,7 +102,7 @@ eas build -p ios --profile preview          # simulator .app against production;
 ## 5. App Store Connect
 
 1. **Certificates, Identifiers & Profiles:** nothing to do by hand; `eas build` registers the bundle id and manages the distribution certificate and provisioning profile (choose "Let EAS handle" when prompted, sign in with the Apple ID).
-2. **My Apps → + → New App:** platform iOS, name `Magick TLS – Tailor Growth`, primary language English, bundle id (select the one EAS registered), SKU `tls-ios`, full access.
+2. **My Apps → + → New App:** platform iOS, name `Magick Tailor`, primary language English, bundle id (select the one EAS registered), SKU `tls-ios`, full access.
 3. **App Information:** category Business / Productivity; Content rights: does not contain third-party content; Age rating: answer No to everything → 4+. Privacy policy URL `https://api.magicktls.generalmagickindustries.com/privacy`.
 4. **Pricing and Availability:** Free, all territories (or Thailand + chosen countries).
 5. **App Privacy** (nutrition labels). "Yes, we collect data." Then:
@@ -132,7 +132,7 @@ If Clerk test mode is not available on your plan, create a real mailbox (e.g. `r
 
 ## 7. Google Play Console
 
-1. **Create app:** name `Magick TLS – Tailor Growth`, default language English (US or UK), App, Free. Accept the declarations.
+1. **Create app:** name `Magick Tailor`, default language English (US or UK), App, Free. Accept the declarations.
 2. **Set up your app (Dashboard tasks):**
    - Privacy policy: `https://<worker>/privacy`.
    - App access: "All or some functionality is restricted" → add the demo account instructions (section 6).

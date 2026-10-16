@@ -12,12 +12,12 @@ const MAX_ERROR_CHARS = 200;
 
 /**
  * The sender shown to clients. RESEND_FROM wins when it already has a display name ("Shop <addr>");
- * a bare address (or no value) gets "<shop> via Magick TLS <addr>".
+ * a bare address (or no value) gets "<shop> via Magick Tailor <addr>".
  */
 export function emailFrom(env: Bindings, shopName: string): string {
   const configured = (env.RESEND_FROM ?? "").trim();
   if (configured.includes("<")) return configured;
-  return `${displayName(`${shopName} via Magick TLS`)} <${configured || DEFAULT_FROM_ADDRESS}>`;
+  return `${displayName(`${shopName} via Magick Tailor`)} <${configured || DEFAULT_FROM_ADDRESS}>`;
 }
 
 /** Part of GET /shop: whether the API can really send (key set) and the sender it would use. */

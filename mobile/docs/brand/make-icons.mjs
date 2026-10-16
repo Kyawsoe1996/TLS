@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// Generates the Magick TLS app icons from inline SVG: the "J · Atelier crest" from the
+// Generates the Magick Tailor app icons from inline SVG: the "J · Atelier crest" from the
 // "MagickTLS Logo" design canvas (a stitched M under three sparkles, inside a round frame, with a
-// measuring-tape banner reading MAGICKTLS). Navy #14213A, gold #D1AC66, ivory #F4EFE6, Cormorant
+// measuring-tape banner reading MAGICK TAILOR). Navy #14213A, gold #D1AC66, ivory #F4EFE6, Cormorant
 // Garamond — the app's own palette and typeface. The same PNGs serve every build (simulator, preview,
 // production): app.json has a single icon per platform.
 //
@@ -59,7 +59,7 @@ const CREST = `
 <polygon points="374,374 418,374 404,391 418,408 374,408" fill="${SHADE}"/>
 <rect x="128" y="364" width="256" height="38" fill="${GOLD}"/>
 <path d="M140 364L140 370 M152 364L152 368 M164 364L164 368 M176 364L176 368 M188 364L188 370 M200 364L200 368 M212 364L212 368 M224 364L224 368 M236 364L236 370 M248 364L248 368 M260 364L260 368 M272 364L272 368 M284 364L284 370 M296 364L296 368 M308 364L308 368 M320 364L320 368 M332 364L332 370 M344 364L344 368 M356 364L356 368 M368 364L368 368" fill="none" stroke="${NAVY}" stroke-width="2"/>
-<text x="256" y="394" text-anchor="middle" font-family="'${FONT_FAMILY}', Georgia, serif" font-weight="700" font-size="19" letter-spacing="6" fill="${NAVY}">MAGICKTLS</text>
+<text x="256" y="394" text-anchor="middle" font-family="'${FONT_FAMILY}', Georgia, serif" font-weight="700" font-size="17" letter-spacing="4" fill="${NAVY}">MAGICK TAILOR</text>
 `;
 
 // Place the crest in a 1024 box, scaled about its ring centre.

@@ -1,4 +1,4 @@
-# Privacy Policy – Magick TLS
+# Privacy Policy – Magick Tailor
 
 **Effective date:** 8 October 2026
 **Operator:** General Magick Industries Pte Ltd ("we", "us")
@@ -8,7 +8,7 @@ This policy is served at `https://api.magicktls.generalmagickindustries.com/priv
 
 ---
 
-TLS is an app for tailor shops. It stores the shop's client, fitting and order records, sends emails to clients on the shop's behalf, and uses AI to draft cutter notes, marketing copy and re-engagement emails. This policy explains what data the app handles, who processes it and how to delete it.
+Magick Tailor is an app for tailor shops. It stores the shop's client, fitting and order records, sends emails to clients on the shop's behalf, and uses AI to draft cutter notes, marketing copy and re-engagement emails. This policy explains what data the app handles, who processes it and how to delete it.
 
 ## 1. Data we collect
 
@@ -20,6 +20,8 @@ TLS is an app for tailor shops. It stores the shop's client, fitting and order r
 
 **Orders.** Each order you record for a client: garment, status, due date, price and deposit.
 
+**Appointments.** Each fitting, collection or consultation you schedule with a client: date and time, the order it relates to, your notes and whether a reminder email was sent.
+
 **Emails you send.** When you email a client from the app (a win-back offer, an order-ready notice or a follow-up) we keep a copy on the client's file: the address it was sent to, the subject, the text, whether the provider accepted it, and the provider's reference for the message.
 
 **AI outputs.** Text generated for you (cutter notes, fit profiles, marketing hooks, blog posts, captions, email drafts) is stored with the record it belongs to so you can see it again. Posts you write in Content Studio are saved to your content library, together with any photo or short video you attach to them.
@@ -28,7 +30,7 @@ TLS is an app for tailor shops. It stores the shop's client, fitting and order r
 
 ## 2. How we use it
 
-- To run the app: show you your clients, fittings, orders, messages and generated content.
+- To run the app: show you your clients, fittings, orders, appointments, messages and generated content.
 - To send emails to your clients, only when you tap Send on a drafted email.
 - To generate AI text: the relevant fields (for example a fitting's measurements, style, fabric and posture note, or a client's name and last purchase for a win-back email) are sent to Google's Gemini API and the reply is stored for you.
 - To keep the service reliable: rate limiting, abuse prevention and debugging.
@@ -57,15 +59,15 @@ Google processes the inputs of each AI request under the Gemini API terms that a
 
 Your data is kept for as long as your account exists.
 
-**Delete your account in the app:** Settings → Delete account. This permanently erases the shop and its details, every client, fitting and order record, the copies of emails you sent, all AI outputs, your posts and their photos and videos, and your login with Clerk. It cannot be undone. Backups held by our database provider are purged on their normal schedule, within 30 days.
+**Delete your account in the app:** Settings → Delete account. This permanently erases the shop and its details, every client, fitting, order and appointment record, the copies of emails you sent, all AI outputs, your posts and their photos and videos, and your login with Clerk. It cannot be undone. Backups held by our database provider are purged on their normal schedule, within 30 days.
 
-You can also delete individual clients (which deletes their fittings, orders and messages) and individual posts at any time.
+You can also delete individual clients (which deletes their fittings, orders, appointments and messages) and individual posts at any time.
 
 To request deletion or a copy of your data by email, write to account@globalmagicko.com from the address you signed up with. We reply within 2 business days.
 
 ## 5. Your clients' data and Thailand's PDPA
 
-If you run a shop, the client information you enter into TLS belongs to your clients. Under Thailand's Personal Data Protection Act B.E. 2562 (2019) and similar laws elsewhere, **you are the data controller** for that information and we act as your processor. That means you are responsible for:
+If you run a shop, the client information you enter into Magick Tailor belongs to your clients. Under Thailand's Personal Data Protection Act B.E. 2562 (2019) and similar laws elsewhere, **you are the data controller** for that information and we act as your processor. That means you are responsible for:
 
 - telling your clients that you keep their contact details and measurements, and obtaining consent or relying on another lawful basis where the law requires it;
 - entering only what you need for the tailoring relationship;
@@ -80,11 +82,11 @@ Data travels over HTTPS. Sign-in tokens are stored in the device's secure storag
 
 ## 7. Children
 
-TLS is a business tool and is not directed at children. We do not knowingly collect data from anyone under 13 (or the applicable age in your country).
+Magick Tailor is a business tool and is not directed at children. We do not knowingly collect data from anyone under 13 (or the applicable age in your country).
 
 ## 8. International transfers
 
-The processors above operate in several countries, including the United States, Japan, Thailand and Singapore. By using TLS you accept that data is processed where they operate, under their contractual safeguards.
+The processors above operate in several countries, including the United States, Japan, Thailand and Singapore. By using Magick Tailor you accept that data is processed where they operate, under their contractual safeguards.
 
 ## 9. Changes
 

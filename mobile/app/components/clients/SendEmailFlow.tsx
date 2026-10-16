@@ -157,7 +157,7 @@ export function NoEmailHint({ client, style }: { client: Client; style?: StylePr
   );
 }
 
-/** `"Shamu via Magick TLS <onboarding@resend.dev>"` → name + address. */
+/** `"Shamu via Magick Tailor <onboarding@resend.dev>"` → name + address. */
 function parseFrom(from: string | undefined): { name: string | null; address: string } | null {
   if (!from) return null;
   const m = /^\s*"?([^"<]*?)"?\s*<([^>]+)>\s*$/.exec(from);
@@ -171,7 +171,7 @@ function parseFrom(from: string | undefined): { name: string | null; address: st
  */
 export function SenderNote({ shop, email, style }: { shop: Shop | null | undefined; email: EmailStatus | null | undefined; style?: StyleProp<ViewStyle> }) {
   const parsed = parseFrom(email?.from);
-  const name = parsed?.name ?? (shop ? `${shop.name} via Magick TLS` : "your shop via Magick TLS");
+  const name = parsed?.name ?? (shop ? `${shop.name} via Magick Tailor` : "your shop via Magick Tailor");
   const address = parsed?.address ?? "onboarding@resend.dev";
   const text =
     email && !email.configured

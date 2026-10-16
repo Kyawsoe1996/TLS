@@ -1,4 +1,4 @@
-# Store listing: TLS 1.0
+# Store listing: Magick Tailor 1.0
 
 Copy for App Store Connect and Google Play Console. Character limits are noted; counts were checked with `wc -m` (see the bottom of this file). No statistics or customer claims are made, so nothing needs substantiating.
 
@@ -6,7 +6,7 @@ Copy for App Store Connect and Google Play Console. Character limits are noted; 
 
 | Field | Limit | Value |
 |---|---|---|
-| App name (both stores) | 30 | `Magick TLS – Tailor Growth` |
+| App name (both stores) | 30 | `Magick Tailor` |
 | Subtitle (Apple) | 30 | `AI growth for bespoke tailors` |
 | Short description (Google) | 80 | `Fittings, orders, AI cutter notes and win-back emails for bespoke tailors` |
 | Promotional text (Apple, editable without a new build) | 170 | `Keep every client's measurements and cutter notes in one place, publish content in your shop's own voice, and bring quiet clients back. Built for bespoke tailor shops.` |
@@ -18,12 +18,12 @@ Copy for App Store Connect and Google Play Console. Character limits are noted; 
 | Privacy policy URL | | `https://api.magicktls.generalmagickindustries.com/privacy` |
 | Copyright | | `2026 General Magick Industries Pte Ltd` |
 
-Apple's keyword field should not repeat words from the name or subtitle (they are already indexed), which is why `tailor`, `growth` and `AI` are left out. `SEO` was removed with the Local SEO feature, which is hidden in 1.0.
+Apple's keyword field should not repeat words from the name or subtitle (they are already indexed), which is why `tailor` and `AI` are left out. `SEO` was removed with the Local SEO feature, which is hidden in 1.0.
 
 ## Full description (Apple ≤ 4000, Google ≤ 4000)
 
 ```
-TLS is a working tool for bespoke tailor shops. It keeps your client records, fitting measurements and orders in one place and uses AI to draft the things you would otherwise write yourself: cutter notes, marketing copy and win-back emails.
+Magick Tailor is a working tool for bespoke tailor shops. It keeps your client records, fitting measurements and orders in one place and uses AI to draft the things you would otherwise write yourself: cutter notes, marketing copy and win-back emails.
 
 CLIENTS AND FITTINGS
 Add each client with their phone, email or LINE ID. Record a fitting by hand – pick the garment and enter the measurements it needs, in centimetres – along with the style, the fabric and a posture note such as a low shoulder. Every fitting is saved to the client's file, so a returning client never has to be measured from scratch.
@@ -35,15 +35,15 @@ ORDERS
 Track every order on the client's file: the garment, its status, the due date, the price and the deposit. Overdue orders are flagged, and when a garment is ready you can email the client straight from the order.
 
 CONTENT STUDIO
-Choose a topic, an audience (expatriates, local executives, grooms or tourists) and your brand tone. TLS drafts a blog post, a social caption and a call to action. Everything you write is saved to your content library, where you can attach a photo or a short video, edit it, duplicate it and share it through your phone's share sheet.
+Choose a topic, an audience (expatriates, local executives, grooms or tourists) and your brand tone. Magick Tailor drafts a blog post, a social caption and a call to action. Everything you write is saved to your content library, where you can attach a photo or a short video, edit it, duplicate it and share it through your phone's share sheet.
 
 WIN-BACK
-Clients who have not ordered in 90 days are flagged on the home screen. Pick an incentive and TLS writes a courteous re-engagement email and sends it to the client for you, keeping a copy on their file.
+Clients who have not ordered in 90 days are flagged on the home screen. Pick an incentive and Magick Tailor writes a courteous re-engagement email and sends it to the client for you, keeping a copy on their file.
 
 PRIVATE BY DESIGN
 Your data belongs to your shop. No ads, no selling of data, and you can delete your account and everything in it from Settings at any time.
 
-TLS requires an account: sign in with your email address and a one-time code, no password to remember.
+Magick Tailor requires an account: sign in with your email address and a one-time code, no password to remember.
 ```
 
 ## What's new (1.0)
@@ -90,7 +90,7 @@ Apple only requires the 6.9" set for iPhone; iPad screenshots are not needed bec
 ## Review notes (paste into "Notes" / "App access instructions")
 
 ```
-TLS is a business tool for tailor shops; an account is required to reach any screen.
+Magick Tailor is a business tool for tailor shops; an account is required to reach any screen.
 
 Sign in with:
   Email: reviewer+clerk_test@generalmagickindustries.com
@@ -112,7 +112,7 @@ Privacy policy: https://api.magicktls.generalmagickindustries.com/privacy
 ## Character counts
 
 ```bash
-printf '%s' 'Magick TLS – Tailor Growth' | wc -m                            # 26
+printf '%s' 'Magick Tailor' | wc -m                                         # 13
 printf '%s' 'AI growth for bespoke tailors' | wc -m                          # 29
 printf '%s' 'Fittings, orders, AI cutter notes and win-back emails for bespoke tailors' | wc -m   # 73
 printf '%s' 'bespoke,suit,fitting,measurements,clients,CRM,marketing,orders,Bangkok,atelier,menswear,shirt' | wc -m   # 93

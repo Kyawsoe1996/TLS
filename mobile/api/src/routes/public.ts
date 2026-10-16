@@ -21,7 +21,7 @@ function page(title: string, body: string): string {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${title} - Magick TLS</title>
+<title>${title} - Magick Tailor</title>
 <style>
   :root { color-scheme: light dark; }
   body { margin: 0; padding: 32px 16px 64px; font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #fff; color: #1a1a1a; }
@@ -44,9 +44,9 @@ ${body}
 
 const PRIVACY_HTML = `
 <h1>Privacy Policy</h1>
-<p class="meta">Magick TLS - the app for bespoke tailor shops. Provided by General Magick Industries Pte Ltd. Last updated: 8 October 2026.</p>
+<p class="meta">Magick Tailor - the app for bespoke tailor shops. Provided by General Magick Industries Pte Ltd. Last updated: 8 October 2026.</p>
 
-<p>This policy explains, in plain English, what information the Magick TLS app stores, who helps us process it, and how you stay in control of it.</p>
+<p>This policy explains, in plain English, what information the Magick Tailor app stores, who helps us process it, and how you stay in control of it.</p>
 
 <h2>What we store</h2>
 <ul>
@@ -55,6 +55,7 @@ const PRIVACY_HTML = `
   <li><strong>Your clients.</strong> The client details you enter: names, phone numbers, email addresses, LINE IDs, notes and last-order dates.</li>
   <li><strong>Measurements and fittings.</strong> The garment type, all the measurements that garment needs, the style, fabric and posture notes you record for each fitting.</li>
   <li><strong>Orders.</strong> Each order's garment, status, due date, price and deposit.</li>
+  <li><strong>Appointments.</strong> Each fitting, collection or consultation you schedule with a client: the date and time, the order it relates to, your notes and whether a reminder was sent.</li>
   <li><strong>Emails you send.</strong> When you email a client from the app (win-back, order ready, follow-up) we keep a copy on the client's file: the address it went to, the subject, the text, whether it was delivered and the provider's reference.</li>
   <li><strong>AI outputs.</strong> The fit analyses, marketing posts and email drafts generated for you, so you can find them again.</li>
   <li><strong>Posts and media.</strong> The posts in your content library and any photo or video you attach to them.</li>
@@ -82,7 +83,7 @@ const PRIVACY_HTML = `
 <p>You are responsible for making sure you're allowed to record your clients' details and measurements in the app. Please only enter what you need to serve them.</p>
 
 <h2>Deleting your data</h2>
-<p>You can delete your account at any time from inside the app: <strong>Settings &rarr; Delete account</strong>. This permanently erases your shop and its details, all client records, all fittings and measurements, all orders, the copies of emails you sent, all AI outputs, your posts and their photos and videos, and your sign-in account. It cannot be undone. Backups held by our database provider are purged within 30 days.</p>
+<p>You can delete your account at any time from inside the app: <strong>Settings &rarr; Delete account</strong>. This permanently erases your shop and its details, all client records, all fittings and measurements, all orders and appointments, the copies of emails you sent, all AI outputs, your posts and their photos and videos, and your sign-in account. It cannot be undone. Backups held by our database provider are purged within 30 days.</p>
 
 <h2>Security</h2>
 <p>Data is sent over encrypted connections (HTTPS) and stored with providers that encrypt data at rest. Access to the API always requires your signed-in session.</p>
@@ -96,7 +97,7 @@ const PRIVACY_HTML = `
 
 const SUPPORT_HTML = `
 <h1>Support</h1>
-<p class="meta">Magick TLS - the app for bespoke tailor shops. Provided by General Magick Industries Pte Ltd.</p>
+<p class="meta">Magick Tailor - the app for bespoke tailor shops. Provided by General Magick Industries Pte Ltd.</p>
 
 <h2>Get help</h2>
 <p>Email us at <a href="mailto:account@globalmagicko.com">account@globalmagicko.com</a>. We reply within 2 business days.</p>
@@ -110,7 +111,7 @@ const SUPPORT_HTML = `
 <h2>Common questions</h2>
 <p><strong>The AI says I've reached today's limit.</strong> Each account can run up to 30 AI generations per day (fit analysis, posts and win-back emails combined). The limit resets over a rolling 24 hours.</p>
 <p><strong>The AI couldn't produce a result.</strong> This happens occasionally. Wait a moment and try again; if it keeps failing, email us with the time it happened.</p>
-<p><strong>How do I delete my account?</strong> In the app go to <strong>Settings &rarr; Delete account</strong>. This erases your shop, clients, fittings, orders, sent emails, posts, AI outputs and your sign-in account immediately and permanently.</p>
+<p><strong>How do I delete my account?</strong> In the app go to <strong>Settings &rarr; Delete account</strong>. This erases your shop, clients, fittings, orders, appointments, sent emails, posts, AI outputs and your sign-in account immediately and permanently.</p>
 <p><strong>An email to a client shows "Failed".</strong> Check the client's email address on their file and send again. If it still fails, email us with the client's address and the time you sent it.</p>
 <p><strong>Where is my data stored and who can see it?</strong> See our <a href="/privacy">Privacy Policy</a>.</p>
 `;

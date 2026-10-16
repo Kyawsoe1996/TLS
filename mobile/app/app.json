@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Magick TLS",
+    "name": "Magick Tailor",
     "slug": "tls",
     "scheme": "tls",
     "version": "1.0.0",
@@ -49,7 +49,7 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Magick TLS uses your photos to attach a picture or short video to a post.",
+          "photosPermission": "Magick Tailor uses your photos to attach a picture or short video to a post.",
           "cameraPermission": false,
           "microphonePermission": false
         }

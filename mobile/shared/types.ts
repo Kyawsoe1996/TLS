@@ -302,7 +302,7 @@ export interface MessageResponse {
 /** Part of GET /shop: whether the API can really send email (RESEND_API_KEY set) and the sender it uses. */
 export interface EmailStatus {
   configured: boolean;
-  from: string; // e.g. "Shamu via Magick TLS <onboarding@resend.dev>"
+  from: string; // e.g. "Shamu via Magick Tailor <onboarding@resend.dev>"
 }
 
 // ---------- AI ----------

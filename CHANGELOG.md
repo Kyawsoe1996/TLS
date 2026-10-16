@@ -4,6 +4,16 @@ All notable changes to TLS, newest first. Written in plain language so anyone on
 
 ## Unreleased
 
+### Changed
+- **The app is now called Magick Tailor** (was Magick TLS). Renamed the display name in `app.json`, the
+  photo-library permission text, every in-app mention (welcome, sign-in, settings, AI consent), the email
+  sender ("<shop> via Magick Tailor"), the hosted privacy and support pages, the store copy (store name is
+  now just `Magick Tailor`; the subtitle carries the growth message) and the icon's banner, which now
+  reads MAGICK TAILOR (icons regenerated with `docs/brand/make-icons.mjs`). Technical identifiers are
+  unchanged on purpose: bundle id / package `com.generalmagickindustries.magicktls`, Expo slug `tls`,
+  the `magicktls` worker, API domain and database names. The new name reaches phones with the next
+  build, and the App Store Connect / Play Console app names must be changed by hand to match.
+
 ### Added
 - **Appointments.** A tailor can schedule a fitting, collection or consultation with a client from the
   client's file (date, time, optional link to an order, private notes). Home shows "This week" with the
