@@ -166,6 +166,13 @@ provisioning profile and the App Store Connect API key ("[Expo] EAS Submit", App
 created by EAS and live on Expo's servers, so later runs ask nothing. Internal group "Magick TLS - Test
 Gp" is live; the external group waits for Beta App Review.
 
+**Done 2026-10-16:** build 1.0.0 (3) (commit `d950a74`: renamed to Magick Tailor, appointments,
+tab-navigation fix) uploaded via `eas build --auto-submit` after migration 0007 and `wrangler deploy`
+on production. App Store Connect completed the same day: name "Magick Tailor", subtitle, age rating
+4+, App Privacy published, Free in 175 countries, Mac / Vision Pro availability off, six framed
+screenshots (1206 x 2622, generated in a scratch script from simulator captures), review notes and
+the reviewer account, manual release. Version 1.0 submitted to App Review.
+
 - `autoIncrement` bumps the build number / version code on EAS each time. Bump `version` in `app.json` yourself for each store release.
 - iOS submit uploads to TestFlight. The build appears in App Store Connect after Apple processes it (10–30 min), then attach it to version 1.0 and click **Add for Review → Submit**.
 - Android submit lands in the **internal** track (`eas.json`). Promote it through the Console.
