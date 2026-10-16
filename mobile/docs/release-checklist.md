@@ -63,7 +63,19 @@ npx wrangler deploy
 
 1. Dashboard → top-left instance switcher → **Create production instance** (clone from development). Production instances need a domain you own: use `magicktls.generalmagickindustries.com` (DNS is on Cloudflare; the Resend records on `send.magicktls…` and `resend._domainkey.magicktls…` don't clash with Clerk's `clerk.`, `accounts.` and `clkmail.` records). Add the DNS records Clerk lists and wait until they verify.
 2. **User & authentication → Email, phone, username:** enable **Email address** with **Email verification code** as the sign-in method. Disable password, phone, username and passkeys.
-3. **SSO connections:** disable Google/Apple/etc. unless the app implements them. (Apple requires "Sign in with Apple" only if you offer another third-party social login; email-code alone does not trigger that rule.)
+3. **SSO connections (1.1+):** enable **Google**, **Facebook** and **Apple**. Development instances use Clerk's
+   shared credentials (nothing to configure); the production instance needs custom credentials for each:
+   - Google: Google Cloud Console → APIs & Services → Credentials → OAuth client (Web application) with
+     Clerk's redirect URI; paste client id + secret into the Google connection.
+   - Facebook: Meta for Developers → app → Facebook Login → Valid OAuth Redirect URIs = Clerk's redirect
+     URI; add the `email` permission; set the app to Live; paste App ID + secret into the Facebook connection.
+   - Apple: Apple Developer → Identifiers → **Services ID** (web authentication on the domain
+     `magicktls.generalmagickindustries.com`, return URL from Clerk) and a **Sign in with Apple key** (.p8);
+     paste Services ID, Team ID `K936SW2MTN`, Key ID and the key into the Apple connection.
+   - **Native applications** (both instances): add the iOS app with Team ID `K936SW2MTN` and bundle id
+     `com.generalmagickindustries.magicktls` so the native Sign in with Apple sheet is accepted.
+   Apple requires "Sign in with Apple" whenever another third-party login is offered, which is why the three
+   ship together.
 4. Copy the production **publishable key** and **secret key**. Put the publishable key in the app env (section 4) and the secret key in the worker (section 2). Redeploy the worker.
 5. **Settings → Test mode (production):** turn on if you want the fixed-code reviewer account (section 6). Confirm this option exists on your plan; if not, use a real mailbox you control and answer reviewer code requests promptly.
 

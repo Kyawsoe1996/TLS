@@ -14,6 +14,8 @@ import { API_URL, useApi } from "@/lib/api";
 import { confirm, showError } from "@/lib/toast";
 import { useEmailStatus, useShop } from "@/lib/useShop";
 
+const PROVIDER_LABELS: Record<string, string> = { apple: "Apple", google: "Google", facebook: "Facebook" };
+
 export default function SettingsScreen() {
   const router = useRouter();
   const api = useApi();
@@ -28,6 +30,9 @@ export default function SettingsScreen() {
 
   const version = Constants.expoConfig?.version ?? "1.0.0";
   const email = user?.primaryEmailAddress?.emailAddress ?? user?.emailAddresses?.[0]?.emailAddress ?? "";
+  // "Google" / "Apple" / "Facebook" when the account was created or linked through a social login.
+  const provider = user?.externalAccounts?.[0]?.provider;
+  const signInMethod = provider ? PROVIDER_LABELS[provider] ?? null : null;
   // "address · phone · hours · reply-to" (address flattened to one line), or nothing when none are set.
   const detailsSummary = shop
     ? [shop.address?.replace(/\s*\n+\s*/g, ", "), shop.phone, shop.openingHours, shop.replyToEmail]
@@ -158,6 +163,7 @@ export default function SettingsScreen() {
         <Text style={typography.body} numberOfLines={1}>
           {email || "—"}
         </Text>
+        {signInMethod ? <Text style={typography.small}>Signed in with {signInMethod}</Text> : null}
         <Button title="Sign out" variant="secondary" onPress={() => void onSignOut()} loading={signingOut} fullWidth style={styles.signOut} />
       </Card>
 

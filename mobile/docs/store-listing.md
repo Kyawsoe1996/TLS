@@ -43,7 +43,7 @@ Clients who have not ordered in 90 days are flagged on the home screen. Pick an 
 PRIVATE BY DESIGN
 Your data belongs to your shop. No ads, no selling of data, and you can delete your account and everything in it from Settings at any time.
 
-Magick Tailor requires an account: sign in with your email address and a one-time code, no password to remember.
+Magick Tailor requires an account: sign in with Apple, Google, Facebook or a one-time code sent to your email. No password to remember.
 ```
 
 ## What's new (1.0)

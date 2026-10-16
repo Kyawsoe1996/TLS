@@ -4,6 +4,7 @@ import { useState } from "react";
 import * as WebBrowser from "expo-web-browser";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { SocialSignIn } from "@/components/auth/SocialSignIn";
 import { Button, Card, ErrorBanner, Field, Screen } from "@/components/ui";
 import { colors, fonts, typography } from "@/constants/theme";
 import { API_URL } from "@/lib/api";
@@ -72,7 +73,7 @@ export default function SignUpScreen() {
     <Screen
       eyebrow="Get started"
       title="Create account"
-      subtitle={step === "email" ? "We'll email you a one-time code to verify it." : `Enter the code we sent to ${email.trim()}.`}
+      subtitle={step === "email" ? "Use Apple, Google or Facebook, or verify your email with a one-time code." : `Enter the code we sent to ${email.trim()}.`}
       keyboard
       edges={["top", "bottom"]}
     >
@@ -80,6 +81,7 @@ export default function SignUpScreen() {
 
       {step === "email" ? (
         <>
+          <SocialSignIn onError={setError} disabled={busy} />
           <Field
             label="Email"
             value={email}

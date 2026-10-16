@@ -4,6 +4,15 @@ All notable changes to TLS, newest first. Written in plain language so anyone on
 
 ## Unreleased
 
+### Added
+- **Sign in with Apple, Google and Facebook.** Both auth screens now offer the three social logins above
+  the email field; the emailed one-time code stays as the fallback. Apple uses the native iOS sheet
+  (`expo-apple-authentication`, new config plugin, so it needs a new build), Google and Facebook use Clerk's
+  browser flow and return to the app through the `tls://` scheme. Clerk links a social login to an existing
+  email account when the verified email matches. Settings shows "Signed in with Google/Apple/Facebook". No
+  API change. Before the production build the Clerk production instance needs real Google, Facebook and
+  Apple credentials (see `mobile/docs/release-checklist.md` §3).
+
 ### Changed
 - **The app is now called Magick Tailor** (was Magick TLS). Renamed the display name in `app.json`, the
   photo-library permission text, every in-app mention (welcome, sign-in, settings, AI consent), the email

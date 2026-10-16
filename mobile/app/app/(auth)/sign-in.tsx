@@ -3,6 +3,7 @@ import { Link } from "expo-router";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { SocialSignIn } from "@/components/auth/SocialSignIn";
 import { Button, Card, ErrorBanner, Field, Screen } from "@/components/ui";
 import { colors, fonts, typography } from "@/constants/theme";
 import { errorMessage } from "@/lib/toast";
@@ -73,7 +74,7 @@ export default function SignInScreen() {
     <Screen
       eyebrow="Welcome back"
       title="Sign in"
-      subtitle={step === "email" ? "We'll email you a one-time code." : `Enter the code we sent to ${email.trim()}.`}
+      subtitle={step === "email" ? "Use Apple, Google or Facebook, or get a one-time code by email." : `Enter the code we sent to ${email.trim()}.`}
       keyboard
       edges={["top", "bottom"]}
     >
@@ -81,6 +82,7 @@ export default function SignInScreen() {
 
       {step === "email" ? (
         <>
+          <SocialSignIn onError={setError} disabled={busy} />
           <Field
             label="Email"
             value={email}
