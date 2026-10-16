@@ -35,7 +35,7 @@ Input Variables:
 - target_demographic: [String] (e.g., Expatriates, local executives)
 Task: Act as an elite luxury fashion copywriter. Generate a polished, engaging blog post and social media campaign that positions the storefront as an absolute technical authority. The writing must be clean, industry-precise, and include a natural call-to-action utilizing the shop's tech assets.
 JSON Output Schema:
-{ "status": "success", "data_type": "content_marketing", "blog_title": "[SEO-optimized, high-click title]", "blog_body": "[A publication-ready three-paragraph article exploring the chosen topic with elegant, professional fashion phrasing]", "social_caption": "[Instagram/Facebook copy built with targeted, localized and lifestyle hashtags]", "call_to_action": "[An enticing closing prompt inviting readers to book an IoT-guided digital fitting window]" }
+{ "status": "success", "data_type": "content_marketing", "blog_title": "[SEO-optimized, high-click title]", "blog_body": "[A publication-ready three-paragraph article exploring the chosen topic with elegant, professional fashion phrasing]", "social_caption": "[Instagram/Facebook copy built with targeted, localized and lifestyle hashtags]", "call_to_action": "[An enticing closing prompt inviting readers to book a fitting at the shop]" }
 
 --- PIPELINE 4: ACTION == "TRIGGER_RETENTION_CAMPAIGN"
 Input Variables:
