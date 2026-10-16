@@ -41,13 +41,19 @@ export default function TabsLayout() {
         options={{
           title: "Clients",
           tabBarIcon: tabIcon("people", "people-outline"),
+          // Reset the nested stack when leaving the tab, so tapping Clients again shows the list,
+          // not the client / order / appointment screen that was open before.
+          popToTopOnBlur: true,
           // Overdue open orders. Hidden at 0.
           tabBarBadge: overdue > 0 ? overdue : undefined,
           tabBarBadgeStyle: { backgroundColor: colors.dangerDeep, color: colors.card, fontFamily: fonts.bodySemi, fontSize: 11 },
           tabBarAccessibilityLabel: overdue > 0 ? `Clients, ${overdue} ${overdue === 1 ? "order" : "orders"} overdue` : "Clients",
         }}
       />
-      <Tabs.Screen name="grow" options={{ title: "Grow", tabBarIcon: tabIcon("trending-up", "trending-up-outline") }} />
+      <Tabs.Screen
+        name="grow"
+        options={{ title: "Grow", tabBarIcon: tabIcon("trending-up", "trending-up-outline"), popToTopOnBlur: true }}
+      />
       <Tabs.Screen name="settings" options={{ title: "Settings", tabBarIcon: tabIcon("settings", "settings-outline") }} />
     </Tabs>
   );
