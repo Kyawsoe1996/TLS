@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import { useSSO, useSignInWithApple } from "@clerk/clerk-expo";
 import * as AuthSession from "expo-auth-session";
 import Constants, { ExecutionEnvironment } from "expo-constants";
@@ -6,7 +7,7 @@ import { useEffect, useState } from "react";
 import { Platform, StyleSheet, Text, View } from "react-native";
 
 import { Button } from "@/components/ui";
-import { colors, typography } from "@/constants/theme";
+import { colors, fonts } from "@/constants/theme";
 import { errorMessage } from "@/lib/toast";
 
 // Lets the browser sheet hand the OAuth result back to the app when it returns via the `tls://` scheme.
@@ -26,9 +27,9 @@ export interface SocialSignInProps {
 }
 
 /**
- * Sign in with Apple (native sheet, iOS only), Google and Facebook (Clerk's browser flow).
- * On success Clerk's session becomes active and the root layout's guard moves the user on
- * (onboarding when they have no shop yet). Rendered above the email field on both auth screens.
+ * Sign in with Apple (native sheet, iOS only), Google and Facebook (Clerk's browser flow), drawn as
+ * white pills on the ivory auth screens. On success Clerk's session becomes active and the root
+ * layout's guard moves the user on (onboarding when they have no shop yet).
  */
 export function SocialSignIn({ onError, disabled = false }: SocialSignInProps) {
   const { startSSOFlow } = useSSO();
@@ -86,14 +87,14 @@ export function SocialSignIn({ onError, disabled = false }: SocialSignInProps) {
       {SHOW_APPLE ? (
         <View>
           <Button
-            title="Sign in with Apple"
+            title="Continue with Apple"
             icon="logo-apple"
+            variant="secondary"
             onPress={() => void run("apple")}
             loading={busy === "apple"}
             disabled={inactive && busy !== "apple"}
             fullWidth
-            style={styles.apple}
-            textStyle={styles.appleText}
+            style={styles.pill}
             testID="sign-in-apple"
           />
           <Text style={styles.hint}>If you choose Apple&apos;s Hide My Email, sign in with Apple each time.</Text>
@@ -101,27 +102,29 @@ export function SocialSignIn({ onError, disabled = false }: SocialSignInProps) {
       ) : null}
       <Button
         title="Continue with Google"
-        icon="logo-google"
+        iconNode={<Ionicons name="logo-google" size={18} color="#EA4335" />}
         variant="secondary"
         onPress={() => void run("google")}
         loading={busy === "google"}
         disabled={inactive && busy !== "google"}
         fullWidth
+        style={styles.pill}
         testID="sign-in-google"
       />
       <Button
         title="Continue with Facebook"
-        icon="logo-facebook"
+        iconNode={<Ionicons name="logo-facebook" size={20} color="#1877F2" />}
         variant="secondary"
         onPress={() => void run("facebook")}
         loading={busy === "facebook"}
         disabled={inactive && busy !== "facebook"}
         fullWidth
+        style={styles.pill}
         testID="sign-in-facebook"
       />
       <View style={styles.divider}>
         <View style={styles.rule} />
-        <Text style={styles.or}>or use your email</Text>
+        <Text style={styles.or}>or</Text>
         <View style={styles.rule} />
       </View>
     </View>
@@ -137,11 +140,9 @@ function appleErrorCode(err: unknown): string | null {
 
 const styles = StyleSheet.create({
   root: { gap: 10 },
-  apple: { backgroundColor: "#000000", borderColor: "#000000" },
-  appleText: { color: "#FFFFFF" },
-  disabled: { opacity: 0.5 },
-  hint: { ...typography.small, marginTop: 6, textAlign: "center" },
-  divider: { flexDirection: "row", alignItems: "center", gap: 10, marginVertical: 4 },
+  pill: { minHeight: 52, borderRadius: 26 },
+  hint: { fontFamily: fonts.body, fontSize: 12, lineHeight: 16, color: colors.muted, textAlign: "center", marginTop: 6 },
+  divider: { flexDirection: "row", alignItems: "center", gap: 12, marginVertical: 6 },
   rule: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: colors.line },
-  or: { ...typography.small, color: colors.muted },
+  or: { fontFamily: fonts.bodySemi, fontSize: 12, letterSpacing: 1.2, textTransform: "uppercase", color: colors.muted },
 });

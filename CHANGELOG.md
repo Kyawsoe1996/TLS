@@ -14,6 +14,14 @@ All notable changes to TLS, newest first. Written in plain language so anyone on
   Apple credentials (see `mobile/docs/release-checklist.md` §3).
 
 ### Changed
+- **New sign-in and create-account design.** Chosen from three directions on the design canvas
+  ("Night atelier" layout on the ivory ground): the Atelier crest centred over a large serif title,
+  Apple / Google / Facebook as white pills, an "or" divider, an underline email field with a gold
+  label and a gold "Send me a code" button; links sit at the foot of the screen. The code step shows
+  six digit boxes (the active one in gold; keyboard autofill and paste still work) under "Check your
+  email", with resend / change-email links and a back button. New `components/auth/` pieces
+  (`AuthScreen`, `AuthField`, `CodeInput`, `SwitchLine`, `PrivacyLine`); `Button` accepts a custom
+  `iconNode`. Sign-in logic is unchanged.
 - **The app is now called Magick Tailor** (was Magick TLS). Renamed the display name in `app.json`, the
   photo-library permission text, every in-app mention (welcome, sign-in, settings, AI consent), the email
   sender ("<shop> via Magick Tailor"), the hosted privacy and support pages, the store copy (store name is

@@ -1,11 +1,10 @@
 import { isClerkAPIResponseError, useSignIn } from "@clerk/clerk-expo";
-import { Link } from "expo-router";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { SocialSignIn } from "@/components/auth/SocialSignIn";
-import { Button, Card, ErrorBanner, Field, Screen } from "@/components/ui";
-import { colors, fonts, typography } from "@/constants/theme";
+import { AuthField, AuthScreen, CodeInput, PrivacyLine, SocialSignIn, SwitchLine } from "@/components/auth";
+import { Button, ErrorBanner } from "@/components/ui";
+import { colors, fonts } from "@/constants/theme";
 import { errorMessage } from "@/lib/toast";
 
 type Step = "email" | "code";
@@ -45,10 +44,10 @@ export default function SignInScreen() {
     }
   };
 
-  const verify = async () => {
+  const verify = async (value = code) => {
     if (!signInCtx.isLoaded) return;
     const { signIn, setActive } = signInCtx;
-    const trimmed = code.trim();
+    const trimmed = value.trim();
     if (trimmed.length < 6) {
       setError("Enter the 6-digit code from your email.");
       return;
@@ -70,92 +69,92 @@ export default function SignInScreen() {
     }
   };
 
+  const backToEmail = () => {
+    setStep("email");
+    setCode("");
+    setError(null);
+  };
+
+  if (step === "code") {
+    return (
+      <AuthScreen
+        crestSize={84}
+        eyebrow="One-time code"
+        title="Check your email"
+        subtitle={
+          <>
+            We sent a 6-digit code to{"\n"}
+            <Text style={styles.emphasis}>{email.trim()}</Text>
+          </>
+        }
+        onBack={backToEmail}
+        footer={<Text style={styles.hint}>Didn&apos;t get it? Check your spam folder. The code expires in 10 minutes.</Text>}
+      >
+        <ErrorBanner message={error} />
+        <CodeInput value={code} onChange={setCode} onComplete={(v) => void verify(v)} autoFocus disabled={busy} />
+        <Button title="Verify and sign in" variant="gold" onPress={() => void verify()} loading={busy} disabled={code.length < 6} fullWidth style={styles.cta} />
+        <View style={styles.linkRow}>
+          <Pressable hitSlop={6} onPress={() => void sendCode()} disabled={busy}>
+            <Text style={styles.link}>Resend code</Text>
+          </Pressable>
+          <Text style={styles.dot}>·</Text>
+          <Pressable hitSlop={6} onPress={backToEmail} disabled={busy}>
+            <Text style={styles.mutedLink}>Change email</Text>
+          </Pressable>
+        </View>
+      </AuthScreen>
+    );
+  }
+
   return (
-    <Screen
+    <AuthScreen
       eyebrow="Welcome back"
       title="Sign in"
-      subtitle={step === "email" ? "Use Apple, Google or Facebook, or get a one-time code by email." : `Enter the code we sent to ${email.trim()}.`}
-      keyboard
-      edges={["top", "bottom"]}
+      subtitle="Pick the account you use, or get a one-time code by email."
+      footer={
+        <>
+          <SwitchLine question="New to Magick Tailor?" linkLabel="Create an account" href="/(auth)/sign-up" />
+          <PrivacyLine />
+        </>
+      }
     >
       <ErrorBanner message={error} />
-
-      {step === "email" ? (
-        <>
-          <SocialSignIn onError={setError} disabled={busy} />
-          <Field
-            label="Email"
-            value={email}
-            onChangeText={setEmail}
-            placeholder="you@example.com"
-            autoCapitalize="none"
-            autoCorrect={false}
-            autoComplete="email"
-            keyboardType="email-address"
-            textContentType="emailAddress"
-            returnKeyType="send"
-            onSubmitEditing={() => void sendCode()}
-            autoFocus
-          />
-          <Button
-            title="Send code"
-            onPress={() => void sendCode()}
-            loading={busy}
-            disabled={!signInCtx.isLoaded || !email.trim()}
-            fullWidth
-          />
-        </>
-      ) : (
-        <>
-          <Field
-            label="6-digit code"
-            value={code}
-            onChangeText={(t) => setCode(t.replace(/\D/g, "").slice(0, 6))}
-            placeholder="123456"
-            keyboardType="number-pad"
-            textContentType="oneTimeCode"
-            autoComplete="one-time-code"
-            maxLength={6}
-            returnKeyType="done"
-            onSubmitEditing={() => void verify()}
-            autoFocus
-          />
-          <Button title="Verify and sign in" onPress={() => void verify()} loading={busy} disabled={code.length < 6} fullWidth />
-          <Card variant="soft" style={styles.helpCard}>
-            <Text style={typography.small}>Didn&apos;t get it? Check spam, or</Text>
-            <View style={styles.helpRow}>
-              <Button size="sm" variant="secondary" title="Resend code" onPress={() => void sendCode()} disabled={busy} />
-              <Button
-                size="sm"
-                variant="ghost"
-                title="Change email"
-                onPress={() => {
-                  setStep("email");
-                  setCode("");
-                  setError(null);
-                }}
-                disabled={busy}
-              />
-            </View>
-          </Card>
-        </>
-      )}
-
-      <View style={styles.footer}>
-        <Text style={typography.bodyMuted}>New to Magick Tailor?</Text>
-        <Link href="/(auth)/sign-up" asChild>
-          <Pressable hitSlop={6}>
-            <Text style={styles.link}>Create an account</Text>
-          </Pressable>
-        </Link>
-      </View>
-    </Screen>
+      <SocialSignIn onError={setError} disabled={busy} />
+      <AuthField
+        label="Email"
+        icon="mail-outline"
+        value={email}
+        onChangeText={setEmail}
+        placeholder="you@example.com"
+        autoCapitalize="none"
+        autoCorrect={false}
+        autoComplete="email"
+        keyboardType="email-address"
+        textContentType="emailAddress"
+        returnKeyType="send"
+        onSubmitEditing={() => void sendCode()}
+      />
+      <Button
+        title="Send me a code"
+        variant="gold"
+        icon="arrow-forward"
+        iconPosition="right"
+        onPress={() => void sendCode()}
+        loading={busy}
+        disabled={!signInCtx.isLoaded || !email.trim()}
+        fullWidth
+        style={styles.cta}
+      />
+    </AuthScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  helpCard: { gap: 10 },
-  helpRow: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
-  footer: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8 },
-  link: { fontFamily: fonts.bodySemi, fontSize: 15, color: colors.goldDark },
+  cta: { minHeight: 52, borderRadius: 26, marginTop: 4 },
+  emphasis: { fontFamily: fonts.bodySemi, color: colors.navy },
+  linkRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 12, marginTop: 2 },
+  link: { fontFamily: fonts.bodySemi, fontSize: 14, color: colors.goldDark },
+  mutedLink: { fontFamily: fonts.bodySemi, fontSize: 14, color: colors.muted },
+  dot: { color: colors.line, fontSize: 14 },
+  hint: { fontFamily: fonts.body, fontSize: 12, lineHeight: 17, color: colors.muted, textAlign: "center" },
 });

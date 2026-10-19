@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import type { ReactNode } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, type StyleProp, type TextStyle, type ViewStyle } from "react-native";
 
 import { colors, radii, sizes, typography } from "@/constants/theme";
@@ -13,6 +14,8 @@ export interface ButtonProps {
   loading?: boolean;
   disabled?: boolean;
   icon?: IoniconName;
+  /** Custom icon element, used when `icon` isn't set (e.g. a brand mark that isn't a single-colour glyph). */
+  iconNode?: ReactNode;
   iconPosition?: "left" | "right";
   size?: "md" | "sm";
   fullWidth?: boolean;
@@ -39,6 +42,7 @@ export function Button({
   loading = false,
   disabled = false,
   icon,
+  iconNode: customIcon,
   iconPosition = "left",
   size = "md",
   fullWidth = false,
@@ -50,7 +54,7 @@ export function Button({
   const p = palette[variant];
   const inactive = disabled || loading;
   const iconSize = size === "sm" ? 16 : 18;
-  const iconNode = icon ? <Ionicons name={icon} size={iconSize} color={p.fg} /> : null;
+  const iconNode = icon ? <Ionicons name={icon} size={iconSize} color={p.fg} /> : (customIcon ?? null);
 
   return (
     <Pressable
