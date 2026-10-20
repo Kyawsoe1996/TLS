@@ -9,21 +9,24 @@ export interface FieldProps extends TextInputProps {
   error?: string | null;
   /** Node rendered inside the input box on the right (e.g. a unit suffix). */
   right?: ReactNode;
+  /** Gold 2px border: the value was filled in for the user (e.g. from a recording) and should be checked. Focus and error still win. */
+  highlight?: boolean;
   containerStyle?: StyleProp<ViewStyle>;
 }
 
-/** Label + 48px TextInput (radius 12, white, 1px line; navy on focus, red on error). */
+/** Label + 48px TextInput (radius 12, white, 1px line; navy on focus, red on error, gold when highlighted). */
 export const Field = forwardRef<TextInput, FieldProps>(function Field(
-  { label, hint, error, right, containerStyle, style, multiline, onFocus, onBlur, editable = true, ...rest },
+  { label, hint, error, right, highlight = false, containerStyle, style, multiline, onFocus, onBlur, editable = true, ...rest },
   ref,
 ) {
   const [focused, setFocused] = useState(false);
-  const borderColor = error ? colors.danger : focused ? colors.navy : colors.line;
+  const highlighted = highlight && !error && !focused;
+  const borderColor = error ? colors.danger : focused ? colors.navy : highlighted ? colors.gold : colors.line;
 
   return (
     <View style={[styles.container, containerStyle]}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
-      <View style={[styles.box, { borderColor }, multiline && styles.boxMultiline, !editable && styles.boxDisabled]}>
+      <View style={[styles.box, { borderColor }, highlighted && styles.boxHighlight, multiline && styles.boxMultiline, !editable && styles.boxDisabled]}>
         <TextInput
           ref={ref}
           {...rest}
@@ -64,6 +67,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.card,
     paddingHorizontal: 14,
   },
+  // 2px border, 1px less padding so the text doesn't shift.
+  boxHighlight: { borderWidth: 2, paddingHorizontal: 13 },
   boxMultiline: { minHeight: 104, alignItems: "flex-start", paddingVertical: 10 },
   boxDisabled: { backgroundColor: colors.cardSoft },
   input: {

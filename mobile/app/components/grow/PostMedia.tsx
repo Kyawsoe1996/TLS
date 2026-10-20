@@ -1,10 +1,9 @@
-// Photo / video attached to a post: the picker + size and duration checks + upload (useAttachMedia), and the tiles
+// Photo / video attached to a post: the upload (useAttachMedia, picking through lib/media), and the tiles
 // that show it (MediaPreview) or invite one (AddMediaTiles). PostMediaBlock puts the two together for a post.
 import { Ionicons } from "@expo/vector-icons";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import * as ImagePicker from "expo-image-picker";
 import { useState } from "react";
-import { ActivityIndicator, Alert, Image, Linking, Platform, Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
+import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
 import { MEDIA_LIMITS, type MediaKind, type Post, type PostMedia } from "@shared/types";
 
 import { Button, type IoniconName } from "@/components/ui";
@@ -12,70 +11,16 @@ import { FEATURES } from "@/constants/features";
 import { colors, fonts, radii, typography } from "@/constants/theme";
 import { useApi, type MediaFile } from "@/lib/api";
 import { formatBytes, formatDuration } from "@/lib/format";
-import { showError, showToast } from "@/lib/toast";
+import { pickMedia, type MediaLimits } from "@/lib/media";
+import { showError } from "@/lib/toast";
 
 import { afterPostChanged, cachePost } from "./queries";
 
-const IMAGE_TYPES: readonly string[] = MEDIA_LIMITS.imageTypes;
-const VIDEO_TYPES: readonly string[] = MEDIA_LIMITS.videoTypes;
-
-const EXTENSION_TYPES: Record<string, string> = {
-  jpg: "image/jpeg",
-  jpeg: "image/jpeg",
-  png: "image/png",
-  webp: "image/webp",
-  mp4: "video/mp4",
-  m4v: "video/mp4",
-  mov: "video/quicktime",
+/** What PUT /posts/:id/media accepts, per kind. */
+const POST_MEDIA_LIMITS: Record<MediaKind, MediaLimits> = {
+  image: { types: MEDIA_LIMITS.imageTypes, bytes: MEDIA_LIMITS.imageBytes },
+  video: { types: MEDIA_LIMITS.videoTypes, bytes: MEDIA_LIMITS.videoBytes, seconds: MEDIA_LIMITS.videoSeconds },
 };
-
-/** The MIME type to send: the picker's when it's one the API accepts, otherwise guessed from the file extension. */
-function resolveMimeType(asset: ImagePicker.ImagePickerAsset, kind: MediaKind): string | null {
-  const allowed = kind === "image" ? IMAGE_TYPES : VIDEO_TYPES;
-  const reported = asset.mimeType?.toLowerCase();
-  if (reported && allowed.includes(reported)) return reported;
-  const name = asset.fileName ?? asset.uri;
-  const ext = name.split("?")[0].split(".").pop()?.toLowerCase() ?? "";
-  const guessed = EXTENSION_TYPES[ext];
-  if (guessed && allowed.includes(guessed)) return guessed;
-  // The picker re-encodes most photos as JPEG and iOS hands videos over as QuickTime; fall back to those when it says nothing.
-  if (!reported && kind === "image") return "image/jpeg";
-  if (!reported && kind === "video") return Platform.OS === "ios" ? "video/quicktime" : "video/mp4";
-  return null;
-}
-
-/** Bytes of the picked file: the picker's figure when present, otherwise read through fetch(). */
-async function fileSize(asset: ImagePicker.ImagePickerAsset): Promise<number | null> {
-  if (typeof asset.fileSize === "number" && asset.fileSize > 0) return asset.fileSize;
-  try {
-    const blob = await (await fetch(asset.uri)).blob();
-    return blob.size;
-  } catch {
-    return null; // the API enforces the limit too; let the upload decide
-  }
-}
-
-/**
- * iOS shows its own picker without any permission; Android needs the media-library permission before 13.
- * Returns false (after explaining) when access was refused.
- */
-async function ensureLibraryAccess(): Promise<boolean> {
-  if (Platform.OS === "ios") return true;
-  const current = await ImagePicker.getMediaLibraryPermissionsAsync();
-  if (current.granted) return true;
-  const asked = current.canAskAgain ? await ImagePicker.requestMediaLibraryPermissionsAsync() : current;
-  if (asked.granted) return true;
-  Alert.alert("Photo access needed", "Allow photo access in Settings to attach a photo.", [
-    { text: "Not now", style: "cancel" },
-    { text: "Open Settings", onPress: () => void Linking.openSettings() },
-  ]);
-  return false;
-}
-
-function isPermissionError(err: unknown): boolean {
-  const message = err instanceof Error ? err.message : String(err ?? "");
-  return /permission|denied|not authori[sz]ed/i.test(message);
-}
 
 export interface AttachMedia {
   /** Opens the camera roll for a photo or a video, checks it against MEDIA_LIMITS and uploads it. Resolves to the updated post, or null when nothing changed. */
@@ -116,59 +61,8 @@ export function useAttachMedia(postId: string | undefined): AttachMedia {
     if (!postId || picking || upload.isPending || removal.isPending) return null;
     setPicking(kind);
     try {
-      if (!(await ensureLibraryAccess())) return null;
-
-      let result: ImagePicker.ImagePickerResult;
-      try {
-        result = await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: kind === "image" ? ["images"] : ["videos"],
-          allowsEditing: false,
-          quality: 0.85,
-          exif: false,
-          videoMaxDuration: MEDIA_LIMITS.videoSeconds,
-        });
-      } catch (err) {
-        if (isPermissionError(err)) {
-          showToast("Photo access needed", "Allow photo access in Settings to attach a photo.");
-        } else {
-          showError(err, "Couldn't open your photos");
-        }
-        return null;
-      }
-      if (result.canceled) return null;
-      const asset = result.assets[0];
-      if (!asset) return null;
-
-      const mimeType = resolveMimeType(asset, kind);
-      if (!mimeType) {
-        showToast(
-          kind === "video" ? "That video format isn't supported" : "That photo format isn't supported",
-          kind === "video" ? "Use an MP4 or MOV video." : "Use a JPEG, PNG or WebP photo.",
-        );
-        return null;
-      }
-
-      const durationSec = kind === "video" && typeof asset.duration === "number" ? asset.duration / 1000 : null;
-      if (durationSec !== null && durationSec > MEDIA_LIMITS.videoSeconds) {
-        showToast("Videos up to 60 seconds", `This one is ${formatDuration(durationSec)}. Trim it in Photos and try again.`);
-        return null;
-      }
-
-      const size = await fileSize(asset);
-      const limit = kind === "video" ? MEDIA_LIMITS.videoBytes : MEDIA_LIMITS.imageBytes;
-      if (size !== null && size > limit) {
-        showToast(kind === "video" ? "Videos up to 60 MB" : "Photos up to 10 MB", `This one is ${formatBytes(size)}.`);
-        return null;
-      }
-
-      const file: MediaFile = {
-        uri: asset.uri,
-        mimeType,
-        width: asset.width || null,
-        height: asset.height || null,
-        duration: durationSec,
-        size,
-      };
+      const file = await pickMedia(kind, POST_MEDIA_LIMITS[kind]);
+      if (!file) return null;
       try {
         return (await upload.mutateAsync({ kind, file })).post;
       } catch {

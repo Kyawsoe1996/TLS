@@ -13,8 +13,9 @@ accountRoutes.delete("/", async (c) => {
 
   const shop = await getShopByOwner(db, userId);
   if (shop) {
-    // Media first, while the posts rows (and their keys) still exist; best effort - every key for this shop
-    // sits under `<shopId>/`, so a retry or a later sweep can find anything left behind.
+    // Media first, while the posts / order_photos rows (and their keys) still exist; best effort - every key for
+    // this shop (post media and order photos alike) sits under `<shopId>/`, so a retry or a later sweep can find
+    // anything left behind.
     try {
       await deleteMediaByPrefix(mediaStore(c.env), `${shop.id}/`);
     } catch (err) {
@@ -25,6 +26,7 @@ accountRoutes.delete("/", async (c) => {
         { sql: "DELETE FROM posts WHERE shop_id = ?", args: [shop.id] },
         { sql: "DELETE FROM appointments WHERE shop_id = ?", args: [shop.id] },
         { sql: "DELETE FROM messages WHERE shop_id = ?", args: [shop.id] },
+        { sql: "DELETE FROM order_photos WHERE shop_id = ?", args: [shop.id] },
         { sql: "DELETE FROM orders WHERE shop_id = ?", args: [shop.id] },
         { sql: "DELETE FROM fittings WHERE shop_id = ?", args: [shop.id] },
         { sql: "DELETE FROM clients WHERE shop_id = ?", args: [shop.id] },

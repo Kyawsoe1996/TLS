@@ -5,6 +5,8 @@ import { useMemo } from "react";
 import type {
   AiFitRequest,
   AiFitResponse,
+  AiParseMeasurementsRequest,
+  AiParseMeasurementsResponse,
   AiPostRequest,
   AiPostResponse,
   AiSeoRequest,
@@ -31,6 +33,7 @@ import type {
   ListPostsResponse,
   MessageResponse,
   OrderResponse,
+  OrderStatus,
   PostResponse,
   PostStatus,
   SendMessageRequest,
@@ -221,6 +224,26 @@ export function createApi(getToken: GetToken) {
     return send<PostResponse>(buildUrl(`${postPath(postId)}/media`), { method: "PUT", headers, body: blob });
   }
 
+  /**
+   * PUT /clients/:id/orders/:orderId/photos — same raw-body pattern as uploadPostMedia: the image is the request body,
+   * its type in Content-Type, its dimensions in X-Media-*, and the workshop stage in X-Photo-Stage (the API uses the
+   * order's current status when it's left out). → 201 { order } with the photo appended.
+   */
+  async function uploadOrderPhoto(clientId: string, orderId: string, file: MediaFile, stage?: OrderStatus): Promise<OrderResponse> {
+    let blob: Blob;
+    try {
+      blob = await (await fetch(file.uri)).blob();
+    } catch {
+      throw new ApiClientError(0, "network", "Couldn't read the photo from your phone. Try picking it again.");
+    }
+    const headers = await authHeaders();
+    headers["Content-Type"] = file.mimeType;
+    if (file.width) headers["X-Media-Width"] = String(Math.round(file.width));
+    if (file.height) headers["X-Media-Height"] = String(Math.round(file.height));
+    if (stage) headers["X-Photo-Stage"] = stage;
+    return send<OrderResponse>(buildUrl(`${orderPath(clientId, orderId)}/photos`), { method: "PUT", headers, body: blob });
+  }
+
   return {
     /** Raw typed request — for routes not covered by the helpers below. */
     request,
@@ -258,6 +281,10 @@ export function createApi(getToken: GetToken) {
     updateOrder: (clientId: string, orderId: string, body: UpdateOrderRequest) =>
       request<OrderResponse>(orderPath(clientId, orderId), { method: "PATCH", body }),
     deleteOrder: (clientId: string, orderId: string) => request<void>(orderPath(clientId, orderId), { method: "DELETE" }),
+    uploadOrderPhoto,
+    /** DELETE /clients/:id/orders/:orderId/photos/:photoId → { order } without it (the file is deleted too). */
+    deleteOrderPhoto: (clientId: string, orderId: string, photoId: string) =>
+      request<OrderResponse>(`${orderPath(clientId, orderId)}/photos/${encodeURIComponent(photoId)}`, { method: "DELETE" }),
     /** Shop-wide: open orders (overdue first, then by due date, no date last) or, with `status: "delivered"`, the delivered ones. */
     listShopOrders: (params?: { status?: "delivered" }) =>
       request<ListOrdersResponse>("/orders", { query: { status: params?.status } }),
@@ -286,6 +313,9 @@ export function createApi(getToken: GetToken) {
     aiSeo: (body: AiSeoRequest) => request<AiSeoResponse>("/ai/seo", { method: "POST", body }),
     aiPost: (body: AiPostRequest) => request<AiPostResponse>("/ai/post", { method: "POST", body }),
     aiWinback: (body: AiWinbackRequest) => request<AiWinbackResponse>("/ai/winback", { method: "POST", body }),
+    /** Reads a dictated transcript into measurements. Text only; called when the phone's parser (lib/measurementParser) can't read part of it. */
+    parseMeasurements: (body: AiParseMeasurementsRequest) =>
+      request<AiParseMeasurementsResponse>("/ai/parse-measurements", { method: "POST", body }),
 
     // ---- Posts (content library) ----
     /** Newest first; `status` narrows to drafts / shared, `q` searches title and topic. */

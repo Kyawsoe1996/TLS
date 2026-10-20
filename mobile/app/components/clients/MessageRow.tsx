@@ -13,6 +13,12 @@ const KIND_LABELS: Record<MessageKind, string> = {
   order_ready: "Order ready",
   followup: "Fitting follow-up",
   appointment_reminder: "Appointment reminder",
+  review_request: "Review request",
+};
+
+/** The row's disc icon: an envelope, except the review request which carries its star. */
+const KIND_ICONS: Partial<Record<MessageKind, IoniconName>> = {
+  review_request: "star-outline",
 };
 
 const STATUS: Record<MessageStatus, { label: string; tone: TagTone; icon?: IoniconName }> = {
@@ -24,6 +30,11 @@ const STATUS: Record<MessageStatus, { label: string; tone: TagTone; icon?: Ionic
 /** "order_ready" → "Order ready". */
 export function messageKindLabel(kind: MessageKind): string {
   return KIND_LABELS[kind];
+}
+
+/** "review_request" → "star-outline"; every other kind → "mail-outline". */
+export function messageKindIcon(kind: MessageKind): IoniconName {
+  return KIND_ICONS[kind] ?? "mail-outline";
 }
 
 /** "simulated" → "Simulated". */
@@ -47,7 +58,7 @@ export function MessageRow({ message, onPress }: MessageRowProps) {
   return (
     <Card onPress={onPress} style={styles.card} testID={`message-row-${message.id}`}>
       <View style={styles.icon}>
-        <Ionicons name="mail-outline" size={18} color={colors.goldDark} />
+        <Ionicons name={messageKindIcon(message.kind)} size={18} color={colors.goldDark} />
       </View>
       <View style={styles.text}>
         <Text style={styles.title} numberOfLines={1}>

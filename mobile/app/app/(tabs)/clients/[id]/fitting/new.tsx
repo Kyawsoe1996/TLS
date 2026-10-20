@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { GARMENT_TYPES, type CreateFittingRequest, type Fitting, type GarmentType, type Measurements } from "@shared/types";
 
@@ -21,17 +21,37 @@ import {
   useClient,
   type MeasurementKey,
 } from "@/components/clients";
+import { DictateRow, DictationSheet, VoiceReviewCard, type DictationOutcome } from "@/components/fitting";
 import { Button, Card, Chip, ErrorBanner, Eyebrow, Field, LoadingAI, NumberField, Screen, SectionTitle } from "@/components/ui";
 import { colors, typography } from "@/constants/theme";
 import { useApi } from "@/lib/api";
+import { heardNothing, mergeParsedMeasurements, parseMeasurements, type ParsedMeasurements } from "@/lib/measurementParser";
+import {
+  dictationLanguage,
+  isSpeechAvailable,
+  loadDictationLocale,
+  loadDictationMode,
+  saveDictationLocale,
+  saveDictationMode,
+  type DictationLocale,
+  type DictationMode,
+} from "@/lib/speech";
+import { showError, showToast } from "@/lib/toast";
 import { useAiConsent } from "@/lib/useAiConsent";
-import { showError } from "@/lib/toast";
 
 const STYLE_PRESETS = ["Slim-cut corporate", "Classic business", "Casual linen", "Wedding"] as const;
 const CUSTOM_STYLE = "Custom";
 const FABRIC_SUGGESTIONS = ["Super 130s navy wool", "Irish linen", "Charcoal flannel"] as const;
 
 type Phase = "idle" | "saving" | "analysing";
+
+interface VoiceResult {
+  result: ParsedMeasurements;
+  durationMs: number;
+}
+
+// False in Expo Go and on phones without a recogniser: the dictation row is simply not shown.
+const speechAvailable = isSpeechAvailable();
 
 /** Manual fitting entry. The garment picks the measurement set; "Save & analyse" runs POST /ai/fit right after saving. */
 export default function NewFittingScreen() {
@@ -51,11 +71,50 @@ export default function NewFittingScreen() {
   const [error, setError] = useState<string | null>(null);
   const [phase, setPhase] = useState<Phase>("idle");
 
+  // Voice dictation: the sheet hands back a transcript, the parser turns it into a review card, "Fill the form"
+  // writes the values into the fields below (marked as from voice until they're edited). Nothing is saved until Save.
+  const [dictating, setDictating] = useState(false);
+  const [locale, setLocale] = useState<DictationLocale>("en-US");
+  const [dictationMode, setDictationMode] = useState<DictationMode>("guided");
+  const [voice, setVoice] = useState<VoiceResult | null>(null);
+  const [voiceKeys, setVoiceKeys] = useState<readonly MeasurementKey[]>([]);
+  const [reading, setReading] = useState(false);
+
+  useEffect(() => {
+    if (!speechAvailable) return;
+    let alive = true;
+    void loadDictationLocale().then((saved) => {
+      if (alive) setLocale(saved);
+    });
+    void loadDictationMode().then((saved) => {
+      if (alive) setDictationMode(saved);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   const fields = fieldsFor(garmentType);
   const analysable = canAnalyse(garmentType, measurements);
   const requirement = analyseRequirement(garmentType);
 
-  const setMeasurement = (key: MeasurementKey, value: number | null) => setMeasurements((m) => ({ ...m, [key]: value }));
+  const setMeasurement = (key: MeasurementKey, value: number | null) => {
+    setMeasurements((m) => ({ ...m, [key]: value }));
+    // Once the tailor types in a field it's theirs, not the recording's.
+    setVoiceKeys((keys) => (keys.includes(key) ? keys.filter((k) => k !== key) : keys));
+  };
+
+  const changeGarment = (next: GarmentType) => {
+    setGarmentType(next);
+    // The review was parsed against the previous garment's fields.
+    setVoice(null);
+    setVoiceKeys([]);
+  };
+
+  const changeLocale = (next: DictationLocale) => {
+    setLocale(next);
+    void saveDictationLocale(next);
+  };
 
   const mutation = useMutation({
     mutationFn: async ({ body, analyse }: { body: CreateFittingRequest; analyse: boolean }): Promise<Fitting> => {
@@ -101,6 +160,57 @@ export default function NewFittingScreen() {
     });
   };
 
+  /**
+   * After Done on the sheet: parse on the phone; if that read nothing or left chunks unread, ask the API's parser
+   * (with the AI consent prompt if it hasn't been given) and let it fill only what's still empty.
+   */
+  const onDictated = async (outcome: DictationOutcome, durationMs: number) => {
+    setDictating(false);
+    if (outcome.mode === "guided") {
+      // Already numbers, field by field: nothing to parse and no AI involved.
+      if (Object.keys(outcome.measurements).length === 0 && !outcome.postureNote) {
+        showToast("Nothing heard", "Say each number after the field name, one at a time.");
+        return;
+      }
+      setVoice({ result: { measurements: outcome.measurements, postureNote: outcome.postureNote, unrecognised: [] }, durationMs });
+      return;
+    }
+    const text = outcome.transcript.trim();
+    if (!text) {
+      showToast("Nothing heard", "Try again a little closer to the phone, one measurement at a time.");
+      return;
+    }
+    const language = dictationLanguage(locale);
+    let result = parseMeasurements(text, garmentType, language);
+    if ((heardNothing(result) || result.unrecognised.length > 0) && (await ensureAiConsent())) {
+      setReading(true);
+      try {
+        const ai = await api.parseMeasurements({ transcript: text, garmentType, language });
+        result = mergeParsedMeasurements(result, ai, garmentType);
+      } catch (err) {
+        showAiError(err, "Couldn't read part of the recording");
+      } finally {
+        setReading(false);
+      }
+    }
+    setVoice({ result, durationMs });
+  };
+
+  const fillFromVoice = () => {
+    if (!voice) return;
+    const heard = voice.result.measurements;
+    const keys = fields.map((f) => f.key).filter((key) => typeof heard[key] === "number");
+    setMeasurements((m) => {
+      const next = { ...m };
+      for (const key of keys) next[key] = heard[key] as number;
+      return next;
+    });
+    setVoiceKeys(keys);
+    const note = voice.result.postureNote;
+    if (note) setPostureNote((current) => (current.trim() ? `${current.trim()}\n${note}` : note));
+    setVoice(null);
+  };
+
   const busy = mutation.isPending;
   const analyseIntent = busy && !!mutation.variables?.analyse;
 
@@ -128,11 +238,26 @@ export default function NewFittingScreen() {
     >
       <ErrorBanner message={error} />
 
+      {speechAvailable ? <DictateRow onPress={() => setDictating(true)} disabled={busy || reading} /> : null}
+      {reading ? <LoadingAI label="Reading the recording…" /> : null}
+      {voice ? (
+        <VoiceReviewCard
+          garmentType={garmentType}
+          result={voice.result}
+          durationMs={voice.durationMs}
+          onFill={fillFromVoice}
+          onRetry={() => {
+            setVoice(null);
+            setDictating(true);
+          }}
+        />
+      ) : null}
+
       <View style={styles.block}>
         <Eyebrow>Garment</Eyebrow>
         <View style={styles.chips}>
           {GARMENT_TYPES.map((g) => (
-            <Chip key={g} label={GARMENT_LABELS[g]} selected={garmentType === g} onPress={() => setGarmentType(g)} disabled={busy} testID={`garment-${g}`} />
+            <Chip key={g} label={GARMENT_LABELS[g]} selected={garmentType === g} onPress={() => changeGarment(g)} disabled={busy} testID={`garment-${g}`} />
           ))}
         </View>
         <Text style={typography.small}>The measurement fields change with the garment. Full suit shows jacket and trouser fields together.</Text>
@@ -185,12 +310,17 @@ export default function NewFittingScreen() {
               unit="cm"
               value={measurements[field.key]}
               onChangeValue={(v) => setMeasurement(field.key, v)}
+              highlight={voiceKeys.includes(field.key)}
               containerStyle={styles.cell}
               editable={!busy}
             />
           ))}
         </View>
-        <Text style={typography.small}>All optional — {analyseKeysLabel(garmentType)} unlock the AI analysis.</Text>
+        {voiceKeys.length > 0 ? (
+          <Text style={typography.small}>Filled from the recording · check before saving</Text>
+        ) : (
+          <Text style={typography.small}>All optional — {analyseKeysLabel(garmentType)} unlock the AI analysis.</Text>
+        )}
       </View>
 
       <Field
@@ -208,6 +338,22 @@ export default function NewFittingScreen() {
       </Card>
 
       {phase === "analysing" ? <LoadingAI label="Analysing the fit — about 10 seconds…" /> : null}
+
+      {speechAvailable ? (
+        <DictationSheet
+          visible={dictating}
+          garmentType={garmentType}
+          locale={locale}
+          onLocaleChange={changeLocale}
+          mode={dictationMode}
+          onModeChange={(next) => {
+            setDictationMode(next);
+            void saveDictationMode(next);
+          }}
+          onDone={(outcome, durationMs) => void onDictated(outcome, durationMs)}
+          onCancel={() => setDictating(false)}
+        />
+      ) : null}
     </Screen>
   );
 }

@@ -5,6 +5,7 @@ import { Tabs } from "expo-router";
 import { colors, fonts } from "@/constants/theme";
 import { useApi } from "@/lib/api";
 import { queryKeys } from "@/lib/queryKeys";
+import { useReminderSync } from "@/lib/useReminderSync";
 
 type IoniconName = keyof typeof Ionicons.glyphMap;
 
@@ -19,6 +20,8 @@ export default function TabsLayout() {
   // Same key as Home, so the two share one cache entry and every order write (afterOrderChanged) refreshes the badge.
   const homeQuery = useQuery({ queryKey: queryKeys.home, queryFn: () => api.getHome() });
   const overdue = homeQuery.data?.ordersOverdue ?? 0;
+  // Local reminders follow the agenda and the open orders; the tabs are only shown signed in with a shop.
+  useReminderSync();
 
   return (
     <Tabs

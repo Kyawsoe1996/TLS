@@ -56,7 +56,10 @@ npx wrangler deploy
 - Fill in `docs/privacy-policy.md` and make sure the worker serves it at `/privacy` and a support page at `/support`. Both are required by the stores. Open them in a browser.
 - Run the database migrations against the production Turso DB (whatever the API README says, e.g. `turso db shell tls < schema.sql`).
 - Use a **billing-enabled** Gemini key in production. On the free tier Google may use prompts to improve its models. The privacy policy says Google processes AI inputs "under the Gemini API terms that apply to our account", so with a free-tier key that sentence is true but weak; a paid key is the right fix.
-- Photo-library access: post media is on (`FEATURES.postMedia` in `mobile/shared/features.ts`), so the `expo-image-picker` plugin is in `app.json` with its `photosPermission` text. The files go to the company's Amazon S3 bucket: set `S3_BUCKET` / `S3_REGION` / `S3_PREFIX` in `wrangler.toml` and the two `S3_*` keys as worker secrets before deploying, and declare "Photos or videos" (user content, not shared with third parties) in the Play Data safety form and under App Privacy in App Store Connect.
+- Permissions and what each one means for the stores:
+  - Photo library: post media is on (`FEATURES.postMedia` in `mobile/shared/features.ts`), so the `expo-image-picker` plugin is in `app.json` with its `photosPermission` text. The files go to the company's Amazon S3 bucket: set `S3_BUCKET` / `S3_REGION` / `S3_PREFIX` in `wrangler.toml` and the two `S3_*` keys as worker secrets before deploying, and declare "Photos or videos" (user content, not shared with third parties) in the Play Data safety form and under App Privacy in App Store Connect.
+  - Microphone + speech recognition (dictated fittings, 1.1+): the `expo-speech-recognition` plugin in `app.json` sets `NSMicrophoneUsageDescription` / `NSSpeechRecognitionUsageDescription` and Android `RECORD_AUDIO` (no longer in `blockedPermissions`; the image-picker plugin's `microphonePermission` carries the same text so it doesn't block it either). The phone's own recogniser (Siri / Google) does the transcription: the app never records or uploads audio, and the transcript text goes to the API (`POST /ai/parse-measurements`, Gemini) only when the on-device parser can't read part of it and the owner has given the AI consent. Declare nothing new for audio: App Privacy "Audio Data" and Play "Voice or sound recordings" stay **not collected**; the transcript is text and already covered by "Other User Content" / "Other user-generated content". If Apple asks why the microphone is needed, the answer is the "Dictate the measurements" row on the New-fitting screen; it is hidden in Expo Go and the simulator, so show it on a device build.
+  - Notifications (Reminders, 1.1+): the `expo-notifications` plugin, local notifications only: no push token, no APNs key, no FCM. The only prompt is on Settings → Reminders. Nothing to declare under App Privacy or Data safety; on Android 13+ the `POST_NOTIFICATIONS` runtime permission is requested there too.
 - Local SEO uses Gemini's **Google Maps grounding**. Before submitting, read the "Grounding with Google Maps" section of the Gemini API terms (ai.google.dev/gemini-api/terms): check the monthly usage allowance for your tier, and exclude the terms' prohibited territories from the store availability lists.
 
 ## 3. Clerk production instance
@@ -85,7 +88,7 @@ npx wrangler deploy
      App ID = the app, Domains = `clerk.magicktls.generalmagickindustries.com`, Return URL = the production
      Clerk URI. Keys → create a key with Sign in with Apple, download the `.p8` once. In Clerk production →
      Apple → Use custom credentials: Services ID, Team ID `K936SW2MTN`, Key ID, private key, and the
-     native-app Bundle ID. Also Native applications → add iOS app (Team ID + bundle id).
+     native-app Bundle ID. Also Native applications → add iOS app (Team ID + bundle id), and under **Allowlist for mobile OAuth redirect** add `tls://sso-callback` (the Google / Facebook return link; `app/sso-callback.tsx`).
    - Email code stays enabled as the fallback; Test mode stays on for the reviewer account.
    Apple requires "Sign in with Apple" whenever another third-party login is offered, which is why the three
    ship together.
@@ -134,6 +137,7 @@ eas build -p ios --profile preview          # simulator .app against production;
    - **Contact Info → Name, Email Address, Phone Number:** collected, **linked to the user**, used for **App Functionality**, **not used for tracking**.
    - **User Content → Other User Content** (measurements, notes, orders, posts, generated text): linked to the user, App Functionality, not for tracking.
    - **User Content → Photos or Videos** (the photo or video attached to a post, stored in the company S3 bucket): linked to the user, App Functionality, not for tracking.
+   - **User Content → Audio Data: not collected.** Dictated fittings are transcribed by the phone; no recording is stored or sent, and the transcript is text under Other User Content above. Local reminders add nothing either.
    - **User Content → Emails or Text Messages** (the emails sent to clients are stored on their file): linked to the user, App Functionality, not for tracking.
    - **Financial Info → Other Financial Info** (order price and deposit the tailor records; no payments are processed): linked to the user, App Functionality, not for tracking.
    - **Identifiers → User ID:** linked, App Functionality, not for tracking.
@@ -168,7 +172,7 @@ If Clerk test mode is not available on your plan, create a real mailbox (e.g. `r
    - **Data safety:**
      - Collects data: Yes. Shares data: **No** (transfers to service providers acting on your behalf do not count as sharing).
      - Encrypted in transit: Yes. Users can request deletion: Yes (in-app, Settings → Delete account; give the privacy policy URL as the deletion-request link).
-     - Data types collected, each "Required", purpose "App functionality", not ephemeral: **Personal info → Name, Email address, Phone number, Other info** (shop and client details, measurements); **App activity → Other user-generated content** (notes, AI text); **App info and performance → Crash logs / Diagnostics: No** (none collected unless you add a crash SDK); **Device or other IDs: No**.
+     - Data types collected, each "Required", purpose "App functionality", not ephemeral: **Personal info → Name, Email address, Phone number, Other info** (shop and client details, measurements); **App activity → Other user-generated content** (notes, AI text); **App info and performance → Crash logs / Diagnostics: No** (none collected unless you add a crash SDK); **Device or other IDs: No**; **Audio → Voice or sound recordings: No** (dictation is transcribed on the phone; only the text may be sent, covered by Other user-generated content). Local reminders need no entry.
 3. **Store listing:** short description, full description (`docs/store-listing.md`), 512×512 icon, 1024×500 feature graphic, phone screenshots (at least 2), contact email (becomes public), external marketing default.
 4. **App signing:** accept Play App Signing. EAS generates and stores the upload keystore.
 5. **Service account for `eas submit`:** Google Cloud Console → IAM → Service accounts → create → Keys → JSON → save as `mobile/app/google-service-account.json` (git-ignored). Then Play Console → **Users and permissions → Invite new users** → the service account email → app permissions: Release manager (or Admin) for this app.

@@ -12,10 +12,12 @@ import { errorMessage } from "@/lib/toast";
 import { useSetShop, useShop } from "@/lib/useShop";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const URL_RE = /^https?:\/\/\S+$/i;
 
 /**
- * Shop details (address, phone, opening hours, reply-to) — the footer of every email sent from the app.
- * Reached from Settings. Saves with PUT /shop alongside the shop's existing name / district / city / tone.
+ * Shop details (address, phone, opening hours, reply-to) — the footer of every email sent from the app — plus the
+ * Google review link offered after a delivery. Reached from Settings. Saves with PUT /shop alongside the shop's
+ * existing name / district / city / tone.
  */
 export default function ShopDetailsScreen() {
   const router = useRouter();
@@ -28,7 +30,9 @@ export default function ShopDetailsScreen() {
   const [phone, setPhone] = useState(shop?.phone ?? "");
   const [openingHours, setOpeningHours] = useState(shop?.openingHours ?? "");
   const [replyToEmail, setReplyToEmail] = useState(shop?.replyToEmail ?? "");
+  const [googleReviewUrl, setGoogleReviewUrl] = useState(shop?.googleReviewUrl ?? "");
   const [emailError, setEmailError] = useState<string | null>(null);
+  const [urlError, setUrlError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Prefill once if the shop arrives after mount; later refetches must not overwrite what's being typed.
@@ -40,6 +44,7 @@ export default function ShopDetailsScreen() {
     setPhone(shop.phone ?? "");
     setOpeningHours(shop.openingHours ?? "");
     setReplyToEmail(shop.replyToEmail ?? "");
+    setGoogleReviewUrl(shop.googleReviewUrl ?? "");
   }, [shop]);
 
   const mutation = useMutation({
@@ -57,18 +62,22 @@ export default function ShopDetailsScreen() {
     phone: phone.trim(),
     openingHours: openingHours.trim(),
     replyToEmail: replyToEmail.trim(),
+    googleReviewUrl: googleReviewUrl.trim(),
   };
   const dirty =
     !!shop &&
     (draft.address !== (shop.address ?? "") ||
       draft.phone !== (shop.phone ?? "") ||
       draft.openingHours !== (shop.openingHours ?? "") ||
-      draft.replyToEmail !== (shop.replyToEmail ?? ""));
+      draft.replyToEmail !== (shop.replyToEmail ?? "") ||
+      draft.googleReviewUrl !== (shop.googleReviewUrl ?? ""));
 
   const submit = () => {
     if (!shop) return;
     if (draft.replyToEmail && !EMAIL_RE.test(draft.replyToEmail)) return setEmailError("That doesn't look like an email address.");
     setEmailError(null);
+    if (draft.googleReviewUrl && !URL_RE.test(draft.googleReviewUrl)) return setUrlError("That doesn't look like a web link. It should start with https://");
+    setUrlError(null);
     setError(null);
     // Trimmed strings throughout: "" clears a detail on the server.
     mutation.mutate({ name: shop.name, district: shop.district, city: shop.city, tone: shop.tone, ...draft });
@@ -143,13 +152,31 @@ export default function ShopDetailsScreen() {
         textContentType="emailAddress"
         autoCapitalize="none"
         autoCorrect={false}
-        returnKeyType="done"
-        onSubmitEditing={submit}
+        returnKeyType="next"
         editable={!busy}
         testID="shop-reply-to"
       />
+      <Field
+        label="Google review link"
+        value={googleReviewUrl}
+        onChangeText={(t) => {
+          setGoogleReviewUrl(t);
+          if (urlError) setUrlError(null);
+        }}
+        placeholder="e.g. https://g.page/r/…/review"
+        hint="From Google Business Profile → Get more reviews. Lets you ask for a review after each delivery."
+        error={urlError}
+        keyboardType="url"
+        textContentType="URL"
+        autoCapitalize="none"
+        autoCorrect={false}
+        returnKeyType="done"
+        onSubmitEditing={submit}
+        editable={!busy}
+        testID="shop-review-url"
+      />
 
-      <FooterPreview shop={shop} {...draft} />
+      <FooterPreview shop={shop} address={draft.address} phone={draft.phone} openingHours={draft.openingHours} replyToEmail={draft.replyToEmail} />
     </Screen>
   );
 }

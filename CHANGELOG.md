@@ -5,6 +5,58 @@ All notable changes to TLS, newest first. Written in plain language so anyone on
 ## Unreleased
 
 ### Added
+- **Measurement history.** A fitting now shows "Changes since last fitting" when the client has an
+  earlier fitting of the same garment: each measurement before → after with the difference, and a
+  "Fit note" written on the phone (no AI call) that names anything that moved 1 cm or more and what
+  to re-check before cutting.
+- **Progress photos on an order.** Up to six photos per order, each tagged with the stage it was taken
+  at (API: `PUT /clients/:id/orders/:orderId/photos`, `DELETE …/photos/:photoId`, new `order_photos`
+  table, same S3 storage as post media, keys under `<shop>/orders/<order>/`). Tap a photo for the
+  full-screen viewer with Share (phone share sheet) and Delete. Deleting an order, a client or the
+  account removes the files.
+- **Google review request.** Settings → Shop details gains a "Google review link"; once an order is
+  delivered, the order offers "Ask for a review": a thank-you email with the link, editable before
+  sending, saved on the client's file as a "Review request" message. Sent once per order (new message
+  kind `review_request`; the API stamps `orders.review_requested_at`). Migration 0008 (review link,
+  review stamp, order photos).
+- **Reminders on the phone.** Settings → Reminders: tomorrow's appointments (the evening before),
+  **before each appointment on the day** (a chosen lead time, so same-day bookings are covered too),
+  orders due this week (Monday morning), overdue orders (every morning) and ready-but-not-collected
+  (off by default). The evening time, morning time and lead time are the owner's to set — a tap opens
+  hour / minute wheels (a pure-JS picker, `components/ui/TimePickerSheet.tsx`), with quick-pick chips
+  for the usual values. Scheduled locally with `expo-notifications` from the appointments and orders
+  already in the app, re-planned whenever they change; nothing is sent to clients and no server is
+  involved. The screen lists what is coming up on this phone and has "Send a test reminder" (shown at
+  once) so the owner can see one without waiting. Needs the notification permission (declared in the
+  release checklist).
+- **Voice-dictated fitting.** On New fitting, "Dictate the measurements" opens a listening sheet that
+  uses the phone's own speech recognition (`expo-speech-recognition`, English or Thai, audio never
+  leaves the device). Default is the **guided** mode: the sheet names one field at a time (Chest …
+  Waist …) and the tailor says only the number — "one oh two", "102", "หนึ่งร้อยสอง", "forty inches" —
+  it ticks, moves to the next field, and finishes with "Any posture notes?"; several numbers in one
+  breath fill the next fields, and "skip", "back", "done" (ข้าม / ย้อน / เสร็จ) work by voice. "Say
+  everything at once" switches to free dictation, where the transcript is parsed on the phone
+  (`lib/measurementParser.ts`, with node tests) and only an unreadable part is sent as text to Gemini
+  (`POST /ai/parse-measurements`, behind the AI consent and the daily limit). Both end on a "We heard"
+  card; "Fill the form" fills the fields (gold border) for the tailor to check before saving. Needs
+  the microphone and speech-recognition permissions and a new build; the row is hidden in Expo Go.
+- **Google / Facebook sign-in returns to `tls://sso-callback`** (new `app/sso-callback.tsx`, a spinner
+  outside the auth guards) instead of the bare `tls://`, which made the router resolve "/" against the
+  signed-out navigator and show a console error on every social sign-in in development builds. The
+  production Clerk instance needs that URL in its mobile OAuth redirect allowlist (release checklist §3).
+- **Appointments as a day view.** The diary now opens on a Mon–Sun strip (arrows move a week, a
+  calendar button opens a month grid to jump to any date; dots mark busy days, today has a gold ring)
+  with the chosen day's appointments on a timeline — time on the left, client, kind, the linked
+  garment, "Reminded" when a reminder went out, done ones ticked and faded — plus "Free until …" /
+  "Free after …" notes for the gaps. An empty day shows "A free day" with the rest of that week
+  underneath. "New appointment on <day>" asks which client, then opens the schedule form with the
+  day already filled in (`date` parameter on the form). Uses `GET /appointments?from&to&status=all`
+  per week; no API change. Helpers in `components/clients/agenda.ts` with node tests.
+- **Development builds.** `expo-dev-client` is in the app and `eas.json` has a `development-simulator`
+  profile (a development client for the iOS Simulator), because the reminders and dictation modules
+  are native and Expo Go can't run them; `expo start` now opens the development build when one is
+  installed. Local `expo run:ios` needs an Apple signing certificate since the Sign in with Apple and
+  notification entitlements were added, so simulator builds come from EAS.
 - **Sign in with Apple, Google and Facebook.** Both auth screens now offer the three social logins above
   the email field; the emailed one-time code stays as the fallback. Apple uses the native iOS sheet
   (`expo-apple-authentication`, new config plugin, so it needs a new build), Google and Facebook use Clerk's

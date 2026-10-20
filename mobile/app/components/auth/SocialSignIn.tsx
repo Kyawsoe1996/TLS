@@ -57,7 +57,9 @@ export function SocialSignIn({ onError, disabled = false }: SocialSignInProps) {
       }
       const { createdSessionId, setActive, authSessionResult } = await startSSOFlow({
         strategy: provider === "google" ? "oauth_google" : "oauth_facebook",
-        redirectUrl: AuthSession.makeRedirectUri(),
+        // A real route (app/sso-callback.tsx): returning to the bare `tls://` made expo-router resolve "/" against
+        // the signed-out navigator and log "state couldn't be applied" every time.
+        redirectUrl: AuthSession.makeRedirectUri({ path: "sso-callback" }),
       });
       if (createdSessionId && setActive) {
         await setActive({ session: createdSessionId });

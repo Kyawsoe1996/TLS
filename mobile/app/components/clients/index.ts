@@ -32,8 +32,20 @@ export {
   type MeasurementField,
   type MeasurementKey,
 } from "./measurements";
-export { MessageRow, MessageStatusTag, messageKindLabel, messageStatusLabel, type MessageRowProps } from "./MessageRow";
+export { MeasurementChanges, type MeasurementChangesProps } from "./MeasurementChanges";
+export {
+  FIT_NOTE_THRESHOLD_CM,
+  compareMeasurements,
+  deltaTone,
+  findPreviousFitting,
+  fitNote,
+  formatDelta,
+  type DeltaTone,
+  type MeasurementChange,
+} from "./measurementHistory";
+export { MessageRow, MessageStatusTag, messageKindIcon, messageKindLabel, messageStatusLabel, type MessageRowProps } from "./MessageRow";
 export { Monogram, type MonogramProps } from "./Monogram";
+export { OrderPhotos, orderPhotoShareText, type OrderPhotosProps } from "./OrderPhotos";
 export { OrderRow, orderBalance, orderDueLine, type OrderRowProps } from "./OrderRow";
 export {
   CLIENT_LISTS_KEY,
@@ -68,6 +80,7 @@ export {
   type ShopOrdersFilter,
 } from "./queries";
 export { ErrorBlock, LoadingBlock, type ErrorBlockProps } from "./QueryState";
+export { ReviewRequestCard, reviewRequestDraft, type ReviewRequestCardProps } from "./ReviewRequestCard";
 export {
   EmailDraftFields,
   NoEmailHint,

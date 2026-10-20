@@ -10,8 +10,10 @@ import {
   ErrorBlock,
   LoadingBlock,
   NoEmailHint,
+  OrderPhotos,
   OrderStatusTag,
   OverdueTag,
+  ReviewRequestCard,
   SentCard,
   afterOrderChanged,
   cacheOrder,
@@ -39,7 +41,7 @@ import { queryKeys } from "@/lib/queryKeys";
 import { confirm, showError } from "@/lib/toast";
 import { useShop } from "@/lib/useShop";
 
-/** Order screen: status stepper, payment, due date, notes, the fitting it's cut from, and delete. */
+/** Order screen: status stepper, review request (delivered), progress photos, payment, due date, notes, the fitting it's cut from, and delete. */
 export default function OrderDetailScreen() {
   const { id, orderId } = useLocalSearchParams<{ id: string; orderId: string }>();
   const router = useRouter();
@@ -237,6 +239,10 @@ function OrderDetails({ order, client, onDeleted }: { order: Order; client: Clie
           {order.status === "delivered" ? "Delivered orders stay on the client's file." : "Tap the step the garment has reached in the workshop."}
         </Text>
       </View>
+
+      <ReviewRequestCard order={order} client={client} />
+
+      <OrderPhotos order={order} clientName={client?.name} disabled={deleteMutation.isPending} />
 
       <PaymentCard order={order} disabled={deleteMutation.isPending} onSaved={onSaved} />
 

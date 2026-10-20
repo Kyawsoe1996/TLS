@@ -219,6 +219,33 @@ export function newMediaKey(shopId: string, postId: string, contentType: string)
   return `${shopId}/${postId}/${crypto.randomUUID()}.${EXTENSIONS[contentType] ?? "bin"}`;
 }
 
+/**
+ * A fresh, unguessable object key for an order's progress photo. The `orders/` segment keeps them apart from
+ * post media while staying under the shop prefix, so "delete everything for this shop" still covers them.
+ */
+export function newOrderPhotoKey(shopId: string, orderId: string, contentType: string): string {
+  return `${shopId}/orders/${orderId}/${crypto.randomUUID()}.${EXTENSIONS[contentType] ?? "bin"}`;
+}
+
+/** Optional numeric upload header (X-Media-Width etc.): absent -> null, present but not a number -> 400. */
+export function numberHeader(value: string | undefined, name: string): number | null {
+  if (value === undefined || value.trim() === "") return null;
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 0) throw badRequest(`${name} must be a number of 0 or more.`);
+  return n;
+}
+
+/** The upload's declared Content-Length: null when absent (chunked); 400 when not a whole number or zero (empty file). */
+export function declaredLength(c: Context<AppEnv>): number | null {
+  const header = c.req.header("Content-Length");
+  const declared = header === undefined ? null : Number(header);
+  if (declared != null && (!Number.isInteger(declared) || declared < 0)) {
+    throw badRequest("Content-Length must be a whole number of bytes.");
+  }
+  if (declared === 0) throw badRequest("The file is empty.");
+  return declared;
+}
+
 /** Absolute URL the app can load a media key from (`origin` from publicOrigin). */
 export const mediaUrl = (origin: string, key: string): string => `${origin}${MEDIA_PATH}${key}`;
 
@@ -293,6 +320,11 @@ export async function deleteMediaObject(store: MediaStore | undefined, key: stri
   } catch (err) {
     console.warn(`[media] could not delete ${key}:`, err instanceof Error ? err.message : err);
   }
+}
+
+/** Best-effort delete of several objects (an order's or a client's photos); like deleteMediaObject, never throws. */
+export async function deleteMediaObjects(store: MediaStore | undefined, keys: (string | null | undefined)[]): Promise<void> {
+  await Promise.all(keys.map((key) => deleteMediaObject(store, key)));
 }
 
 /** Delete every object under a prefix (e.g. `${shopId}/` when an account is deleted), in pages. Returns the count. */

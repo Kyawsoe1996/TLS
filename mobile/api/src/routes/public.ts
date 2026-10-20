@@ -44,21 +44,21 @@ ${body}
 
 const PRIVACY_HTML = `
 <h1>Privacy Policy</h1>
-<p class="meta">Magick Tailor - the app for bespoke tailor shops. Provided by General Magick Industries Pte Ltd. Last updated: 8 October 2026.</p>
+<p class="meta">Magick Tailor - the app for bespoke tailor shops. Provided by General Magick Industries Pte Ltd. Last updated: 19 October 2026.</p>
 
 <p>This policy explains, in plain English, what information the Magick Tailor app stores, who helps us process it, and how you stay in control of it.</p>
 
 <h2>What we store</h2>
 <ul>
   <li><strong>Your account.</strong> The email address you sign in with (managed by Clerk) and your shop profile: shop name, district, city and brand tone.</li>
-  <li><strong>Your shop details.</strong> The address, phone number, opening hours and reply-to email you add in Settings. They appear at the bottom of the emails you send.</li>
+  <li><strong>Your shop details.</strong> The address, phone number, opening hours and reply-to email you add in Settings (they appear at the bottom of the emails you send), and your Google review link if you add one.</li>
   <li><strong>Your clients.</strong> The client details you enter: names, phone numbers, email addresses, LINE IDs, notes and last-order dates.</li>
   <li><strong>Measurements and fittings.</strong> The garment type, all the measurements that garment needs, the style, fabric and posture notes you record for each fitting.</li>
-  <li><strong>Orders.</strong> Each order's garment, status, due date, price and deposit.</li>
+  <li><strong>Orders.</strong> Each order's garment, status, due date, price and deposit, any progress photos you attach to it (stored the same way as the photos on your posts, see below) and whether you have asked the client for a review.</li>
   <li><strong>Appointments.</strong> Each fitting, collection or consultation you schedule with a client: the date and time, the order it relates to, your notes and whether a reminder was sent.</li>
-  <li><strong>Emails you send.</strong> When you email a client from the app (win-back, order ready, follow-up) we keep a copy on the client's file: the address it went to, the subject, the text, whether it was delivered and the provider's reference.</li>
+  <li><strong>Emails you send.</strong> When you email a client from the app (win-back, order ready, follow-up, appointment reminder, review request) we keep a copy on the client's file: the address it went to, the subject, the text, whether it was delivered and the provider's reference.</li>
   <li><strong>AI outputs.</strong> The fit analyses, marketing posts and email drafts generated for you, so you can find them again.</li>
-  <li><strong>Posts and media.</strong> The posts in your content library and any photo or video you attach to them.</li>
+  <li><strong>Posts and media.</strong> The posts in your content library and any photo or video you attach to them, plus the progress photos you attach to orders.</li>
   <li><strong>Technical data.</strong> Clerk keeps the session and device information needed to keep you signed in. Cloudflare, which hosts our API, keeps request logs (time, route, response status) for security and debugging, and Upstash keeps per-account counters for the daily usage limits. No advertising or analytics trackers.</li>
 </ul>
 <p>Beyond that technical data, we do not collect anything you don't enter yourself.</p>
@@ -69,9 +69,9 @@ const PRIVACY_HTML = `
   <li><strong>Clerk</strong> - sign-in and account security.</li>
   <li><strong>Turso</strong> - the database where your shop, client, fitting and AI data is stored.</li>
   <li><strong>Cloudflare</strong> - hosting for the API that the app talks to.</li>
-  <li><strong>Amazon Web Services (S3)</strong> - storage for the photos and videos you attach to posts. Files are kept privately under a random name and only served through the API.</li>
-  <li><strong>Google Gemini</strong> - AI generation. When you tap an AI feature, the relevant inputs (for example a client's first name, style, fabric and measurements, or your district and brand tone) are sent to Google to produce the result. The app asks for your permission before the first AI feature is used and records when you agreed; nothing is sent to Google until then. Clients' contact details are never sent.</li>
-  <li><strong>Resend</strong> - delivers the emails you send to clients. Each email goes out from the app's own sender address, shows your shop's name, and uses your shop's reply-to email so replies reach you. Resend receives the client's address, the subject and the text.</li>
+  <li><strong>Amazon Web Services (S3)</strong> - storage for the photos and videos you attach to posts and the progress photos you attach to orders. Files are kept privately under a random name and only served through the API.</li>
+  <li><strong>Google Gemini</strong> - AI generation. When you tap an AI feature, the relevant inputs (for example a client's first name, style, fabric and measurements, or your district and brand tone) are sent to Google to produce the result. The app asks for your permission before the first AI feature is used and records when you agreed; nothing is sent to Google until then. Clients' contact details are never sent. If you dictate measurements, your phone turns your voice into text on the device; only that text (never audio) may be sent to Google Gemini, and only when the app can't read it by itself.</li>
+  <li><strong>Resend</strong> - delivers the emails you send to clients, including review requests (a thank-you with your Google review link after delivery), which are sent on your behalf like every other email and only when you tap Send. Each email goes out from the app's own sender address, shows your shop's name, and uses your shop's reply-to email so replies reach you. Resend receives the client's address, the subject and the text.</li>
   <li><strong>Upstash</strong> - counts your AI requests and emails so we can apply the daily usage limits. It only sees an anonymous user identifier, not your data.</li>
   <li><strong>Expo (EAS)</strong> - builds the app itself. It does not receive any user data.</li>
 </ul>
@@ -83,7 +83,7 @@ const PRIVACY_HTML = `
 <p>You are responsible for making sure you're allowed to record your clients' details and measurements in the app. Please only enter what you need to serve them.</p>
 
 <h2>Deleting your data</h2>
-<p>You can delete your account at any time from inside the app: <strong>Settings &rarr; Delete account</strong>. This permanently erases your shop and its details, all client records, all fittings and measurements, all orders and appointments, the copies of emails you sent, all AI outputs, your posts and their photos and videos, and your sign-in account. It cannot be undone. Backups held by our database provider are purged within 30 days.</p>
+<p>You can delete your account at any time from inside the app: <strong>Settings &rarr; Delete account</strong>. This permanently erases your shop and its details, all client records, all fittings and measurements, all orders with their progress photos, all appointments, the copies of emails you sent, all AI outputs, your posts and their photos and videos, and your sign-in account. It cannot be undone. Backups held by our database provider are purged within 30 days.</p>
 
 <h2>Security</h2>
 <p>Data is sent over encrypted connections (HTTPS) and stored with providers that encrypt data at rest. Access to the API always requires your signed-in session.</p>

@@ -9,6 +9,7 @@ import type {
 import { getClientRow, inactiveCutoff, newId, nowIso, rowToClient } from "../db";
 import type { AppEnv } from "../env";
 import { notFound } from "../errors";
+import { deleteMediaObjects, mediaStore } from "../media";
 import { type AssertAccepts, isoDate, optionalText, parseBody, requiredText } from "../validate";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -131,7 +132,7 @@ clientRoutes.patch("/:id", async (c) => {
   return c.json(body);
 });
 
-/** DELETE /clients/:id -> 204 (also deletes the client's appointments, messages, orders and fittings) */
+/** DELETE /clients/:id -> 204 (also deletes the client's appointments, messages, orders with their photos, and fittings) */
 clientRoutes.delete("/:id", async (c) => {
   const db = c.get("db");
   const shop = c.get("shop");
@@ -140,16 +141,23 @@ clientRoutes.delete("/:id", async (c) => {
   const existing = await getClientRow(db, shop.id, id);
   if (!existing) throw notFound("Client not found.");
 
+  // The photo keys are read first so the files can be removed once the rows are gone (best effort).
+  const photoRows = await db.execute({
+    sql: "SELECT media_key FROM order_photos WHERE client_id = ? AND shop_id = ?",
+    args: [id, shop.id],
+  });
   await db.batch(
     [
       { sql: "DELETE FROM appointments WHERE client_id = ? AND shop_id = ?", args: [id, shop.id] },
       { sql: "DELETE FROM messages WHERE client_id = ? AND shop_id = ?", args: [id, shop.id] },
+      { sql: "DELETE FROM order_photos WHERE client_id = ? AND shop_id = ?", args: [id, shop.id] },
       { sql: "DELETE FROM orders WHERE client_id = ? AND shop_id = ?", args: [id, shop.id] },
       { sql: "DELETE FROM fittings WHERE client_id = ? AND shop_id = ?", args: [id, shop.id] },
       { sql: "DELETE FROM clients WHERE id = ? AND shop_id = ?", args: [id, shop.id] },
     ],
     "write",
   );
+  await deleteMediaObjects(mediaStore(c.env), photoRows.rows.map((row) => row["media_key"] as string | null));
   return c.body(null, 204);
 });
 

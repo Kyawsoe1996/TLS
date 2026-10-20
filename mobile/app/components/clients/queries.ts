@@ -47,10 +47,10 @@ export const clientRoutes = {
   }),
   /** Shop-wide agenda: every scheduled appointment, soonest first. */
   appointments: "/(tabs)/clients/appointments" as const satisfies Href,
-  /** New appointment for a client; `orderId` preselects a collection for that order. */
-  newAppointment: (id: string, orderId?: string): Href => ({
+  /** New appointment for a client; `orderId` preselects a collection for that order, `date` (YYYY-MM-DD) prefills the day. */
+  newAppointment: (id: string, orderId?: string, date?: string): Href => ({
     pathname: "/(tabs)/clients/[id]/appointments/new",
-    params: { id, ...(orderId ? { orderId } : {}) },
+    params: { id, ...(orderId ? { orderId } : {}), ...(date ? { date } : {}) },
   }),
   appointment: (id: string, appointmentId: string): Href => ({
     pathname: "/(tabs)/clients/[id]/appointments/[appointmentId]",
@@ -93,7 +93,9 @@ export function useOrders(clientId: string | undefined) {
 
 /** The row the user tapped, if any cached list still holds it, so the detail screen can open without a spinner. */
 function findCachedOrder(qc: QueryClient, clientId: string, orderId: string): { order: Order; updatedAt: number } | undefined {
-  const keys = [queryKeys.orders(clientId), queryKeys.openOrders("open"), queryKeys.openOrders("delivered")];
+  // Only the per-client list carries `photos`; the shop-wide lists return `photos: []`, and seeding from them
+  // would flash an empty photo grid until the refetch lands.
+  const keys = [queryKeys.orders(clientId)];
   for (const key of keys) {
     const order = qc.getQueryData<Order[]>(key)?.find((o) => o.id === orderId);
     if (order) return { order, updatedAt: qc.getQueryState(key)?.dataUpdatedAt ?? 0 };
@@ -170,6 +172,21 @@ export function useShopAppointments() {
   return useQuery<Appointment[]>({
     queryKey: SHOP_APPOINTMENTS_KEY,
     queryFn: async () => (await api.listShopAppointments()).appointments,
+  });
+}
+
+/**
+ * GET /appointments?from=&to=&status=all — every appointment (done and cancelled too) starting in [from, to), for the
+ * day view's week strip and month dots. Keyed under the shop agenda key so the usual invalidations refresh it.
+ */
+export function useAgendaRange(from: Date, to: Date) {
+  const api = useApi();
+  const fromIso = from.toISOString();
+  const toIso = to.toISOString();
+  return useQuery<Appointment[]>({
+    queryKey: [...SHOP_APPOINTMENTS_KEY, "range", fromIso, toIso],
+    queryFn: async () => (await api.listShopAppointments({ from: fromIso, to: toIso, status: "all" })).appointments,
+    placeholderData: (previous) => previous,
   });
 }
 

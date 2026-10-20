@@ -26,7 +26,7 @@ app.use(
   cors({
     origin: "*",
     allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowHeaders: ["Authorization", "Content-Type", "X-Media-Width", "X-Media-Height", "X-Media-Duration"],
+    allowHeaders: ["Authorization", "Content-Type", "X-Media-Width", "X-Media-Height", "X-Media-Duration", "X-Photo-Stage"],
     exposeHeaders: ["X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"],
     maxAge: 86400,
   }),

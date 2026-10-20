@@ -11,4 +11,5 @@ export { KpiTile, type KpiTileProps } from "./KpiTile";
 export { LoadingAI, type LoadingAIProps } from "./LoadingAI";
 export { NumberField, type NumberFieldProps } from "./NumberField";
 export { Screen, type ScreenProps } from "./Screen";
+export { TimePickerSheet, type TimePickerSheetProps } from "./TimePickerSheet";
 export { SectionTitle, type SectionTitleProps } from "./SectionTitle";

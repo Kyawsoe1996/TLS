@@ -29,7 +29,7 @@ const KIND_HINTS: Record<AppointmentKind, string> = {
 
 /** New appointment for a client. `?orderId=` (from an order screen) preselects a collection for that order. */
 export default function NewAppointmentScreen() {
-  const { id, orderId: orderParam } = useLocalSearchParams<{ id: string; orderId?: string }>();
+  const { id, orderId: orderParam, date: dateParam } = useLocalSearchParams<{ id: string; orderId?: string; date?: string }>();
   const router = useRouter();
   const api = useApi();
   const queryClient = useQueryClient();
@@ -37,7 +37,8 @@ export default function NewAppointmentScreen() {
   const ordersQuery = useOrders(id);
 
   const [kind, setKind] = useState<AppointmentKind>(orderParam ? "collection" : "fitting");
-  const [date, setDate] = useState("");
+  // The day view hands over the day it was on (YYYY-MM-DD) so the tailor only picks the time.
+  const [date, setDate] = useState(dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : "");
   const [time, setTime] = useState("");
   const [whenError, setWhenError] = useState<string | null>(null);
   const [orderId, setOrderId] = useState<string | null>(orderParam || null);

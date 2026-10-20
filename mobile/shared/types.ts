@@ -25,6 +25,9 @@ export interface Shop {
   phone: string | null;
   openingHours: string | null; // free text, e.g. "Mon–Sat 10:00–19:00"; used in the order-ready email
   replyToEmail: string | null; // Reply-To on outgoing emails so client replies reach the shop
+  // The shop's Google "write a review" link (Google Business Profile → Get more reviews). When set, a delivered
+  // order offers a review_request email that includes it; null hides that card.
+  googleReviewUrl: string | null;
   // When the owner agreed to send client details to Google Gemini (POST /shop/ai-consent); null until then.
   // Every /ai/* route answers 403 consent_required while this is null, so the app asks first.
   aiConsentAt: ISODate | null;
@@ -47,6 +50,7 @@ export interface UpsertShopRequest {
   phone?: string;
   openingHours?: string;
   replyToEmail?: string; // validated as an email when non-empty
+  googleReviewUrl?: string; // validated as an http(s) URL when non-empty
 }
 export type UpsertShopResponse = GetShopResponse;
 /** POST /shop/ai-consent — records the owner's agreement to the AI data sharing (idempotent) → { shop, email } */
@@ -183,11 +187,38 @@ export interface Order {
   price: number | null;
   deposit: number | null; // total paid so far
   balance: number | null; // computed: price - deposit when price is set (never below 0)
+  // When a review_request email was sent for this order (null until then); the app offers it once per order.
+  reviewRequestedAt: ISODate | null;
+  photos: OrderPhoto[]; // progress photos, oldest first (max ORDER_PHOTO_LIMITS.perOrder); [] on the shop-wide list
   createdAt: ISODate;
   updatedAt: ISODate;
   overdue: boolean; // computed: dueAt is before today and status != "delivered"
   clientName?: string; // only on the shop-wide list (GET /orders)
 }
+
+/** A progress photo on an order, stored by the API (same storage as post media) and served at `url`. */
+export interface OrderPhoto {
+  id: string;
+  stage: OrderStatus; // the order's status when the photo was taken (default: its status at upload)
+  url: string; // absolute, public but unguessable (API_URL + /media/…)
+  contentType: string; // image/jpeg | image/png | image/webp
+  width: number | null;
+  height: number | null;
+  sizeBytes: number;
+  createdAt: ISODate;
+}
+/**
+ * PUT /clients/:id/orders/:orderId/photos → 201 { order } with the new photo appended. Raw image body with
+ * headers: Content-Type (image/jpeg | image/png | image/webp), optional X-Media-Width / X-Media-Height and
+ * X-Photo-Stage (an OrderStatus; default = the order's current status). 413 over the size limit,
+ * 400 when the order already has ORDER_PHOTO_LIMITS.perOrder photos.
+ * DELETE /clients/:id/orders/:orderId/photos/:photoId → { order } (deletes the file too).
+ */
+export const ORDER_PHOTO_LIMITS = {
+  perOrder: 6,
+  bytes: 10 * 1024 * 1024,
+  types: ["image/jpeg", "image/png", "image/webp"],
+} as const;
 
 /** GET /clients/:id/orders (newest first) and GET /orders?open=true (shop-wide, overdue → due date → no date) */
 export interface ListOrdersResponse {
@@ -255,8 +286,8 @@ export interface AppointmentResponse {
 /** DELETE /clients/:id/appointments/:appointmentId → 204 */
 
 // ---------- Messages (emails sent to a client from the app) ----------
-/** What prompted the email. */
-export type MessageKind = "winback" | "order_ready" | "followup" | "appointment_reminder";
+/** What prompted the email. review_request = thank-you with the shop's Google review link after delivery (orderId set; stamps the order's reviewRequestedAt). */
+export type MessageKind = "winback" | "order_ready" | "followup" | "appointment_reminder" | "review_request";
 /** Email only for now; kept as a field so LINE/WhatsApp can be added later. */
 export type MessageChannel = "email";
 /**
@@ -268,7 +299,7 @@ export type MessageStatus = "sent" | "simulated" | "failed";
 export interface Message {
   id: string;
   clientId: string;
-  orderId: string | null; // set for order_ready
+  orderId: string | null; // set for order_ready and review_request
   appointmentId: string | null; // set for appointment_reminder
   kind: MessageKind;
   channel: MessageChannel;
@@ -292,7 +323,7 @@ export interface SendMessageRequest {
   kind: MessageKind;
   subject: string;
   body: string;
-  orderId?: string; // must belong to the same client when given
+  orderId?: string; // must belong to the same client when given; required for order_ready and review_request (review_request stamps the order's reviewRequestedAt)
   appointmentId?: string; // must belong to the same client when given; stamps the appointment's reminderSentAt
 }
 export interface MessageResponse {
@@ -313,6 +344,22 @@ export interface AiFitRequest {
   fittingId: string;
 }
 export type AiFitResponse = FittingResponse; // fitting.analysis is set
+
+/**
+ * POST /ai/parse-measurements — turns a dictated transcript ("chest one-oh-two, waist eighty-eight, right
+ * shoulder a little low") into measurement values. Text only: the phone's own speech recognition produces the
+ * transcript, and the app calls this only when its local parser can't make sense of part of it.
+ */
+export interface AiParseMeasurementsRequest {
+  transcript: string; // 1–2000 chars
+  garmentType: GarmentType; // only this garment's measurement keys come back
+  language?: "en" | "th"; // hint for number words; default "en"
+}
+export interface AiParseMeasurementsResponse {
+  measurements: Partial<Measurements>; // cm, only keys that were clearly said
+  postureNote: string | null; // anything about posture / stance, cleaned up into one sentence
+  unrecognised: string[]; // phrases that looked like a measurement but couldn't be read
+}
 
 /** Pipeline 2 — GENERATE_LOCAL_SEO_MAP */
 export type CompetitorTier = "Hotel-arcade chains" | "Big tailoring brands" | "Other local tailors";

@@ -5,7 +5,7 @@ import { getShopByOwner, newId, nowIso } from "../db";
 import { emailStatus } from "../email";
 import type { AppEnv } from "../env";
 import { notFound, serverError } from "../errors";
-import { type AssertAccepts, optionalEmail, optionalText, parseBody, requiredText } from "../validate";
+import { type AssertAccepts, optionalEmail, optionalText, optionalUrl, parseBody, requiredText } from "../validate";
 
 export const BRAND_TONES = ["Sophisticated", "Welcoming", "Premium"] as const satisfies readonly BrandTone[];
 
@@ -19,6 +19,8 @@ const upsertShopSchema = z.object({
   phone: optionalText(40),
   openingHours: optionalText(200),
   replyToEmail: optionalEmail(200),
+  // The Google "write a review" link offered after delivery (review_request emails); same omit / "" semantics.
+  googleReviewUrl: optionalUrl(500),
 });
 type _UpsertAccepted = AssertAccepts<typeof upsertShopSchema, UpsertShopRequest>;
 
@@ -42,7 +44,8 @@ shopRoutes.put("/", async (c) => {
   if (existing) {
     await db.execute({
       sql: `UPDATE shops
-            SET name = ?, district = ?, city = ?, tone = ?, address = ?, phone = ?, opening_hours = ?, reply_to_email = ?
+            SET name = ?, district = ?, city = ?, tone = ?, address = ?, phone = ?, opening_hours = ?, reply_to_email = ?,
+                google_review_url = ?
             WHERE id = ?`,
       args: [
         input.name,
@@ -53,14 +56,15 @@ shopRoutes.put("/", async (c) => {
         input.phone === undefined ? existing.phone : input.phone,
         input.openingHours === undefined ? existing.openingHours : input.openingHours,
         input.replyToEmail === undefined ? existing.replyToEmail : input.replyToEmail,
+        input.googleReviewUrl === undefined ? existing.googleReviewUrl : input.googleReviewUrl,
         existing.id,
       ],
     });
   } else {
     await db.execute({
       sql: `INSERT INTO shops
-              (id, owner_user_id, name, district, city, tone, address, phone, opening_hours, reply_to_email, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              (id, owner_user_id, name, district, city, tone, address, phone, opening_hours, reply_to_email, google_review_url, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       args: [
         newId(),
         userId,
@@ -72,6 +76,7 @@ shopRoutes.put("/", async (c) => {
         input.phone ?? null,
         input.openingHours ?? null,
         input.replyToEmail ?? null,
+        input.googleReviewUrl ?? null,
         nowIso(),
       ],
     });

@@ -39,15 +39,24 @@ export interface GeminiReply {
   grounding: GroundingMetadata | undefined;
 }
 
+/** Overrides for a JSON call that isn't one of the four engine pipelines (e.g. ai/measurements.ts). */
+export interface PipelineOptions {
+  /** System instruction; default the 4-pipeline engine prompt. */
+  system?: string;
+  /** Default 0.7 (creative pipelines); use 0 for extraction. */
+  temperature?: number;
+}
+
 /**
- * Run one of the four JSON pipelines: send `payload` (must include ACTION) to Gemini,
- * parse the JSON reply and validate it with `schema`. Retries once on any failure
+ * Run a JSON pipeline: send `payload` (must include ACTION, used in logs) to Gemini with the engine prompt
+ * (or `opts.system`), parse the JSON reply and validate it with `schema`. Retries once on any failure
  * (bad JSON, schema mismatch, HTTP error). Throws 502 ai_failed if both attempts fail.
  */
 export async function runPipeline<S extends z.ZodType>(
   env: Bindings,
   payload: Record<string, unknown>,
   schema: S,
+  opts: PipelineOptions = {},
 ): Promise<z.infer<S>> {
   if (!env.GEMINI_API_KEY) {
     console.error("[gemini] GEMINI_API_KEY is not set");
@@ -60,10 +69,10 @@ export async function runPipeline<S extends z.ZodType>(
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     try {
       const { text } = await callGemini(env, {
-        system: AI_ENGINE_PROMPT,
+        system: opts.system ?? AI_ENGINE_PROMPT,
         user: JSON.stringify(payload),
         json: true,
-        temperature: 0.7,
+        temperature: opts.temperature ?? 0.7,
       });
       const json = parseJsonLoose(text);
       const result = schema.safeParse(json);

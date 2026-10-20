@@ -106,10 +106,13 @@ function RootNavigator() {
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="onboarding" />
           <Stack.Screen name="shop-details" />
+          <Stack.Screen name="reminders" />
         </Stack.Protected>
         <Stack.Protected guard={!signedIn}>
           <Stack.Screen name="(auth)" />
         </Stack.Protected>
+        {/* Outside both guards: the OAuth return link (tls://sso-callback) must resolve before the session is active. */}
+        <Stack.Screen name="sso-callback" />
       </Stack>
       {signedIn && shopQuery.isPending ? <Boot overlay /> : null}
     </View>

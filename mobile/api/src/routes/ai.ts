@@ -1,23 +1,27 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import type {
-  AiFitRequest,
-  AiFitResponse,
-  AiPostRequest,
-  AiPostResponse,
-  AiSeoRequest,
-  AiSeoResponse,
-  AiWinbackRequest,
-  AiWinbackResponse,
-  CompetitorTier,
-  GarmentType,
-  Incentive,
-  Measurements,
-  SearchConsoleStatus,
+import {
+  type AiFitRequest,
+  type AiFitResponse,
+  type AiParseMeasurementsRequest,
+  type AiParseMeasurementsResponse,
+  type AiPostRequest,
+  type AiPostResponse,
+  type AiSeoRequest,
+  type AiSeoResponse,
+  type AiWinbackRequest,
+  type AiWinbackResponse,
+  type CompetitorTier,
+  GARMENT_TYPES,
+  type GarmentType,
+  type Incentive,
+  type Measurements,
+  type SearchConsoleStatus,
 } from "../../../shared/types";
 import { FEATURES } from "../../../shared/features";
 import { runPipeline } from "../ai/gemini";
 import { findNearbyTailors } from "../ai/maps";
+import { parseDictatedMeasurements } from "../ai/measurements";
 import { fitAnalysisSchema, postSchema, seoSchema, winbackSchema } from "../ai/schemas";
 import {
   type Db,
@@ -79,6 +83,15 @@ const aiWinbackSchema = z.object({
   clientId: requiredText(64),
   incentive: oneOf(INCENTIVES),
 }) satisfies z.ZodType<AiWinbackRequest, unknown>;
+
+/** Hint for the number words in a dictated transcript (AiParseMeasurementsRequest.language). */
+const TRANSCRIPT_LANGUAGES = ["en", "th"] as const;
+
+const aiParseMeasurementsSchema = z.object({
+  transcript: requiredText(2000),
+  garmentType: oneOf(GARMENT_TYPES),
+  language: oneOf(TRANSCRIPT_LANGUAGES).optional(),
+}) satisfies z.ZodType<AiParseMeasurementsRequest, unknown>;
 
 // ---------- Helpers ----------
 
@@ -273,6 +286,20 @@ aiRoutes.post("/winback", async (c) => {
   await saveGeneration(db, shop.id, "winback", payload, result);
 
   const body: AiWinbackResponse = { email_subject: result.email_subject, email_body: result.email_body };
+  return c.json(body);
+});
+
+/**
+ * POST /ai/parse-measurements { transcript, garmentType, language? } -> { measurements, postureNote, unrecognised }.
+ * Text only: the phone's speech recognition made the transcript, and the app asks only when its own parser
+ * can't read part of it. Nothing is stored (the app saves the values with the fitting); counts towards the AI limit.
+ */
+aiRoutes.post("/parse-measurements", async (c) => {
+  const input = await parseBody(c, aiParseMeasurementsSchema);
+
+  await enforceAiRateLimit(c);
+
+  const body: AiParseMeasurementsResponse = await parseDictatedMeasurements(c.env, input);
   return c.json(body);
 });
 

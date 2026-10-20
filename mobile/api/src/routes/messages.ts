@@ -15,7 +15,13 @@ import { badRequest, notFound } from "../errors";
 import { enforceEmailRateLimit } from "../ratelimit";
 import { type AssertAccepts, optionalText, parseBody, requiredText } from "../validate";
 
-export const MESSAGE_KINDS = ["winback", "order_ready", "followup", "appointment_reminder"] as const satisfies readonly MessageKind[];
+export const MESSAGE_KINDS = [
+  "winback",
+  "order_ready",
+  "followup",
+  "appointment_reminder",
+  "review_request",
+] as const satisfies readonly MessageKind[];
 const CHANNEL: MessageChannel = "email";
 /** Longest provider error we keep on the row (Resend's text is already capped at 200 chars in email.ts). */
 const MAX_STORED_ERROR = 500;
@@ -71,13 +77,17 @@ messageRoutes.get("/:clientId/messages", async (c) => {
  * row is "simulated". Does not touch the client's lastOrderAt.
  * The email goes out with the shop-details footer and the shop's Reply-To; the stored `body` is the text
  * as written (no footer) since the footer is presentation.
- * With `appointmentId`, a sent or simulated email also stamps the appointment's reminderSentAt.
+ * With `appointmentId`, a sent or simulated email also stamps the appointment's reminderSentAt; a sent or
+ * simulated `review_request` (which needs `orderId`) stamps the order's reviewRequestedAt the same way.
  */
 messageRoutes.post("/:clientId/messages", async (c) => {
   const db = c.get("db");
   const shop = c.get("shop");
   const clientId = c.req.param("clientId");
   const input = await parseBody(c, sendMessageSchema);
+  if (input.kind === "review_request" && !input.orderId) {
+    throw badRequest("A review request must be linked to an order (orderId).");
+  }
 
   const clientRow = await getClientRow(db, shop.id, clientId);
   if (!clientRow) throw notFound("Client not found.");
@@ -142,6 +152,12 @@ messageRoutes.post("/:clientId/messages", async (c) => {
     statements.push({
       sql: "UPDATE appointments SET reminder_sent_at = ?, updated_at = ? WHERE id = ? AND client_id = ? AND shop_id = ?",
       args: [now, now, input.appointmentId, clientId, shop.id],
+    });
+  }
+  if (input.kind === "review_request" && input.orderId && status !== "failed") {
+    statements.push({
+      sql: "UPDATE orders SET review_requested_at = ?, updated_at = ? WHERE id = ? AND client_id = ? AND shop_id = ?",
+      args: [now, now, input.orderId, clientId, shop.id],
     });
   }
   await db.batch(statements, "write");

@@ -31,7 +31,6 @@
       "permissions": [],
       "blockedPermissions": [
         "android.permission.CAMERA",
-        "android.permission.RECORD_AUDIO",
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.ACCESS_COARSE_LOCATION"
       ],
@@ -52,7 +51,7 @@
         {
           "photosPermission": "Magick Tailor uses your photos to attach a picture or short video to a post.",
           "cameraPermission": false,
-          "microphonePermission": false
+          "microphonePermission": "Magick Tailor uses the microphone to dictate measurements during a fitting."
         }
       ],
       [
@@ -62,6 +61,19 @@
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#14213A"
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#14213A"
+        }
+      ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Magick Tailor uses the microphone to dictate measurements during a fitting.",
+          "speechRecognitionPermission": "Magick Tailor turns your dictated measurements into text on this phone."
         }
       ]
     ],

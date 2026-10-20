@@ -59,6 +59,13 @@ export const optionalText = (max: number) =>
 export const optionalEmail = (max: number) =>
   optionalText(max).refine((v) => !v || z.email().safeParse(v).success, "must be a valid email address");
 
+/** Optional web address: same `undefined` / `null` / "" semantics as optionalText; must be an http(s) URL when non-empty. */
+export const optionalUrl = (max: number) =>
+  optionalText(max).refine(
+    (v) => !v || z.url({ protocol: /^https?$/ }).safeParse(v).success,
+    "must be a web address starting with http:// or https://",
+  );
+
 /** Any Date-parseable string, normalised to a UTC ISO 8601 string so DB comparisons stay lexicographic. */
 export const isoDate = z
   .string({ error: "must be an ISO 8601 date string" })

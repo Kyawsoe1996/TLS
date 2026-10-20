@@ -1,10 +1,20 @@
 import { z } from "zod";
-import type { AiPostResponse, AiSeoResponse, AiWinbackResponse, FitAnalysis } from "../../../shared/types";
+import type {
+  AiParseMeasurementsResponse,
+  AiPostResponse,
+  AiSeoResponse,
+  AiWinbackResponse,
+  FitAnalysis,
+} from "../../../shared/types";
 
-// Output schemas for the four Gemini pipelines. z.object() strips unknown keys,
+// Output schemas for the four Gemini pipelines (+ the measurement parser). z.object() strips unknown keys,
 // so the prompt's `status` / `data_type` fields are dropped automatically.
 
 const nonEmpty = z.string().trim().min(1);
+
+/** Most `unrecognised` phrases kept from the measurement parser, and the longest each may be. */
+const MAX_UNRECOGNISED = 20;
+const MAX_PHRASE_CHARS = 200;
 
 /** Pipeline 1 - PROCESS_IOT_MEASUREMENTS */
 export const fitAnalysisSchema = z.object({
@@ -40,3 +50,26 @@ export const winbackSchema = z.object({
   email_subject: nonEmpty,
   email_body: nonEmpty,
 }) satisfies z.ZodType<AiWinbackResponse, unknown>;
+
+/**
+ * PARSE_DICTATED_MEASUREMENTS (ai/measurements.ts, POST /ai/parse-measurements). Lenient where the model
+ * tends to slip - a non-numeric value, a missing list or a null note is dropped rather than retried. The
+ * keys are whatever the model returned; ai/measurements.ts keeps only the garment's keys and plausible values.
+ */
+export const parsedMeasurementsSchema = z.object({
+  measurements: z.record(z.string(), z.number().nullable().catch(null)).catch({}),
+  postureNote: z
+    .string()
+    .nullable()
+    .catch(null)
+    .transform((v) => (v?.trim() ? v.trim() : null)),
+  unrecognised: z
+    .array(z.string().catch(""))
+    .catch([])
+    .transform((list) =>
+      list
+        .map((s) => s.trim().slice(0, MAX_PHRASE_CHARS))
+        .filter(Boolean)
+        .slice(0, MAX_UNRECOGNISED),
+    ),
+}) satisfies z.ZodType<AiParseMeasurementsResponse, unknown>;

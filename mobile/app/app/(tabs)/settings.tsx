@@ -153,6 +153,8 @@ export default function SettingsScreen() {
       </Card>
 
       <Card padding={0}>
+        <SettingsRow icon="notifications-outline" label="Reminders" onPress={() => router.push("/reminders")} trailing="chevron" />
+        <View style={styles.divider} />
         <SettingsRow icon="shield-checkmark-outline" label="Privacy policy" onPress={() => void openLink("/privacy")} />
         <View style={styles.divider} />
         <SettingsRow icon="help-circle-outline" label="Support" onPress={() => void openLink("/support")} />
@@ -181,16 +183,27 @@ export default function SettingsScreen() {
   );
 }
 
-function SettingsRow({ icon, label, onPress }: { icon: keyof typeof Ionicons.glyphMap; label: string; onPress: () => void }) {
+function SettingsRow({
+  icon,
+  label,
+  onPress,
+  trailing = "open",
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  onPress: () => void;
+  /** "open" for a web page in the browser, "chevron" for a screen in the app. */
+  trailing?: "open" | "chevron";
+}) {
   return (
     <Pressable
-      accessibilityRole="link"
+      accessibilityRole={trailing === "chevron" ? "button" : "link"}
       onPress={onPress}
       style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
     >
       <Ionicons name={icon} size={20} color={colors.goldDark} />
       <Text style={styles.rowLabel}>{label}</Text>
-      <Ionicons name="open-outline" size={18} color={colors.muted} />
+      <Ionicons name={trailing === "chevron" ? "chevron-forward" : "open-outline"} size={18} color={colors.muted} />
     </Pressable>
   );
 }

@@ -13,6 +13,7 @@ import { type Db, getPostRow, newId, nowIso, rowToPost } from "../db";
 import type { AppEnv } from "../env";
 import { badRequest, notFound, payloadTooLarge } from "../errors";
 import {
+  declaredLength,
   deleteMediaObject,
   mediaByteLimit,
   mediaKindFor,
@@ -20,6 +21,7 @@ import {
   MediaTooLarge,
   newMediaKey,
   normalizeContentType,
+  numberHeader,
   publicOrigin,
   requireMediaStore,
   storeUpload,
@@ -101,14 +103,6 @@ export async function insertPost(
     ],
   });
   return id;
-}
-
-/** Optional numeric upload header (X-Media-Width etc.): absent -> null, present but not a number -> 400. */
-function numberHeader(value: string | undefined, name: string): number | null {
-  if (value === undefined || value.trim() === "") return null;
-  const n = Number(value);
-  if (!Number.isFinite(n) || n < 0) throw badRequest(`${name} must be a number of 0 or more.`);
-  return n;
 }
 
 // ---------- Routes (mounted at /posts) ----------
@@ -319,13 +313,8 @@ postRoutes.put("/:id/media", async (c) => {
     throw badRequest(`Videos must be ${MEDIA_LIMITS.videoSeconds} seconds or shorter.`);
   }
 
-  const lengthHeader = c.req.header("Content-Length");
-  const declared = lengthHeader === undefined ? null : Number(lengthHeader);
-  if (declared != null && (!Number.isInteger(declared) || declared < 0)) {
-    throw badRequest("Content-Length must be a whole number of bytes.");
-  }
+  const declared = declaredLength(c);
   if (declared != null && declared > limit) throw payloadTooLarge();
-  if (declared === 0) throw badRequest("The file is empty.");
   const raw = c.req.raw.body;
   if (!raw) throw badRequest("Send the file as the request body.");
 

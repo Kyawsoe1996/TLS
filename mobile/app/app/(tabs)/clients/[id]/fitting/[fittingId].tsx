@@ -6,11 +6,13 @@ import { StyleSheet, Text, View } from "react-native";
 import {
   ErrorBlock,
   LoadingBlock,
+  MeasurementChanges,
   analyseRequirement,
   cacheFitting,
   canAnalyse,
   clientRoutes,
   fieldsFor,
+  findPreviousFitting,
   formatCm,
   garmentLabel,
   measurementsTitle,
@@ -27,7 +29,7 @@ import { useAiConsent } from "@/lib/useAiConsent";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { useShop } from "@/lib/useShop";
 
-/** Fitting detail: the garment's measurements, posture note, and the three AI outputs (or a button to generate them). */
+/** Fitting detail: what moved since the client's last fitting of this garment, the measurements, posture note, and the three AI outputs (or a button to generate them). */
 export default function FittingDetailScreen() {
   const { id, fittingId } = useLocalSearchParams<{ id: string; fittingId: string }>();
   const router = useRouter();
@@ -76,8 +78,11 @@ export default function FittingDetailScreen() {
     const analysis = fitting.analysis;
     const analysable = canAnalyse(fitting.garmentType, fitting.measurements);
     const requirement = analyseRequirement(fitting.garmentType);
+    const previous = findPreviousFitting(fittingsQuery.data, fitting);
     body = (
       <>
+        {previous ? <MeasurementChanges fitting={fitting} previous={previous} /> : null}
+
         <Card style={styles.measureCard}>
           <Eyebrow>{measurementsTitle(fitting.garmentType)} · cm</Eyebrow>
           <View style={styles.grid}>

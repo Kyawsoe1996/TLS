@@ -17,6 +17,7 @@ import {
   type MessageKind,
   type MessageStatus,
   type Order,
+  type OrderPhoto,
   type OrderStatus,
   type Post,
   type PostStatus,
@@ -125,6 +126,17 @@ export const MEASUREMENT_COLUMNS = {
 
 export const MEASUREMENT_KEYS = Object.keys(MEASUREMENT_COLUMNS) as (keyof Measurements)[];
 
+const JACKET_KEYS: readonly (keyof Measurements)[] = ["chest", "waist", "overArm", "shoulder", "sleeve", "jacketLength"];
+const TROUSER_KEYS: readonly (keyof Measurements)[] = ["waist", "hip", "inseam", "outseam", "thigh", "hem"];
+
+/** The measurement keys each garment uses (the `Measurements` doc in shared/types.ts); suit = jacket + trousers (waist once). */
+export const GARMENT_MEASUREMENTS: Record<GarmentType, readonly (keyof Measurements)[]> = {
+  jacket: JACKET_KEYS,
+  trousers: TROUSER_KEYS,
+  shirt: ["neck", "chest", "waist", "shoulder", "sleeve", "cuff", "shirtLength"],
+  suit: [...JACKET_KEYS, ...TROUSER_KEYS.filter((key) => !JACKET_KEYS.includes(key))],
+};
+
 /** Fittings created before `garment_type` existed (and rows with an unknown value) read as jackets. */
 export const DEFAULT_GARMENT_TYPE: GarmentType = "jacket";
 
@@ -143,6 +155,7 @@ export function rowToShop(row: Row): Shop {
     phone: textOrNull(row, "phone"),
     openingHours: textOrNull(row, "opening_hours"),
     replyToEmail: textOrNull(row, "reply_to_email"),
+    googleReviewUrl: textOrNull(row, "google_review_url"),
     aiConsentAt: textOrNull(row, "ai_consent_at"),
     createdAt: text(row, "created_at"),
   };
@@ -206,8 +219,9 @@ export function rowToFitting(row: Row): Fitting {
 /**
  * `clientName` is only attached on the shop-wide list (GET /orders).
  * `today` lets list mappers compute startOfTodayUtc() once instead of per row.
+ * `photos` come from a separate query (getOrderPhotos / getClientOrderPhotos); the shop-wide list leaves them `[]`.
  */
-export function rowToOrder(row: Row, opts: { clientName?: string; today?: string } = {}): Order {
+export function rowToOrder(row: Row, opts: { clientName?: string; today?: string; photos?: OrderPhoto[] } = {}): Order {
   const status = text(row, "status") as OrderStatus;
   const dueAt = textOrNull(row, "due_at");
   const today = opts.today ?? startOfTodayUtc();
@@ -226,12 +240,28 @@ export function rowToOrder(row: Row, opts: { clientName?: string; today?: string
     price,
     deposit,
     balance: price == null ? null : Math.max(price - (deposit ?? 0), 0),
+    reviewRequestedAt: textOrNull(row, "review_requested_at"),
+    photos: opts.photos ?? [],
     createdAt: text(row, "created_at"),
     updatedAt: text(row, "updated_at"),
     overdue: status !== "delivered" && dueAt != null && dueAt < today,
   };
   if (opts.clientName !== undefined) order.clientName = opts.clientName;
   return order;
+}
+
+/** `origin` as in rowToPost: turns the stored object key into the absolute `url`. */
+export function rowToOrderPhoto(row: Row, origin: string): OrderPhoto {
+  return {
+    id: text(row, "id"),
+    stage: text(row, "stage") as OrderStatus,
+    url: mediaUrl(origin, text(row, "media_key")),
+    contentType: text(row, "content_type"),
+    width: numberOrNull(row, "width"),
+    height: numberOrNull(row, "height"),
+    sizeBytes: numberOrNull(row, "size") ?? 0,
+    createdAt: text(row, "created_at"),
+  };
 }
 
 /** `clientName` is only attached on the shop-wide list (GET /appointments) and the Home summary. */
@@ -334,6 +364,39 @@ export async function getOrderRow(db: Db, shopId: string, orderId: string): Prom
     args: [orderId, shopId],
   });
   return rs.rows[0] ?? null;
+}
+
+export async function getOrderPhotoRow(db: Db, shopId: string, photoId: string): Promise<Row | null> {
+  const rs = await db.execute({
+    sql: "SELECT * FROM order_photos WHERE id = ? AND shop_id = ?",
+    args: [photoId, shopId],
+  });
+  return rs.rows[0] ?? null;
+}
+
+/** An order's progress photos, oldest first, ready for `Order.photos` (`origin` from media.ts publicOrigin). */
+export async function getOrderPhotos(db: Db, shopId: string, orderId: string, origin: string): Promise<OrderPhoto[]> {
+  const rs = await db.execute({
+    sql: "SELECT * FROM order_photos WHERE order_id = ? AND shop_id = ? ORDER BY created_at ASC",
+    args: [orderId, shopId],
+  });
+  return rs.rows.map((row) => rowToOrderPhoto(row, origin));
+}
+
+/** The photos of every order of a client in one query, grouped by order id (GET /clients/:id/orders). */
+export async function getClientOrderPhotos(db: Db, shopId: string, clientId: string, origin: string): Promise<Map<string, OrderPhoto[]>> {
+  const rs = await db.execute({
+    sql: "SELECT * FROM order_photos WHERE client_id = ? AND shop_id = ? ORDER BY created_at ASC",
+    args: [clientId, shopId],
+  });
+  const byOrder = new Map<string, OrderPhoto[]>();
+  for (const row of rs.rows) {
+    const orderId = text(row, "order_id");
+    const photos = byOrder.get(orderId) ?? [];
+    photos.push(rowToOrderPhoto(row, origin));
+    byOrder.set(orderId, photos);
+  }
+  return byOrder;
 }
 
 export async function getAppointmentRow(db: Db, shopId: string, appointmentId: string): Promise<Row | null> {
