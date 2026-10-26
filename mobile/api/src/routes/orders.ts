@@ -2,6 +2,7 @@ import { type Context, Hono } from "hono";
 import { z } from "zod";
 import {
   type CreateOrderRequest,
+  FABRIC_LIMITS,
   type ListOrdersResponse,
   ORDER_PHOTO_LIMITS,
   ORDER_STATUSES,
@@ -14,6 +15,7 @@ import {
   type Db,
   getClientOrderPhotos,
   getClientRow,
+  getFabricRow,
   getFittingRow,
   getOrderPhotoRow,
   getOrderPhotos,
@@ -42,6 +44,14 @@ import { type AssertAccepts, baht, isoDate, optionalText, parseBody, requiredTex
 
 const INITIAL_STATUS: OrderStatus = "measured";
 
+/** Metres of cloth an order takes; like `baht`: `undefined` = not sent, `null` = clear. */
+const metresNeeded = z
+  .number({ error: "must be a number (metres)" })
+  .min(0.1, "must be at least 0.1 m")
+  .max(FABRIC_LIMITS.maxMetres, `must be at most ${FABRIC_LIMITS.maxMetres} m`)
+  .nullable()
+  .optional();
+
 const createOrderSchema = z.object({
   garment: requiredText(80),
   fabric: optionalText(120),
@@ -50,6 +60,8 @@ const createOrderSchema = z.object({
   notes: optionalText(2000),
   price: baht, // THB; `null` clears on PATCH
   deposit: baht,
+  fabricId: optionalText(64), // a fabric in stock; `null`/"" unlinks on PATCH
+  metresNeeded,
 });
 type _CreateAccepted = AssertAccepts<typeof createOrderSchema, CreateOrderRequest>;
 
@@ -76,6 +88,62 @@ async function assertFittingBelongsToClient(db: Db, shopId: string, clientId: st
   const fitting = await getFittingRow(db, shopId, fittingId);
   if (!fitting) throw notFound("Fitting not found.");
   if (fitting["client_id"] !== clientId) throw badRequest("That fitting belongs to a different client.");
+}
+
+/** The fabric's name, for the order's `fabric` text; 404 when it isn't in this shop's stock. */
+async function fabricName(db: Db, shopId: string, fabricId: string): Promise<string> {
+  const fabric = await getFabricRow(db, shopId, fabricId);
+  if (!fabric) throw notFound("That fabric isn't in your stock.");
+  return String(fabric["name"] ?? "");
+}
+
+/** Shared by PATCH's side effects: the statements that record a payment, take cloth off a bolt, or ready a reward. */
+type Statement = { sql: string; args: (string | number | null)[] };
+
+/**
+ * A deposit change is a payment (the difference). `before` / `after` are the running totals; a drop records a
+ * negative correction so the month's "money collected" stays truthful.
+ */
+function paymentStatement(shopId: string, orderId: string, clientId: string, before: number, after: number, now: string): Statement | null {
+  const delta = Math.round(after - before);
+  if (delta === 0) return null;
+  return {
+    sql: "INSERT INTO order_payments (id, shop_id, order_id, client_id, amount, paid_at) VALUES (?, ?, ?, ?, ?, ?)",
+    args: [newId(), shopId, orderId, clientId, delta, now],
+  };
+}
+
+/**
+ * The first move to "cutting" takes the order's length off its bolt: one movement row (−metres, reason "order"),
+ * the fabric's metres_left reduced, and the order stamped so a later status change can't take it twice.
+ */
+function cuttingStatements(shopId: string, orderId: string, fabricId: string, metres: number, note: string, now: string): Statement[] {
+  return [
+    {
+      sql: "UPDATE fabrics SET metres_left = round(metres_left - ?, 1), updated_at = ? WHERE id = ? AND shop_id = ?",
+      args: [metres, now, fabricId, shopId],
+    },
+    {
+      sql: `INSERT INTO fabric_movements (id, shop_id, fabric_id, order_id, metres, reason, note, created_at)
+            VALUES (?, ?, ?, ?, ?, 'order', ?, ?)`,
+      args: [newId(), shopId, fabricId, orderId, -metres, note, now],
+    },
+  ];
+}
+
+/**
+ * A referred client's first delivered order makes their ambassador's reward ready (the row is created on "Add as
+ * client", or here if the client was linked by hand). A reward already given stays given.
+ */
+function rewardReadyStatement(shopId: string, ambassadorId: string, friendId: string, now: string): Statement {
+  return {
+    sql: `INSERT INTO referral_rewards (id, shop_id, ambassador_client_id, friend_client_id, status, ready_at, given_at, created_at)
+          VALUES (?, ?, ?, ?, 'ready', ?, NULL, ?)
+          ON CONFLICT(ambassador_client_id, friend_client_id) DO UPDATE SET
+            status = CASE WHEN referral_rewards.status = 'given' THEN 'given' ELSE 'ready' END,
+            ready_at = coalesce(referral_rewards.ready_at, excluded.ready_at)`,
+    args: [newId(), shopId, ambassadorId, friendId, now, now],
+  };
 }
 
 /** `{ order }` for every single-order response: the row plus its photos, oldest first. */
@@ -127,35 +195,42 @@ orderRoutes.post("/:clientId/orders", async (c) => {
   const client = await getClientRow(db, shop.id, clientId);
   if (!client) throw notFound("Client not found.");
   if (input.fittingId) await assertFittingBelongsToClient(db, shop.id, clientId, input.fittingId);
+  if (input.metresNeeded && !input.fabricId) throw badRequest("Pick a fabric from stock to set the metres it needs.");
+  // A fabric from stock names the order's fabric unless the shop typed something else.
+  const fabricText = input.fabricId ? (input.fabric ?? (await fabricName(db, shop.id, input.fabricId))) : (input.fabric ?? null);
 
   const id = newId();
   const now = nowIso();
-  await db.batch(
-    [
-      {
-        sql: `INSERT INTO orders
-                (id, shop_id, client_id, fitting_id, garment, fabric, status, due_at, delivered_at, notes, price, deposit, created_at, updated_at)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?)`,
-        args: [
-          id,
-          shop.id,
-          clientId,
-          input.fittingId ?? null,
-          input.garment,
-          input.fabric ?? null,
-          INITIAL_STATUS,
-          input.dueAt ?? null,
-          input.notes ?? null,
-          input.price ?? null,
-          input.deposit ?? null,
-          now,
-          now,
-        ],
-      },
-      { sql: "UPDATE clients SET last_order_at = ? WHERE id = ? AND shop_id = ?", args: [now, clientId, shop.id] },
-    ],
-    "write",
-  );
+  const statements: Statement[] = [
+    {
+      sql: `INSERT INTO orders
+              (id, shop_id, client_id, fitting_id, garment, fabric, status, due_at, delivered_at, notes, price, deposit,
+               fabric_id, metres_needed, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [
+        id,
+        shop.id,
+        clientId,
+        input.fittingId ?? null,
+        input.garment,
+        fabricText,
+        INITIAL_STATUS,
+        input.dueAt ?? null,
+        input.notes ?? null,
+        input.price ?? null,
+        input.deposit ?? null,
+        input.fabricId ?? null,
+        input.fabricId ? (input.metresNeeded ?? null) : null,
+        now,
+        now,
+      ],
+    },
+    { sql: "UPDATE clients SET last_order_at = ? WHERE id = ? AND shop_id = ?", args: [now, clientId, shop.id] },
+  ];
+  // A deposit taken when the order is opened is money received today.
+  const payment = paymentStatement(shop.id, id, clientId, 0, input.deposit ?? 0, now);
+  if (payment) statements.push(payment);
+  await db.batch(statements, "write");
 
   return c.json(await orderResponse(c, id), 201);
 });
@@ -183,6 +258,9 @@ orderRoutes.patch("/:clientId/orders/:orderId", async (c) => {
   const existing = await getClientOrderRow(db, shop.id, clientId, orderId);
   if (!existing) throw notFound("Order not found.");
   if (input.fittingId) await assertFittingBelongsToClient(db, shop.id, clientId, input.fittingId);
+  // Linking a fabric from stock also names the order's fabric unless the same request names it.
+  if (input.fabricId && input.fabric === undefined) input.fabric = await fabricName(db, shop.id, input.fabricId);
+  if (input.fabricId === null) input.metresNeeded = null; // unlinking the bolt drops the length with it
 
   const columns: Record<keyof UpdateOrderRequest, string> = {
     garment: "garment",
@@ -193,6 +271,8 @@ orderRoutes.patch("/:clientId/orders/:orderId", async (c) => {
     status: "status",
     price: "price",
     deposit: "deposit",
+    fabricId: "fabric_id",
+    metresNeeded: "metres_needed",
   };
   const sets: string[] = [];
   const args: (string | number | null)[] = [];
@@ -204,7 +284,7 @@ orderRoutes.patch("/:clientId/orders/:orderId", async (c) => {
   }
 
   const now = nowIso();
-  const statements: { sql: string; args: (string | number | null)[] }[] = [];
+  const statements: Statement[] = [];
   if (input.status === "delivered" && existing["delivered_at"] == null) {
     sets.push("delivered_at = ?");
     args.push(now);
@@ -212,9 +292,44 @@ orderRoutes.patch("/:clientId/orders/:orderId", async (c) => {
       sql: "UPDATE clients SET last_order_at = ? WHERE id = ? AND shop_id = ?",
       args: [now, clientId, shop.id],
     });
+    // Smart Referral: the friend's first delivered order readies their ambassador's reward.
+    const client = await getClientRow(db, shop.id, clientId);
+    const ambassadorId = client?.["referred_by_client_id"];
+    if (typeof ambassadorId === "string" && ambassadorId) {
+      const delivered = countOf(
+        await db.execute({
+          sql: "SELECT count(*) AS n FROM orders WHERE client_id = ? AND shop_id = ? AND delivered_at IS NOT NULL AND id != ?",
+          args: [clientId, shop.id, orderId],
+        }),
+      );
+      if (delivered === 0) statements.push(rewardReadyStatement(shop.id, ambassadorId, clientId, now));
+    }
   } else if (input.status !== undefined && input.status !== "delivered") {
     sets.push("delivered_at = NULL");
   }
+
+  // Payments: a changed deposit is money in (or a correction) for the monthly report.
+  if (input.deposit !== undefined) {
+    const before = Number(existing["deposit"] ?? 0);
+    const payment = paymentStatement(shop.id, orderId, clientId, before, input.deposit ?? 0, now);
+    if (payment) statements.push(payment);
+  }
+
+  // Fabric stock: the first time the order reaches Cutting, its length comes off the bolt.
+  if (input.status === "cutting" && existing["metres_taken_at"] == null) {
+    const fabricId = input.fabricId === undefined ? (existing["fabric_id"] as string | null) : input.fabricId;
+    const needed = input.metresNeeded === undefined ? Number(existing["metres_needed"] ?? 0) : (input.metresNeeded ?? 0);
+    if (fabricId && needed > 0) {
+      if (!(await getFabricRow(db, shop.id, fabricId))) throw notFound("That fabric isn't in your stock.");
+      const client = await getClientRow(db, shop.id, clientId);
+      const garment = input.garment ?? String(existing["garment"] ?? "Order");
+      const note = `${garment} for ${String(client?.["name"] ?? "a client")}`;
+      statements.push(...cuttingStatements(shop.id, orderId, fabricId, needed, note, now));
+      sets.push("metres_taken_at = ?");
+      args.push(now);
+    }
+  }
+
   sets.push("updated_at = ?");
   args.push(now, orderId, clientId, shop.id);
   statements.unshift({
@@ -250,6 +365,9 @@ orderRoutes.delete("/:clientId/orders/:orderId", async (c) => {
         args: [nowIso(), orderId, shop.id],
       },
       { sql: "DELETE FROM order_photos WHERE order_id = ? AND shop_id = ?", args: [orderId, shop.id] },
+      { sql: "DELETE FROM order_payments WHERE order_id = ? AND shop_id = ?", args: [orderId, shop.id] },
+      // Stock history keeps the movement (the cloth was cut); only the link to the gone order is dropped.
+      { sql: "UPDATE fabric_movements SET order_id = NULL WHERE order_id = ? AND shop_id = ?", args: [orderId, shop.id] },
       { sql: "DELETE FROM orders WHERE id = ? AND client_id = ? AND shop_id = ?", args: [orderId, clientId, shop.id] },
     ],
     "write",

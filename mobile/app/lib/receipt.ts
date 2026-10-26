@@ -1,14 +1,11 @@
-// Deposit receipt: a one-page PDF built on the phone and handed to the share sheet.
-//
-// Free, with nothing new to pay for or set up: expo-print renders our HTML into a PDF on the device and
-// expo-sharing opens the share sheet (LINE, WhatsApp, Mail, Files...). No server, no API call. Both are native
-// modules, so they are loaded on demand: in a build that doesn't carry them yet (an older development build)
-// `receiptAvailable()` is false and the order screen hides the button instead of crashing.
+// Deposit receipt: a one-page PDF built on the phone and handed to the share sheet (lib/pdf.ts does the
+// rendering and sharing; nothing leaves the phone until the owner shares it).
 //
 // The pure parts (buildReceipt, receiptHtml, receiptFileName) have node tests; keep them free of Expo imports.
 import type { Client, Order, Shop } from "@shared/types";
 
 import { formatDate, formatThb } from "./format";
+import { A5, dateStamp, fileSlug, pdfAvailable, sharePdf } from "./pdf";
 
 /** The shop lines printed at the top of the receipt. */
 export interface ReceiptShop {
@@ -81,14 +78,7 @@ export function buildReceipt(
 
 /** "Receipt-Sathorn-Bespoke-20261020.pdf" */
 export function receiptFileName(data: ReceiptData): string {
-  const slug = data.shop.name
-    .normalize("NFKD")
-    .replace(/[^A-Za-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 24);
-  const d = new Date(data.issuedAt);
-  const stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
-  return `Receipt-${slug || "shop"}-${stamp}.pdf`;
+  return `Receipt-${fileSlug(data.shop.name) || "shop"}-${dateStamp(data.issuedAt)}.pdf`;
 }
 
 export function escapeHtml(value: string): string {
@@ -170,35 +160,9 @@ export function receiptHtml(data: ReceiptData): string {
 </html>`;
 }
 
-type PrintModule = typeof import("expo-print");
-type SharingModule = typeof import("expo-sharing");
-type FileSystemModule = typeof import("expo-file-system");
-
-let modules: { print: PrintModule; sharing: SharingModule; fs: FileSystemModule | null } | null | undefined;
-
-function getModules() {
-  if (modules !== undefined) return modules;
-  try {
-    /* eslint-disable @typescript-eslint/no-require-imports -- native modules; a static import throws in a build without them */
-    const print = require("expo-print") as PrintModule;
-    const sharing = require("expo-sharing") as SharingModule;
-    let fs: FileSystemModule | null = null;
-    try {
-      fs = require("expo-file-system") as FileSystemModule;
-    } catch {
-      fs = null;
-    }
-    /* eslint-enable @typescript-eslint/no-require-imports */
-    modules = { print, sharing, fs };
-  } catch {
-    modules = null;
-  }
-  return modules;
-}
-
-/** True when this build can make and share a PDF (Expo Go and every build made after expo-print was added). */
+/** True when this build can make and share a PDF (see lib/pdf.ts). */
 export function receiptAvailable(): boolean {
-  return getModules() !== null;
+  return pdfAvailable();
 }
 
 /**
@@ -206,38 +170,5 @@ export function receiptAvailable(): boolean {
  * the phone doesn't say whether the client actually got it. Throws when the build has no print module.
  */
 export async function shareReceipt(data: ReceiptData): Promise<void> {
-  const mods = getModules();
-  if (!mods) throw new Error("This build can't make PDFs yet. Install the latest build and try again.");
-  const { uri } = await mods.print.printToFileAsync({ html: receiptHtml(data), width: 420, height: 595, base64: false });
-  // expo-print names the file after the time it was made (Android shows that name in the viewer and in LINE);
-  // give it a name the client will recognise. Two ways, the current File API first, the legacy one as a fallback;
-  // if both fail the file is shared under its original name and the reason is logged for the next test run.
-  let shareUri = uri;
-  const name = receiptFileName(data);
-  if (mods.fs) {
-    try {
-      const target = new mods.fs.File(mods.fs.Paths.cache, name);
-      if (target.exists) target.delete();
-      new mods.fs.File(uri).move(target);
-      if (target.exists) shareUri = target.uri;
-    } catch (err) {
-      console.warn("[receipt] rename with the File API failed", err);
-    }
-  }
-  if (shareUri === uri) {
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports -- same module, legacy entry point
-      const legacy = require("expo-file-system/legacy") as typeof import("expo-file-system/legacy");
-      const to = `${legacy.cacheDirectory ?? ""}${name}`;
-      if (legacy.cacheDirectory) {
-        await legacy.deleteAsync(to, { idempotent: true });
-        await legacy.moveAsync({ from: uri, to });
-        shareUri = to;
-      }
-    } catch (err) {
-      console.warn("[receipt] rename with the legacy API failed", err);
-    }
-  }
-  if (!(await mods.sharing.isAvailableAsync())) throw new Error("Sharing isn't available on this device.");
-  await mods.sharing.shareAsync(shareUri, { mimeType: "application/pdf", UTI: "com.adobe.pdf", dialogTitle: "Share receipt" });
+  await sharePdf(receiptHtml(data), receiptFileName(data), A5, "Share receipt");
 }

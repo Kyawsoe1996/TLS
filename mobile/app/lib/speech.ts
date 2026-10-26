@@ -2,6 +2,7 @@
 // Android). Audio never leaves the device through the app; the recogniser hands back text. The native module isn't
 // in Expo Go and importing the package there throws, so it's loaded lazily behind a try/catch: `isSpeechAvailable()`
 // is then false and the dictation UI stays hidden instead of crashing.
+import { requireOptionalNativeModule } from "expo";
 import Constants, { ExecutionEnvironment } from "expo-constants";
 import * as SecureStore from "expo-secure-store";
 
@@ -27,9 +28,11 @@ let cached: SpeechModule | null | undefined;
 export function getSpeechModule(): SpeechModule | null {
   if (cached !== undefined) return cached;
   cached = null;
-  if (Constants.executionEnvironment !== ExecutionEnvironment.StoreClient) {
+  // Ask for the native module before requiring the package: a require that fails at runtime is reported by Metro
+  // as a fatal error rather than thrown, so the try/catch alone can't protect a build without the module.
+  if (Constants.executionEnvironment !== ExecutionEnvironment.StoreClient && requireOptionalNativeModule("ExpoSpeechRecognition") != null) {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports -- a static import throws in Expo Go (no native module)
+      // eslint-disable-next-line @typescript-eslint/no-require-imports -- native module, loaded only once we know it exists
       const mod = require("expo-speech-recognition") as typeof import("expo-speech-recognition");
       if (mod.ExpoSpeechRecognitionModule.isRecognitionAvailable()) cached = mod.ExpoSpeechRecognitionModule;
     } catch {

@@ -27,4 +27,13 @@ export const queryKeys = {
   /** Content library (GET /posts) — one entry per status / search combination. */
   posts: (params?: { status?: PostStatus; q?: string }) => ["posts", "list", params ?? {}] as const,
   post: (id: string) => ["posts", "detail", id] as const,
+  /** Fabric stock (GET /fabrics) and one fabric with its history (GET /fabrics/:id). */
+  fabrics: ["fabrics"] as const,
+  fabric: (id: string) => ["fabrics", "detail", id] as const,
+  /** Monthly report (GET /reports?month=YYYY-MM). */
+  report: (month: string) => ["reports", month] as const,
+  /** Smart Referral: the overview (GET /referrals), one lead, and a client's own link + stats. */
+  referrals: ["referrals"] as const,
+  referralLead: (id: string) => ["referrals", "lead", id] as const,
+  clientReferral: (clientId: string) => ["clients", "detail", clientId, "referral"] as const,
 };

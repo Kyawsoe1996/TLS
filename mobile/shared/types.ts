@@ -31,6 +31,10 @@ export interface Shop {
   // When the owner agreed to send client details to Google Gemini (POST /shop/ai-consent); null until then.
   // Every /ai/* route answers 403 consent_required while this is null, so the app asks first.
   aiConsentAt: ISODate | null;
+  // Smart Referral: what a friend gets and what the client who sent them gets (both plain text the shop
+  // writes, e.g. "A complimentary shirt with your first suit"). Null until the shop sets the offer up.
+  referralFriendOffer: string | null;
+  referralClientOffer: string | null;
   createdAt: ISODate;
 }
 
@@ -51,6 +55,9 @@ export interface UpsertShopRequest {
   openingHours?: string;
   replyToEmail?: string; // validated as an email when non-empty
   googleReviewUrl?: string; // validated as an http(s) URL when non-empty
+  // Smart Referral offer (see Shop); same omit / "" semantics.
+  referralFriendOffer?: string;
+  referralClientOffer?: string;
 }
 export type UpsertShopResponse = GetShopResponse;
 /** POST /shop/ai-consent — records the owner's agreement to the AI data sharing (idempotent) → { shop, email } */
@@ -68,6 +75,8 @@ export interface HomeResponse {
   ordersOverdue: number; // open orders whose due date is before today (shown as the Clients tab badge)
   appointmentsThisWeek: number; // scheduled appointments from 12 h ago to 7 days ahead
   upcomingAppointments: Appointment[]; // the first 5 of those, soonest first, with clientName
+  fabricsLow: number; // fabrics whose metresLeft is below their lowAtMetres (Fabric stock)
+  referralLeadsNew: number; // friends who asked for a fitting through a referral link and aren't handled yet
 }
 
 // ---------- Clients ----------
@@ -79,6 +88,10 @@ export interface Client {
   lineId: string | null;
   notes: string | null;
   lastOrderAt: ISODate | null;
+  // Smart Referral: who sent this client (another client of the shop), if anyone. Set when they are added
+  // from a referral lead or picked under "Who sent you?"; the sender earns the reward on this client's
+  // first delivered order.
+  referredByClientId: string | null;
   createdAt: ISODate;
   inactive: boolean; // computed: 90+ days since lastOrderAt (or createdAt if never ordered)
 }
@@ -95,6 +108,7 @@ export interface CreateClientRequest {
   lineId?: string;
   notes?: string;
   lastOrderAt?: ISODate;
+  referredByClientId?: string; // another client of this shop (400 if not, or if it is the client itself)
 }
 /** PATCH /clients/:id — any subset of CreateClientRequest */
 export type UpdateClientRequest = Partial<CreateClientRequest>;
@@ -189,6 +203,12 @@ export interface Order {
   balance: number | null; // computed: price - deposit when price is set (never below 0)
   // When a review_request email was sent for this order (null until then); the app offers it once per order.
   reviewRequestedAt: ISODate | null;
+  // Fabric stock: the bolt this order is cut from (a Fabric id), the length it needs in metres, and when that
+  // length was taken off the bolt (stamped once, the first time the status reaches "cutting"). All null when the
+  // fabric was typed in or is the client's own cloth.
+  fabricId: string | null;
+  metresNeeded: number | null;
+  metresTakenAt: ISODate | null;
   photos: OrderPhoto[]; // progress photos, oldest first (max ORDER_PHOTO_LIMITS.perOrder); [] on the shop-wide list
   createdAt: ISODate;
   updatedAt: ISODate;
@@ -233,8 +253,15 @@ export interface CreateOrderRequest {
   notes?: string;
   price?: number; // THB, >= 0; null clears on PATCH
   deposit?: number; // THB, >= 0; null clears on PATCH
+  fabricId?: string; // a Fabric of this shop; when set and `fabric` is omitted, the fabric's name is stored as `fabric`
+  metresNeeded?: number; // metres this order takes off the bolt at Cutting (0.1–100); needs fabricId
 }
-/** PATCH /clients/:id/orders/:orderId — any subset; status "delivered" stamps deliveredAt */
+/**
+ * PATCH /clients/:id/orders/:orderId — any subset; status "delivered" stamps deliveredAt. A deposit change is also
+ * recorded as a payment (the difference) for the monthly report. The first move to "cutting" takes `metresNeeded`
+ * off the fabric's stock (once; later status changes don't repeat it). The first delivery for a client who was
+ * referred marks the referrer's reward as ready.
+ */
 export type UpdateOrderRequest = Partial<CreateOrderRequest> & { status?: OrderStatus };
 /** GET/POST/PATCH single order */
 export interface OrderResponse {
@@ -335,6 +362,194 @@ export interface EmailStatus {
   configured: boolean;
   from: string; // e.g. "Shamu via Magick Tailor <onboarding@resend.dev>"
 }
+
+// ---------- Fabric stock (cloth on the shelf, in metres) ----------
+export const FABRIC_KINDS = ["suiting", "jacketing", "trousering", "shirting", "lining", "other"] as const;
+export type FabricKind = (typeof FABRIC_KINDS)[number];
+
+/** Metres a garment usually takes at 150 cm width: the "enough for" labels and the default length on a new order. */
+export const GARMENT_METRES = { suit: 3.3, jacket: 2, trousers: 1.3, shirt: 2 } as const;
+
+export const FABRIC_LIMITS = { perShop: 500, maxMetres: 1000 } as const;
+
+export interface Fabric {
+  id: string;
+  name: string; // "Super 130s navy wool"
+  supplier: string | null; // mill or merchant
+  colour: string | null;
+  kind: FabricKind;
+  widthCm: number | null;
+  metresLeft: number;
+  lowAtMetres: number; // `low` when metresLeft < this
+  costPerMetre: number | null; // THB
+  swatch: string | null; // hex colour for the swatch square, e.g. "#1E2D4D"
+  notes: string | null;
+  low: boolean; // computed: metresLeft < lowAtMetres
+  createdAt: ISODate;
+  updatedAt: ISODate;
+}
+
+export const FABRIC_MOVEMENT_REASONS = ["received", "correction", "order"] as const;
+export type FabricMovementReason = (typeof FABRIC_MOVEMENT_REASONS)[number];
+
+/** One change of a bolt's length. `order` movements carry the order id and are written by the API at Cutting. */
+export interface FabricMovement {
+  id: string;
+  fabricId: string;
+  orderId: string | null;
+  metres: number; // signed: + received / correction up, − used / correction down
+  reason: FabricMovementReason;
+  note: string | null;
+  createdAt: ISODate;
+}
+
+/** GET /fabrics?low=true → low ones first, then by name */
+export interface ListFabricsResponse {
+  fabrics: Fabric[];
+}
+/** GET /fabrics/:id → the fabric, its movements (newest first) and the orders cut from it (with clientName) */
+export interface FabricDetailResponse {
+  fabric: Fabric;
+  movements: FabricMovement[];
+  orders: Order[];
+}
+/** POST /fabrics → 201 { fabric }; PATCH /fabrics/:id → { fabric } */
+export interface FabricResponse {
+  fabric: Fabric;
+}
+export interface CreateFabricRequest {
+  name: string;
+  supplier?: string;
+  colour?: string;
+  kind?: FabricKind; // default "suiting"
+  widthCm?: number; // 50–400
+  metresLeft?: number; // starting length, default 0; later changes go through movements
+  lowAtMetres?: number; // default 3
+  costPerMetre?: number; // THB
+  swatch?: string; // "#RRGGBB"
+  notes?: string;
+}
+/** PATCH /fabrics/:id — any subset except metresLeft (use a movement); `null` clears an optional field */
+export type UpdateFabricRequest = Partial<Omit<CreateFabricRequest, "metresLeft">>;
+/** POST /fabrics/:id/movements → { fabric, movement } — a delivery (+) or a stock-take correction (+/−) */
+export interface AddFabricMovementRequest {
+  metres: number; // non-zero; "received" must be positive
+  reason: "received" | "correction";
+  note?: string;
+}
+export interface FabricMovementResponse {
+  fabric: Fabric;
+  movement: FabricMovement;
+}
+/** DELETE /fabrics/:id → 204 (orders keep their fabric name; their fabricId is cleared) */
+
+// ---------- Payments and reports ----------
+/** A payment recorded against an order (written when the deposit changes; negative = corrected down). */
+export interface OrderPayment {
+  id: string;
+  orderId: string;
+  clientId: string;
+  amount: number; // THB
+  paidAt: ISODate;
+}
+
+/** GET /reports?month=YYYY-MM (default: the current month, in UTC) */
+export interface ReportResponse {
+  month: string; // "2026-10"
+  newClients: number;
+  fittings: number;
+  ordersCreated: number;
+  ordersDelivered: number;
+  moneyCollected: number; // THB: payments recorded in the month
+  revenueDelivered: number; // THB: price of the orders delivered in the month
+  stillOwed: number; // THB: balance across open orders, today
+  openOrders: number; // today
+  quietClients: number; // inactive 90+ days, today
+  previous: { month: string; newClients: number; fittings: number; ordersDelivered: number; moneyCollected: number };
+  months: { month: string; ordersDelivered: number; moneyCollected: number }[]; // the last 6 months, oldest first, this month last
+  garments: { garment: string; delivered: number }[]; // most made this month, up to 5
+  clientsToCall: { clientId: string; name: string; reason: "quiet" | "balance"; detail: string }[]; // up to 6
+}
+
+// ---------- Smart Referral ----------
+export const REFERRAL_PREFERRED = ["this_week", "next_week", "any"] as const;
+export type ReferralPreferred = (typeof REFERRAL_PREFERRED)[number];
+export const REFERRAL_LEAD_STATUSES = ["new", "added", "dismissed"] as const;
+export type ReferralLeadStatus = (typeof REFERRAL_LEAD_STATUSES)[number];
+export const REFERRAL_REWARD_STATUSES = ["pending", "ready", "given"] as const;
+export type ReferralRewardStatus = (typeof REFERRAL_REWARD_STATUSES)[number];
+
+/** A friend who asked for a fitting through a client's link (the public page at /r/:code). */
+export interface ReferralLead {
+  id: string;
+  referrerClientId: string;
+  referrerName: string;
+  name: string;
+  contact: string; // phone or LINE id, as typed
+  preferred: ReferralPreferred | null;
+  status: ReferralLeadStatus;
+  clientId: string | null; // once added as a client
+  createdAt: ISODate;
+  updatedAt: ISODate;
+}
+
+/** The reward an ambassador earns for one friend: pending until the friend's first delivered order, then ready. */
+export interface ReferralReward {
+  id: string;
+  ambassadorClientId: string;
+  ambassadorName: string;
+  friendClientId: string;
+  friendName: string;
+  status: ReferralRewardStatus;
+  readyAt: ISODate | null;
+  givenAt: ISODate | null;
+  createdAt: ISODate;
+}
+
+/** GET /referrals → the Smart Referral screen */
+export interface ReferralOverviewResponse {
+  friendOffer: string | null;
+  clientOffer: string | null;
+  linksShared: number; // sum of every client's Share taps
+  friendsBooked: number; // leads received
+  becameClients: number; // referred clients with at least one delivered order
+  rewardsReady: number;
+  leads: ReferralLead[]; // new first, then added / dismissed, newest first; up to 50
+  ambassadors: { clientId: string; name: string; friendsBooked: number; becameClients: number; rewardsReady: number }[]; // top 10
+  rewards: ReferralReward[]; // ready first, then pending, then given; up to 50
+}
+/** GET /clients/:id/referral → the client's link and what it brought in (makes the code on first call) */
+export interface ClientReferralResponse {
+  code: string; // e.g. "DANIEL-7F2K"
+  url: string; // absolute public link, e.g. https://api…/r/DANIEL-7F2K
+  message: string; // ready-to-send text with the offer and the link
+  sharedCount: number;
+  friendsBooked: number;
+  becameClients: number;
+  rewards: ReferralReward[]; // this client's rewards as the ambassador
+}
+/** POST /clients/:id/referral/shared → { sharedCount } (the app calls it when the share sheet closes) */
+export interface ReferralSharedResponse {
+  sharedCount: number;
+}
+/** GET /referrals/leads/:id → { lead } */
+export interface ReferralLeadResponse {
+  lead: ReferralLead;
+}
+/** POST /referrals/leads/:id/add → 201 { lead, client } — makes a client from the lead (referredByClientId set) */
+export interface AddReferralLeadResponse {
+  lead: ReferralLead;
+  client: Client;
+}
+/** POST /referrals/leads/:id/dismiss → { lead }; POST /referrals/rewards/:id/given → { reward } */
+export interface ReferralRewardResponse {
+  reward: ReferralReward;
+}
+/**
+ * Public, no auth: GET /r/:code → the friend's HTML page (404 page when the code is unknown);
+ * POST /r/:code (form fields name, contact, preferred, and a `website` honeypot that must stay empty) → a thank-you
+ * page; rate limited per address.
+ */
 
 // ---------- AI ----------
 // All AI routes are rate limited per user (429 rate_limited) and may return 502 ai_failed.

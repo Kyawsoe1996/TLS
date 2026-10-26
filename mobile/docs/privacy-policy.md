@@ -26,6 +26,12 @@ Magick Tailor is an app for tailor shops. It stores the shop's client, fitting a
 
 **AI outputs.** Text generated for you (cutter notes, fit profiles, marketing hooks, blog posts, captions, email drafts) is stored with the record it belongs to so you can see it again. Posts you write in Content Studio are saved to your content library, together with any photo or short video you attach to them.
 
+**Fabric stock.** The fabrics you list as in stock (name, supplier, colour, width, metres left, cost per metre) and every change of length, including the orders cut from them.
+
+**Payments.** Each amount you record as received against an order, so the monthly report can total what came in during a month. No card or bank details are involved: payments are taken outside the app.
+
+**Referral invitations.** If you use Smart Referral, each client gets a personal invitation link and we count how often it was shared from the app. A friend who opens the link and asks for a fitting gives us their name, their phone number or LINE ID and a preferred time, with their consent on that page; we keep it so you can contact them and, if you add them as a client, we note which client introduced them and the reward that goes with it.
+
 **Technical data.** Cloudflare, which hosts our API, keeps request logs (time, route, response status) for security and debugging. Rate-limit counters are kept per account by Upstash. We do not use advertising or analytics SDKs and do not build behavioural profiles.
 
 ## 2. How we use it
@@ -59,7 +65,7 @@ Google processes the inputs of each AI request under the Gemini API terms that a
 
 Your data is kept for as long as your account exists.
 
-**Delete your account in the app:** Settings → Delete account. This permanently erases the shop and its details, every client, fitting, order (with its progress photos) and appointment record, the copies of emails you sent, all AI outputs, your posts and their photos and videos, and your login with Clerk. It cannot be undone. Backups held by our database provider are purged on their normal schedule, within 30 days.
+**Delete your account in the app:** Settings → Delete account. This permanently erases the shop and its details, every client, fitting, order (with its progress photos and payments) and appointment record, the copies of emails you sent, all AI outputs, your fabric stock, your referral invitations and the friends who answered them, your posts and their photos and videos, and your login with Clerk. It cannot be undone. Backups held by our database provider are purged on their normal schedule, within 30 days.
 
 You can also delete individual clients (which deletes their fittings, orders with their photos, appointments and messages), individual order photos and individual posts at any time.
 

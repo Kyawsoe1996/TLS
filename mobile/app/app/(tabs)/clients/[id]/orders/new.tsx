@@ -1,10 +1,12 @@
+import { Ionicons } from "@expo/vector-icons";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { CreateOrderRequest } from "@shared/types";
 
-import { afterOrderChanged, cacheOrder, clientRoutes, dateInputToIso, garmentLabel, useClient, useFittings } from "@/components/clients";
+import { ErrorBlock, afterOrderChanged, cacheOrder, clientRoutes, dateInputToIso, garmentLabel, useClient, useFittings } from "@/components/clients";
+import { FabricPickRow, defaultMetresFor, fabricRoutes, formatMetres, roundMetres, useFabrics } from "@/components/fabrics";
 import { Button, Card, Chip, ErrorBanner, Eyebrow, Field, NumberField, Screen } from "@/components/ui";
 import { colors, fonts, typography } from "@/constants/theme";
 import { useApi } from "@/lib/api";
@@ -14,6 +16,13 @@ import { showError } from "@/lib/toast";
 const GARMENT_PRESETS = ["Two-piece suit", "Three-piece suit", "Jacket", "Trousers", "Shirt"] as const;
 const CUSTOM_GARMENT = "Custom";
 const FABRIC_SUGGESTIONS = ["Super 130s navy wool", "Irish linen", "Charcoal flannel"] as const;
+
+/** How the order's fabric is set: a bolt from stock (Fabric stock), the client's own cloth, or a typed name. */
+type FabricMode = "stock" | "own" | "typed";
+const OWN_CLOTH = "Client's own cloth";
+/** The "Length for this order" stepper: ±0.1 m, within the contract's 0.1–100 m. */
+const METRES_STEP = 0.1;
+const METRES_MAX = 100;
 
 /** Quick deposit choices, as a share of the price. */
 const DEPOSIT_PRESETS: { label: string; of: (price: number) => number }[] = [
@@ -41,6 +50,11 @@ export default function NewOrderScreen() {
   const [garmentChoice, setGarmentChoice] = useState<string>(GARMENT_PRESETS[0]);
   const [customGarment, setCustomGarment] = useState("");
   const [fabric, setFabric] = useState("");
+  const [fabricMode, setFabricMode] = useState<FabricMode>("stock");
+  const [fabricId, setFabricId] = useState<string | null>(null);
+  const [metresNeeded, setMetresNeeded] = useState<number>(() => defaultMetresFor(GARMENT_PRESETS[0]));
+  // Once the length is stepped by hand it no longer follows the garment chip.
+  const [metresTouched, setMetresTouched] = useState(false);
   const [fittingId, setFittingId] = useState<string | null>(fittingParam || null);
   const [dueAt, setDueAt] = useState("");
   const [dueError, setDueError] = useState<string | null>(null);
@@ -53,11 +67,47 @@ export default function NewOrderScreen() {
   const fittings = fittingsQuery.data ?? [];
   const balance = price === null ? null : Math.max(0, price - (deposit ?? 0));
 
-  // Arriving from a fitting: suggest its fabric once the fittings load, unless something was already typed.
-  const preselected = fittingParam ? fittings.find((f) => f.id === fittingParam) : undefined;
+  // Fabric stock: the bolts on the shelf, the one picked, and the garment name the default length follows.
+  const fabricsQuery = useFabrics();
+  const stockFabrics = useMemo(() => fabricsQuery.data ?? [], [fabricsQuery.data]);
+  const selectedFabric = fabricId ? stockFabrics.find((f) => f.id === fabricId) : undefined;
+  const garmentName = (garmentChoice === CUSTOM_GARMENT ? customGarment : garmentChoice).trim() || "Order";
+
+  // The default length follows the garment chip until the stepper is used.
   useEffect(() => {
-    if (preselected) setFabric((current) => (current.trim() ? current : preselected.fabric));
-  }, [preselected]);
+    if (!metresTouched) setMetresNeeded(defaultMetresFor(garmentName));
+  }, [garmentName, metresTouched]);
+
+  const stepMetres = (delta: number) => {
+    setMetresTouched(true);
+    setMetresNeeded((current) => Math.min(METRES_MAX, Math.max(METRES_STEP, roundMetres(current + delta))));
+  };
+
+  /** A fitting's fabric: the matching bolt in stock when there is one, otherwise its name typed in (unless something was already typed). */
+  const adoptFabricName = useCallback(
+    (name: string) => {
+      const trimmed = name.trim();
+      if (!trimmed) return;
+      const match = stockFabrics.find((s) => s.name.trim().toLowerCase() === trimmed.toLowerCase());
+      if (match) {
+        setFabricId(match.id);
+        setFabricMode("stock");
+      } else {
+        setFabric((current) => (current.trim() ? current : trimmed));
+        setFabricMode("typed");
+      }
+    },
+    [stockFabrics],
+  );
+
+  // Arriving from a fitting: adopt its fabric once the fittings and the shelf have loaded (once per fitting).
+  const preselected = fittingParam ? fittings.find((f) => f.id === fittingParam) : undefined;
+  const adoptedFitting = useRef<string | null>(null);
+  useEffect(() => {
+    if (!preselected || fabricsQuery.isPending || adoptedFitting.current === preselected.id) return;
+    adoptedFitting.current = preselected.id;
+    adoptFabricName(preselected.fabric);
+  }, [preselected, fabricsQuery.isPending, adoptFabricName]);
 
   const mutation = useMutation({
     mutationFn: (body: CreateOrderRequest) => api.createOrder(id, body),
@@ -85,12 +135,23 @@ export default function NewOrderScreen() {
     if (deposit !== null && price === null) return setPriceError("Add the price to record a deposit against it.");
     if (price !== null && deposit !== null && deposit > price) return setPriceError("The deposit can't be more than the price.");
 
+    // Fabric: a bolt from stock (with the length it takes at Cutting), the client's own cloth, or a typed name.
+    let fabricFields: Pick<CreateOrderRequest, "fabric" | "fabricId" | "metresNeeded"> = {};
+    if (fabricMode === "stock" && stockFabrics.length > 0) {
+      if (!selectedFabric) return setError("Pick the bolt this order is cut from, or choose another fabric option.");
+      fabricFields = { fabric: selectedFabric.name, fabricId: selectedFabric.id, metresNeeded: roundMetres(metresNeeded) };
+    } else if (fabricMode === "own") {
+      fabricFields = { fabric: OWN_CLOTH };
+    } else if (fabricMode === "typed") {
+      fabricFields = { fabric: fabric.trim() || undefined };
+    }
+
     setError(null);
     setDueError(null);
     setPriceError(null);
     mutation.mutate({
       garment,
-      fabric: fabric.trim() || undefined,
+      ...fabricFields,
       fittingId: fittingId ?? undefined,
       dueAt: dueIso,
       notes: notes.trim() || undefined,
@@ -136,21 +197,93 @@ export default function NewOrderScreen() {
       </View>
 
       <View style={styles.block}>
-        <Field
-          label="Fabric"
-          value={fabric}
-          onChangeText={setFabric}
-          placeholder="e.g. Super 130s navy wool"
-          autoCapitalize="sentences"
-          returnKeyType="next"
-          hint="Optional."
-          editable={!busy}
-        />
+        <Eyebrow>Fabric</Eyebrow>
         <View style={styles.chips}>
-          {FABRIC_SUGGESTIONS.map((f) => (
-            <Chip key={f} label={f} selected={fabric.trim() === f} onPress={() => setFabric(f)} disabled={busy} style={styles.chip} />
-          ))}
+          <Chip label="From stock" icon="layers-outline" selected={fabricMode === "stock"} onPress={() => setFabricMode("stock")} disabled={busy} style={styles.chip} testID="order-fabric-stock" />
+          <Chip label="Client's own cloth" selected={fabricMode === "own"} onPress={() => setFabricMode("own")} disabled={busy} style={styles.chip} testID="order-fabric-own" />
+          <Chip label="Type a name" selected={fabricMode === "typed"} onPress={() => setFabricMode("typed")} disabled={busy} style={styles.chip} testID="order-fabric-typed" />
         </View>
+        {fabricMode === "stock" ? (
+          fabricsQuery.isPending ? (
+            <Text style={typography.small}>Loading your fabrics…</Text>
+          ) : fabricsQuery.isError ? (
+            <ErrorBlock error={fabricsQuery.error} onRetry={() => void fabricsQuery.refetch()} retrying={fabricsQuery.isFetching} />
+          ) : stockFabrics.length === 0 ? (
+            <Card variant="soft" style={styles.stockHint}>
+              <Text style={typography.small}>Nothing on the shelf yet. Add the bolts you keep and orders will take their length off at Cutting.</Text>
+              <Button size="sm" variant="secondary" icon="layers-outline" title="Open Fabrics" onPress={() => router.push(fabricRoutes.list)} disabled={busy} />
+            </Card>
+          ) : (
+            <>
+              <View style={styles.stockList}>
+                {stockFabrics.map((f) => (
+                  <FabricPickRow
+                    key={f.id}
+                    fabric={f}
+                    selected={fabricId === f.id}
+                    needed={metresNeeded}
+                    garmentLabel={garmentName}
+                    onPress={() => {
+                      setFabricId((current) => (current === f.id ? null : f.id));
+                      if (error) setError(null);
+                    }}
+                    disabled={busy}
+                  />
+                ))}
+              </View>
+              <View style={styles.stepperRow}>
+                <Text style={styles.stepperLabel}>Length for this order</Text>
+                <View style={styles.stepper} accessibilityLabel={`Length for this order: ${formatMetres(metresNeeded)}`}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Less"
+                    hitSlop={6}
+                    onPress={() => stepMetres(-METRES_STEP)}
+                    disabled={busy || metresNeeded <= METRES_STEP}
+                    style={({ pressed }) => [styles.stepButton, pressed && styles.pressed]}
+                    testID="order-metres-minus"
+                  >
+                    <Ionicons name="remove" size={18} color={colors.navy} />
+                  </Pressable>
+                  <Text style={styles.stepperValue} testID="order-metres">
+                    {formatMetres(metresNeeded)}
+                  </Text>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="More"
+                    hitSlop={6}
+                    onPress={() => stepMetres(METRES_STEP)}
+                    disabled={busy || metresNeeded >= METRES_MAX}
+                    style={({ pressed }) => [styles.stepButton, pressed && styles.pressed]}
+                    testID="order-metres-plus"
+                  >
+                    <Ionicons name="add" size={18} color={colors.navy} />
+                  </Pressable>
+                </View>
+              </View>
+              <Text style={typography.small}>The length comes off the bolt when the order reaches Cutting, not before.</Text>
+            </>
+          )
+        ) : fabricMode === "own" ? (
+          <Text style={typography.small}>The order will note the cloth is the client&apos;s own; nothing comes off your shelf.</Text>
+        ) : (
+          <>
+            <Field
+              value={fabric}
+              onChangeText={setFabric}
+              placeholder="e.g. Super 130s navy wool"
+              autoCapitalize="sentences"
+              returnKeyType="next"
+              hint="Optional."
+              editable={!busy}
+            />
+            <View style={styles.chips}>
+              {FABRIC_SUGGESTIONS.map((f) => (
+                <Chip key={f} label={f} selected={fabric.trim() === f} onPress={() => setFabric(f)} disabled={busy} style={styles.chip} />
+              ))}
+            </View>
+          </>
+        )}
       </View>
 
       <View style={styles.block}>
@@ -165,7 +298,7 @@ export default function NewOrderScreen() {
                 selected={fittingId === f.id}
                 onPress={() => {
                   setFittingId(f.id);
-                  setFabric((current) => (current.trim() ? current : f.fabric));
+                  if (!selectedFabric) adoptFabricName(f.fabric);
                 }}
                 disabled={busy}
                 style={styles.chip}
@@ -267,6 +400,14 @@ const styles = StyleSheet.create({
   block: { gap: 10 },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   chip: { minHeight: 44 },
+  stockHint: { gap: 10 },
+  stockList: { gap: 8 },
+  stepperRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
+  stepperLabel: { flex: 1, fontFamily: fonts.bodySemi, fontSize: 14, lineHeight: 20, color: colors.ink },
+  stepper: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.line, borderRadius: 24, padding: 4 },
+  stepButton: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.sand, alignItems: "center", justifyContent: "center" },
+  stepperValue: { minWidth: 60, textAlign: "center", fontFamily: fonts.serifSemi, fontSize: 18, lineHeight: 22, color: colors.navy },
+  pressed: { opacity: 0.7 },
   priceCard: { gap: 12 },
   priceRow: { flexDirection: "row", gap: 10 },
   cell: { flex: 1, minWidth: 0 },

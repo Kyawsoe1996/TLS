@@ -33,6 +33,7 @@ import {
   useSendEmail,
   type EmailDraft,
 } from "@/components/clients";
+import { fabricRoutes, formatMetres } from "@/components/fabrics";
 import { Button, Card, Chip, EmptyState, Eyebrow, Field, NumberField, Screen, SectionTitle } from "@/components/ui";
 import { colors, fonts, typography } from "@/constants/theme";
 import { useApi } from "@/lib/api";
@@ -241,6 +242,8 @@ function OrderDetails({ order, client, onDeleted }: { order: Order; client: Clie
         </Text>
       </View>
 
+      {order.fabricId ? <FabricStockCard order={order} /> : null}
+
       <ReviewRequestCard order={order} client={client} />
 
       <OrderPhotos order={order} clientName={client?.name} disabled={deleteMutation.isPending} />
@@ -352,6 +355,43 @@ function OrderDetails({ order, client, onDeleted }: { order: Order; client: Clie
         style={styles.delete}
       />
     </>
+  );
+}
+
+/**
+ * Shown under the status stepper when the order is cut from a bolt in stock: what it will take at Cutting, or what
+ * it took and when, with a link to the fabric.
+ */
+function FabricStockCard({ order }: { order: Order }) {
+  const router = useRouter();
+  const name = order.fabric ?? "the bolt";
+  const metres = order.metresNeeded;
+  let text: string;
+  if (order.metresTakenAt) {
+    text = metres !== null ? `${formatMetres(metres)} taken from ${name} on ${formatDate(order.metresTakenAt)}.` : `Cut from ${name} on ${formatDate(order.metresTakenAt)}.`;
+  } else {
+    text = metres !== null ? `Will take ${formatMetres(metres)} from ${name} at Cutting.` : `Cut from ${name}. No length is set, so nothing comes off the bolt.`;
+  }
+  return (
+    <Card style={styles.fabricCard} testID="order-fabric-card">
+      <View style={styles.fabricIcon}>
+        <Ionicons name="layers-outline" size={18} color={colors.goldDark} />
+      </View>
+      <View style={styles.fabricText}>
+        <Eyebrow tone="muted">Fabric from stock</Eyebrow>
+        <Text style={typography.body}>{text}</Text>
+      </View>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="View fabric"
+        hitSlop={8}
+        onPress={() => router.push(fabricRoutes.detail(order.fabricId as string))}
+        style={({ pressed }) => [pressed && styles.pressed]}
+        testID="order-fabric-view"
+      >
+        <Text style={styles.fabricLink}>View</Text>
+      </Pressable>
+    </Card>
   );
 }
 
@@ -743,4 +783,8 @@ const styles = StyleSheet.create({
   fittingText: { flex: 1, minWidth: 0, gap: 2 },
   fittingTitle: { fontFamily: fonts.bodyMedium, fontSize: 15, lineHeight: 20, color: colors.ink },
   delete: { marginTop: 8 },
+  fabricCard: { flexDirection: "row", alignItems: "center", gap: 12 },
+  fabricIcon: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.sand, alignItems: "center", justifyContent: "center" },
+  fabricText: { flex: 1, minWidth: 0, gap: 2 },
+  fabricLink: { fontFamily: fonts.bodySemi, fontSize: 14, lineHeight: 18, color: colors.goldDark, paddingVertical: 8 },
 });

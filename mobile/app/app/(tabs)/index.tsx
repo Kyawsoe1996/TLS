@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { AppointmentRow, clientRoutes } from "@/components/clients";
+import { fabricRoutes } from "@/components/fabrics";
 import { Button, Card, ErrorBanner, Eyebrow, KpiList, Screen, SectionTitle, type IoniconName } from "@/components/ui";
 import { FEATURES } from "@/constants/features";
 import { colors, fonts, typography } from "@/constants/theme";
@@ -15,12 +16,15 @@ import { errorMessage } from "@/lib/toast";
 import { useShop } from "@/lib/useShop";
 
 const INACTIVE_CLIENTS: Href = { pathname: "/(tabs)/clients", params: { inactive: "1" } };
+/** Smart Referral's screen (friends who asked for a fitting); cast until the route is generated. */
+const REFERRALS = "/(tabs)/grow/referrals" as Href;
 
 // The daily loop: measure, track the garment, post, bring clients back. Local SEO returns here when
 // FEATURES.localSeo is switched on.
 const TILES: { key: string; title: string; hint: string; icon: IoniconName; href: Href }[] = [
   { key: "fit", title: "Smart Fitting", hint: "Measure and get cutter notes", icon: "body-outline", href: "/(tabs)/clients" },
   { key: "orders", title: "Orders", hint: "Every garment through the workshop", icon: "cube-outline", href: clientRoutes.orders },
+  { key: "fabrics", title: "Fabrics", hint: "Cloth on the shelf, in metres", icon: "layers-outline", href: fabricRoutes.list },
   { key: "content", title: "Content Studio", hint: "Blog + social post in your tone", icon: "create-outline", href: "/(tabs)/grow/content" },
   { key: "winback", title: "Win-back", hint: "Email clients who drifted", icon: "mail-outline", href: INACTIVE_CLIENTS },
   ...(FEATURES.localSeo
@@ -41,6 +45,8 @@ export default function HomeScreen() {
   const dueSoon = home?.ordersDueSoon ?? 0;
   const upcoming = home?.upcomingAppointments ?? [];
   const appointmentsThisWeek = home?.appointmentsThisWeek ?? 0;
+  const fabricsLow = home?.fabricsLow ?? 0;
+  const referralLeadsNew = home?.referralLeadsNew ?? 0;
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -86,6 +92,24 @@ export default function HomeScreen() {
             value: kpi(home?.inactiveCount),
             note: inactive > 0 ? "Win-back ready" : undefined,
             onPress: () => router.push(INACTIVE_CLIENTS),
+          },
+          {
+            key: "fabricsLow",
+            icon: "layers-outline",
+            label: "Fabrics running low",
+            value: kpi(home?.fabricsLow),
+            note: fabricsLow > 0 ? "Order more" : undefined,
+            accent: fabricsLow > 0 ? "danger" : false,
+            onPress: () => router.push(fabricRoutes.low),
+          },
+          {
+            key: "referrals",
+            icon: "gift-outline",
+            label: "New referral friends",
+            value: kpi(home?.referralLeadsNew),
+            note: referralLeadsNew > 0 ? "Book their fitting" : undefined,
+            accent: referralLeadsNew > 0 ? "danger" : false,
+            onPress: () => router.push(REFERRALS),
           },
         ]}
       />

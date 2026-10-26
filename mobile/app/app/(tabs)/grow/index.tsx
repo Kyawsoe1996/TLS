@@ -23,6 +23,20 @@ const TILES: Tile[] = [
     icon: "albums-outline",
     href: "/(tabs)/grow/posts",
   },
+  {
+    key: "referrals",
+    title: "Smart Referral",
+    body: "Your clients bring the next ones: a personal link each, and a reward when a friend's first order is delivered.",
+    icon: "gift-outline",
+    href: "/(tabs)/grow/referrals",
+  },
+  {
+    key: "reports",
+    title: "Reports",
+    body: "How the shop did this month: new clients, fittings, orders delivered, money collected. Share it as a PDF.",
+    icon: "stats-chart-outline",
+    href: "/(tabs)/grow/reports",
+  },
   // Hidden for this release; see constants/features.ts.
   ...(FEATURES.localSeo
     ? [

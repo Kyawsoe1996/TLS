@@ -6,9 +6,9 @@ import type {
   ListClientsResponse,
   UpdateClientRequest,
 } from "../../../shared/types";
-import { getClientRow, inactiveCutoff, newId, nowIso, rowToClient } from "../db";
+import { type Db, getClientRow, inactiveCutoff, newId, nowIso, rowToClient } from "../db";
 import type { AppEnv } from "../env";
-import { notFound } from "../errors";
+import { badRequest, notFound } from "../errors";
 import { deleteMediaObjects, mediaStore } from "../media";
 import { type AssertAccepts, isoDate, optionalText, parseBody, requiredText } from "../validate";
 
@@ -21,8 +21,26 @@ const createClientSchema = z.object({
   lineId: optionalText(80),
   notes: optionalText(2000),
   lastOrderAt: isoDate.nullable().optional(),
+  referredByClientId: optionalText(64), // Smart Referral: who sent them; `null`/"" clears on PATCH
 });
 type _CreateAccepted = AssertAccepts<typeof createClientSchema, CreateClientRequest>;
+
+/** The referrer must be another client of this shop. Also creates the pending reward for the pair (idempotent). */
+async function assertReferrer(db: Db, shopId: string, referrerId: string, clientId: string | null): Promise<void> {
+  if (clientId && referrerId === clientId) throw badRequest("A client can't refer themselves.");
+  const referrer = await getClientRow(db, shopId, referrerId);
+  if (!referrer) throw badRequest("The referring client isn't in your shop.");
+}
+
+/** The ambassador's reward for this friend starts pending and becomes ready on the friend's first delivery (orders.ts). */
+function pendingRewardStatement(shopId: string, ambassadorId: string, friendId: string, now: string) {
+  return {
+    sql: `INSERT INTO referral_rewards (id, shop_id, ambassador_client_id, friend_client_id, status, ready_at, given_at, created_at)
+          VALUES (?, ?, ?, ?, 'pending', NULL, NULL, ?)
+          ON CONFLICT(ambassador_client_id, friend_client_id) DO NOTHING`,
+    args: [newId(), shopId, ambassadorId, friendId, now],
+  };
+}
 
 /** PATCH accepts any subset; `null` clears a field. */
 const updateClientSchema = createClientSchema.partial();
@@ -62,23 +80,30 @@ clientRoutes.post("/", async (c) => {
   const db = c.get("db");
   const shop = c.get("shop");
   const input = await parseBody(c, createClientSchema);
+  if (input.referredByClientId) await assertReferrer(db, shop.id, input.referredByClientId, null);
 
   const id = newId();
-  await db.execute({
-    sql: `INSERT INTO clients (id, shop_id, name, phone, email, line_id, notes, last_order_at, created_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    args: [
-      id,
-      shop.id,
-      input.name,
-      input.phone ?? null,
-      input.email ?? null,
-      input.lineId ?? null,
-      input.notes ?? null,
-      input.lastOrderAt ?? null,
-      nowIso(),
-    ],
-  });
+  const now = nowIso();
+  const statements = [
+    {
+      sql: `INSERT INTO clients (id, shop_id, name, phone, email, line_id, notes, last_order_at, referred_by_client_id, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [
+        id,
+        shop.id,
+        input.name,
+        input.phone ?? null,
+        input.email ?? null,
+        input.lineId ?? null,
+        input.notes ?? null,
+        input.lastOrderAt ?? null,
+        input.referredByClientId ?? null,
+        now,
+      ],
+    },
+  ];
+  if (input.referredByClientId) statements.push(pendingRewardStatement(shop.id, input.referredByClientId, id, now));
+  await db.batch(statements, "write");
 
   const row = await getClientRow(db, shop.id, id);
   if (!row) throw notFound("Client not found.");
@@ -103,6 +128,7 @@ clientRoutes.patch("/:id", async (c) => {
 
   const existing = await getClientRow(db, shop.id, id);
   if (!existing) throw notFound("Client not found.");
+  if (input.referredByClientId) await assertReferrer(db, shop.id, input.referredByClientId, id);
 
   const columns: Record<keyof UpdateClientRequest, string> = {
     name: "name",
@@ -111,6 +137,7 @@ clientRoutes.patch("/:id", async (c) => {
     lineId: "line_id",
     notes: "notes",
     lastOrderAt: "last_order_at",
+    referredByClientId: "referred_by_client_id",
   };
   const sets: string[] = [];
   const args: (string | null)[] = [];
@@ -123,7 +150,9 @@ clientRoutes.patch("/:id", async (c) => {
 
   if (sets.length > 0) {
     args.push(id, shop.id);
-    await db.execute({ sql: `UPDATE clients SET ${sets.join(", ")} WHERE id = ? AND shop_id = ?`, args });
+    const statements = [{ sql: `UPDATE clients SET ${sets.join(", ")} WHERE id = ? AND shop_id = ?`, args }];
+    if (input.referredByClientId) statements.push(pendingRewardStatement(shop.id, input.referredByClientId, id, nowIso()));
+    await db.batch(statements, "write");
   }
 
   const row = await getClientRow(db, shop.id, id);
@@ -151,6 +180,10 @@ clientRoutes.delete("/:id", async (c) => {
       { sql: "DELETE FROM appointments WHERE client_id = ? AND shop_id = ?", args: [id, shop.id] },
       { sql: "DELETE FROM messages WHERE client_id = ? AND shop_id = ?", args: [id, shop.id] },
       { sql: "DELETE FROM order_photos WHERE client_id = ? AND shop_id = ?", args: [id, shop.id] },
+      { sql: "DELETE FROM order_payments WHERE client_id = ? AND shop_id = ?", args: [id, shop.id] },
+      { sql: "DELETE FROM referral_rewards WHERE (ambassador_client_id = ? OR friend_client_id = ?) AND shop_id = ?", args: [id, id, shop.id] },
+      { sql: "DELETE FROM referral_leads WHERE (referrer_client_id = ? OR client_id = ?) AND shop_id = ?", args: [id, id, shop.id] },
+      { sql: "UPDATE clients SET referred_by_client_id = NULL WHERE referred_by_client_id = ? AND shop_id = ?", args: [id, shop.id] },
       { sql: "DELETE FROM orders WHERE client_id = ? AND shop_id = ?", args: [id, shop.id] },
       { sql: "DELETE FROM fittings WHERE client_id = ? AND shop_id = ?", args: [id, shop.id] },
       { sql: "DELETE FROM clients WHERE id = ? AND shop_id = ?", args: [id, shop.id] },

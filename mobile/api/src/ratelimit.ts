@@ -8,6 +8,8 @@ import { rateLimited } from "./errors";
 export const AI_DAILY_LIMIT = 30;
 /** Sliding window: 60 emails per user per day. */
 export const EMAIL_DAILY_LIMIT = 60;
+/** Sliding window: 10 referral-form submissions per client address per hour (the public /r/:code page). */
+export const REFERRAL_HOURLY_LIMIT = 10;
 
 interface Bucket {
   /** Redis key prefix - keeps each quota separate. */
@@ -31,6 +33,12 @@ const BUCKETS = {
     window: "1 d",
     message: "You've reached today's email limit. Try again tomorrow.",
   },
+  referral: {
+    prefix: "tls:referral",
+    limit: REFERRAL_HOURLY_LIMIT,
+    window: "1 h",
+    message: "Too many requests from this address. Please try again in an hour.",
+  },
 } as const satisfies Record<string, Bucket>;
 type BucketName = keyof typeof BUCKETS;
 
@@ -43,7 +51,7 @@ function getLimiter(env: Bindings, name: BucketName): Ratelimit | null {
   if (!url || !token) {
     if (!warnedMissing) {
       console.warn(
-        "[ratelimit] UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN not set - AI and email rate limiting is DISABLED.",
+        "[ratelimit] UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN not set - AI, email and referral-form rate limiting is DISABLED.",
       );
       warnedMissing = true;
     }
@@ -65,12 +73,15 @@ function getLimiter(env: Bindings, name: BucketName): Ratelimit | null {
   return limiter;
 }
 
-/** Enforce one bucket's per-user quota, setting X-RateLimit-* headers. Throws 429 rate_limited. */
-async function enforceRateLimit(c: Context<AppEnv>, name: BucketName): Promise<void> {
+/**
+ * Enforce one bucket's quota for `identifier` (default: the signed-in user), setting X-RateLimit-* headers.
+ * Throws 429 rate_limited.
+ */
+async function enforceRateLimit(c: Context<AppEnv>, name: BucketName, identifier?: string): Promise<void> {
   const limiter = getLimiter(c.env, name);
   if (!limiter) return;
 
-  const result = await limiter.limit(`user:${c.get("userId")}`);
+  const result = await limiter.limit(identifier ?? `user:${c.get("userId")}`);
 
   c.header("X-RateLimit-Limit", String(result.limit));
   c.header("X-RateLimit-Remaining", String(Math.max(0, result.remaining)));
@@ -95,3 +106,9 @@ export const enforceAiRateLimit = (c: Context<AppEnv>): Promise<void> => enforce
 
 /** Enforce the per-user email quota. Call after validation, right before sending. Throws 429 rate_limited. */
 export const enforceEmailRateLimit = (c: Context<AppEnv>): Promise<void> => enforceRateLimit(c, "email");
+
+/**
+ * Enforce the public referral form's per-address quota (no signed-in user there: `ip` is the client address,
+ * e.g. the cf-connecting-ip header). Throws 429 rate_limited.
+ */
+export const enforceReferralRateLimit = (c: Context<AppEnv>, ip: string): Promise<void> => enforceRateLimit(c, "referral", `ip:${ip}`);

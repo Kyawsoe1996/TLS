@@ -21,6 +21,9 @@ const upsertShopSchema = z.object({
   replyToEmail: optionalEmail(200),
   // The Google "write a review" link offered after delivery (review_request emails); same omit / "" semantics.
   googleReviewUrl: optionalUrl(500),
+  // Smart Referral offer, shown on the friend's page and in the share message; same omit / "" semantics.
+  referralFriendOffer: optionalText(200),
+  referralClientOffer: optionalText(200),
 });
 type _UpsertAccepted = AssertAccepts<typeof upsertShopSchema, UpsertShopRequest>;
 
@@ -45,7 +48,7 @@ shopRoutes.put("/", async (c) => {
     await db.execute({
       sql: `UPDATE shops
             SET name = ?, district = ?, city = ?, tone = ?, address = ?, phone = ?, opening_hours = ?, reply_to_email = ?,
-                google_review_url = ?
+                google_review_url = ?, referral_friend_offer = ?, referral_client_offer = ?
             WHERE id = ?`,
       args: [
         input.name,
@@ -57,14 +60,17 @@ shopRoutes.put("/", async (c) => {
         input.openingHours === undefined ? existing.openingHours : input.openingHours,
         input.replyToEmail === undefined ? existing.replyToEmail : input.replyToEmail,
         input.googleReviewUrl === undefined ? existing.googleReviewUrl : input.googleReviewUrl,
+        input.referralFriendOffer === undefined ? existing.referralFriendOffer : input.referralFriendOffer,
+        input.referralClientOffer === undefined ? existing.referralClientOffer : input.referralClientOffer,
         existing.id,
       ],
     });
   } else {
     await db.execute({
       sql: `INSERT INTO shops
-              (id, owner_user_id, name, district, city, tone, address, phone, opening_hours, reply_to_email, google_review_url, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              (id, owner_user_id, name, district, city, tone, address, phone, opening_hours, reply_to_email, google_review_url,
+               referral_friend_offer, referral_client_offer, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       args: [
         newId(),
         userId,
@@ -77,6 +83,8 @@ shopRoutes.put("/", async (c) => {
         input.openingHours ?? null,
         input.replyToEmail ?? null,
         input.googleReviewUrl ?? null,
+        input.referralFriendOffer ?? null,
+        input.referralClientOffer ?? null,
         nowIso(),
       ],
     });

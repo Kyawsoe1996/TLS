@@ -6,6 +6,11 @@ import {
   type Audience,
   type BrandTone,
   type Client,
+  FABRIC_KINDS,
+  type Fabric,
+  type FabricKind,
+  type FabricMovement,
+  type FabricMovementReason,
   type FitAnalysis,
   type Fitting,
   GARMENT_TYPES,
@@ -17,10 +22,17 @@ import {
   type MessageKind,
   type MessageStatus,
   type Order,
+  type OrderPayment,
   type OrderPhoto,
   type OrderStatus,
   type Post,
   type PostStatus,
+  REFERRAL_PREFERRED,
+  type ReferralLead,
+  type ReferralLeadStatus,
+  type ReferralPreferred,
+  type ReferralReward,
+  type ReferralRewardStatus,
   type Shop,
 } from "../../shared/types";
 import type { Bindings } from "./env";
@@ -157,6 +169,8 @@ export function rowToShop(row: Row): Shop {
     replyToEmail: textOrNull(row, "reply_to_email"),
     googleReviewUrl: textOrNull(row, "google_review_url"),
     aiConsentAt: textOrNull(row, "ai_consent_at"),
+    referralFriendOffer: textOrNull(row, "referral_friend_offer"),
+    referralClientOffer: textOrNull(row, "referral_client_offer"),
     createdAt: text(row, "created_at"),
   };
 }
@@ -172,8 +186,91 @@ export function rowToClient(row: Row, cutoff: string = inactiveCutoff()): Client
     lineId: textOrNull(row, "line_id"),
     notes: textOrNull(row, "notes"),
     lastOrderAt,
+    referredByClientId: textOrNull(row, "referred_by_client_id"),
     createdAt,
     inactive: (lastOrderAt ?? createdAt) < cutoff,
+  };
+}
+
+const isFabricKind = (v: string): v is FabricKind => (FABRIC_KINDS as readonly string[]).includes(v);
+const isReferralPreferred = (v: string): v is ReferralPreferred => (REFERRAL_PREFERRED as readonly string[]).includes(v);
+
+/** Lengths are stored as REAL; one decimal is what the app shows, so round away float noise here. */
+const metres = (n: number | null): number => (n == null ? 0 : Math.round(n * 10) / 10);
+
+export function rowToFabric(row: Row): Fabric {
+  const kind = text(row, "kind");
+  const metresLeft = metres(numberOrNull(row, "metres_left"));
+  const lowAtMetres = metres(numberOrNull(row, "low_at_metres"));
+  return {
+    id: text(row, "id"),
+    name: text(row, "name"),
+    supplier: textOrNull(row, "supplier"),
+    colour: textOrNull(row, "colour"),
+    kind: isFabricKind(kind) ? kind : "other",
+    widthCm: numberOrNull(row, "width_cm"),
+    metresLeft,
+    lowAtMetres,
+    costPerMetre: numberOrNull(row, "cost_per_metre"),
+    swatch: textOrNull(row, "swatch"),
+    notes: textOrNull(row, "notes"),
+    low: metresLeft < lowAtMetres,
+    createdAt: text(row, "created_at"),
+    updatedAt: text(row, "updated_at"),
+  };
+}
+
+export function rowToFabricMovement(row: Row): FabricMovement {
+  return {
+    id: text(row, "id"),
+    fabricId: text(row, "fabric_id"),
+    orderId: textOrNull(row, "order_id"),
+    metres: metres(numberOrNull(row, "metres")),
+    reason: text(row, "reason") as FabricMovementReason,
+    note: textOrNull(row, "note"),
+    createdAt: text(row, "created_at"),
+  };
+}
+
+export function rowToPayment(row: Row): OrderPayment {
+  return {
+    id: text(row, "id"),
+    orderId: text(row, "order_id"),
+    clientId: text(row, "client_id"),
+    amount: numberOrNull(row, "amount") ?? 0,
+    paidAt: text(row, "paid_at"),
+  };
+}
+
+/** `referrer_name` comes from a JOIN on clients (the ambassador); "" when the query didn't join. */
+export function rowToReferralLead(row: Row): ReferralLead {
+  const preferred = text(row, "preferred");
+  return {
+    id: text(row, "id"),
+    referrerClientId: text(row, "referrer_client_id"),
+    referrerName: text(row, "referrer_name"),
+    name: text(row, "name"),
+    contact: text(row, "contact"),
+    preferred: isReferralPreferred(preferred) ? preferred : null,
+    status: text(row, "status") as ReferralLeadStatus,
+    clientId: textOrNull(row, "client_id"),
+    createdAt: text(row, "created_at"),
+    updatedAt: text(row, "updated_at"),
+  };
+}
+
+/** `ambassador_name` and `friend_name` come from JOINs on clients; "" when the query didn't join. */
+export function rowToReferralReward(row: Row): ReferralReward {
+  return {
+    id: text(row, "id"),
+    ambassadorClientId: text(row, "ambassador_client_id"),
+    ambassadorName: text(row, "ambassador_name"),
+    friendClientId: text(row, "friend_client_id"),
+    friendName: text(row, "friend_name"),
+    status: text(row, "status") as ReferralRewardStatus,
+    readyAt: textOrNull(row, "ready_at"),
+    givenAt: textOrNull(row, "given_at"),
+    createdAt: text(row, "created_at"),
   };
 }
 
@@ -241,6 +338,9 @@ export function rowToOrder(row: Row, opts: { clientName?: string; today?: string
     deposit,
     balance: price == null ? null : Math.max(price - (deposit ?? 0), 0),
     reviewRequestedAt: textOrNull(row, "review_requested_at"),
+    fabricId: textOrNull(row, "fabric_id"),
+    metresNeeded: numberOrNull(row, "metres_needed"),
+    metresTakenAt: textOrNull(row, "metres_taken_at"),
     photos: opts.photos ?? [],
     createdAt: text(row, "created_at"),
     updatedAt: text(row, "updated_at"),
@@ -419,6 +519,38 @@ export async function getPostRow(db: Db, shopId: string, postId: string): Promis
   const rs = await db.execute({
     sql: "SELECT * FROM posts WHERE id = ? AND shop_id = ?",
     args: [postId, shopId],
+  });
+  return rs.rows[0] ?? null;
+}
+
+export async function getFabricRow(db: Db, shopId: string, fabricId: string): Promise<Row | null> {
+  const rs = await db.execute({
+    sql: "SELECT * FROM fabrics WHERE id = ? AND shop_id = ?",
+    args: [fabricId, shopId],
+  });
+  return rs.rows[0] ?? null;
+}
+
+/** A referral lead with the ambassador's name joined in (`referrer_name`). */
+export async function getReferralLeadRow(db: Db, shopId: string, leadId: string): Promise<Row | null> {
+  const rs = await db.execute({
+    sql: `SELECT l.*, c.name AS referrer_name
+          FROM referral_leads l LEFT JOIN clients c ON c.id = l.referrer_client_id
+          WHERE l.id = ? AND l.shop_id = ?`,
+    args: [leadId, shopId],
+  });
+  return rs.rows[0] ?? null;
+}
+
+/** A referral reward with both names joined in (`ambassador_name`, `friend_name`). */
+export async function getReferralRewardRow(db: Db, shopId: string, rewardId: string): Promise<Row | null> {
+  const rs = await db.execute({
+    sql: `SELECT r.*, a.name AS ambassador_name, f.name AS friend_name
+          FROM referral_rewards r
+          LEFT JOIN clients a ON a.id = r.ambassador_client_id
+          LEFT JOIN clients f ON f.id = r.friend_client_id
+          WHERE r.id = ? AND r.shop_id = ?`,
+    args: [rewardId, shopId],
   });
   return rs.rows[0] ?? null;
 }

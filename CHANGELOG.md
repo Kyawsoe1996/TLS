@@ -5,6 +5,32 @@ All notable changes to TLS, newest first. Written in plain language so anyone on
 ## Unreleased
 
 ### Added
+- **Fabric stock.** A Fabrics screen next to Orders (and a tile on Home) lists the cloth on the shelf in metres:
+  name, mill, colour, kind, width, metres left, a "warn me below" level, cost per metre and a swatch colour.
+  Each fabric shows what it is still enough for (jacket 2 m, trousers 1.3 m, suit 3.3 m, shirt 2 m), its
+  history (bolts received, stock-take corrections, and every order that was cut from it) and the orders using
+  it. A new order can pick a fabric "From stock" with the length it needs; the first time the order reaches
+  Cutting the length comes off the bolt by itself. Home counts fabrics running low. (Tables `fabrics` and
+  `fabric_movements`, `orders.fabric_id` / `metres_needed` / `metres_taken_at`; migration 0009; routes
+  `/fabrics`.)
+- **Monthly report.** Grow → Reports shows a month at a glance: new clients, fittings, orders delivered,
+  money collected, still owed, quiet clients, the last six months of deliveries, the garments made most and
+  the clients to call, with "Share as a PDF" built on the phone like the receipt. Money collected comes
+  from a new `order_payments` table that the API fills whenever an order's deposit changes (migration 0010;
+  route `GET /reports?month=`).
+- **Smart Referral.** Grow → Smart Referral: the shop sets what a friend gets and what the client who sent
+  them gets; every client file gains "Invite a friend", a personal link (`<API>/r/<CODE>`) with a ready-made
+  message for LINE, WhatsApp or Mail. The friend opens a small web page served by the API, sees the offer and
+  asks for a fitting; the shop sees them as a new friend, adds them as a client in one tap, and when their
+  first order is delivered the sender's reward turns "ready" on both files until it is marked given. "Who
+  sent you?" on New client covers friends who walk in without the link. (Migration 0011: offers on the shop,
+  code / shares / referred-by on clients, `referral_leads`, `referral_rewards`; routes `/referrals`,
+  `/clients/:id/referral`, public `/r/:code`.)
+- **Native modules loaded on demand no longer red-screen a build that lacks them.** The PDF, speech and
+  notification loaders (`lib/pdf.ts`, `lib/speech.ts`, `lib/notifications.ts`) now ask Expo whether the
+  native module exists (`requireOptionalNativeModule`) before requiring the package. A `require` that
+  fails at runtime is reported by Metro as a fatal error rather than thrown, so the earlier try/catch
+  could not protect an older development build; the Reports screen crashed that way on the simulator.
 - **Deposit receipt.** Once an order has a price and something paid, the Payment card offers "Share
   receipt": the phone builds a one-page A5 PDF (the shop's name, district, address, phone and reply-to
   email from Shop details; the client; the garment and fabric; price, paid to date and balance due or

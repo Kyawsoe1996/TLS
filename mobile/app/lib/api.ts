@@ -43,6 +43,23 @@ import type {
   UpdatePostRequest,
   UpsertShopRequest,
   UpsertShopResponse,
+  // Fabric stock
+  AddFabricMovementRequest,
+  CreateFabricRequest,
+  FabricDetailResponse,
+  FabricMovementResponse,
+  FabricResponse,
+  ListFabricsResponse,
+  UpdateFabricRequest,
+  // Reports
+  ReportResponse,
+  // Smart Referral
+  AddReferralLeadResponse,
+  ClientReferralResponse,
+  ReferralLeadResponse,
+  ReferralOverviewResponse,
+  ReferralRewardResponse,
+  ReferralSharedResponse,
 } from "@shared/types";
 
 /** Where `wrangler dev` listens; only used as a fallback in development builds. */
@@ -331,6 +348,35 @@ export function createApi(getToken: GetToken) {
     markPostShared: (id: string) => request<PostResponse>(`${postPath(id)}/shared`, { method: "POST" }),
     uploadPostMedia,
     deletePostMedia: (id: string) => request<PostResponse>(`${postPath(id)}/media`, { method: "DELETE" }),
+
+    // ---- Fabric stock ----
+    /** Low ones first, then by name; `low: true` keeps only the ones under their minimum. */
+    listFabrics: (params?: { low?: boolean }) =>
+      request<ListFabricsResponse>("/fabrics", { query: { low: params?.low ? "true" : undefined } }),
+    createFabric: (body: CreateFabricRequest) => request<FabricResponse>("/fabrics", { method: "POST", body }),
+    getFabric: (id: string) => request<FabricDetailResponse>(`/fabrics/${encodeURIComponent(id)}`),
+    updateFabric: (id: string, body: UpdateFabricRequest) =>
+      request<FabricResponse>(`/fabrics/${encodeURIComponent(id)}`, { method: "PATCH", body }),
+    deleteFabric: (id: string) => request<void>(`/fabrics/${encodeURIComponent(id)}`, { method: "DELETE" }),
+    /** A delivery (+ metres) or a stock-take correction (+/−); orders take their own length off at Cutting. */
+    addFabricMovement: (id: string, body: AddFabricMovementRequest) =>
+      request<FabricMovementResponse>(`/fabrics/${encodeURIComponent(id)}/movements`, { method: "POST", body }),
+
+    // ---- Reports ----
+    /** `month` as "YYYY-MM"; omitted = the current month. */
+    getReport: (month?: string) => request<ReportResponse>("/reports", { query: { month } }),
+
+    // ---- Smart Referral ----
+    getReferrals: () => request<ReferralOverviewResponse>("/referrals"),
+    getReferralLead: (id: string) => request<ReferralLeadResponse>(`/referrals/leads/${encodeURIComponent(id)}`),
+    /** Makes a client from the lead (referredByClientId = the ambassador) → 201 { lead, client }. */
+    addReferralLead: (id: string) => request<AddReferralLeadResponse>(`/referrals/leads/${encodeURIComponent(id)}/add`, { method: "POST" }),
+    dismissReferralLead: (id: string) => request<ReferralLeadResponse>(`/referrals/leads/${encodeURIComponent(id)}/dismiss`, { method: "POST" }),
+    markRewardGiven: (id: string) => request<ReferralRewardResponse>(`/referrals/rewards/${encodeURIComponent(id)}/given`, { method: "POST" }),
+    /** The client's personal link, the ready-made message and what it brought in (the code is made on first call). */
+    getClientReferral: (clientId: string) => request<ClientReferralResponse>(`${clientPath(clientId)}/referral`),
+    /** Counts a Share tap (called when the share sheet closes). */
+    markReferralShared: (clientId: string) => request<ReferralSharedResponse>(`${clientPath(clientId)}/referral/shared`, { method: "POST" }),
 
     // ---- Account ----
     deleteAccount: () => request<void>("/account", { method: "DELETE" }),

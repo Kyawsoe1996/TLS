@@ -10,6 +10,7 @@ import accountRoutes from "./routes/account";
 import aiRoutes from "./routes/ai";
 import appointmentRoutes, { shopAppointmentRoutes } from "./routes/appointments";
 import clientRoutes from "./routes/clients";
+import fabricRoutes from "./routes/fabrics";
 import fittingRoutes from "./routes/fittings";
 import homeRoutes from "./routes/home";
 import mediaRoutes from "./routes/media";
@@ -17,6 +18,9 @@ import messageRoutes from "./routes/messages";
 import orderRoutes, { shopOrderRoutes } from "./routes/orders";
 import postRoutes from "./routes/posts";
 import publicRoutes from "./routes/public";
+import referralPublicRoutes from "./routes/referralPublic";
+import referralRoutes, { clientReferralRoutes } from "./routes/referrals";
+import reportRoutes from "./routes/reports";
 import shopRoutes from "./routes/shop";
 
 const app = new Hono<AppEnv>();
@@ -32,9 +36,11 @@ app.use(
   }),
 );
 
-// Public: GET /health, GET /privacy, GET /support, GET /media/<key> (registered before auth so they bypass it).
+// Public: GET /health, GET /privacy, GET /support, GET /media/<key>, GET|POST /r/<code> (the friend's referral
+// page) — registered before auth so they bypass it.
 app.route("/", publicRoutes);
 app.route("/media", mediaRoutes);
+app.route("/r", referralPublicRoutes);
 
 // Everything below requires a Clerk session token.
 app.use("*", requireAuth);
@@ -56,6 +62,12 @@ app.use("/appointments", requireShop);
 app.use("/appointments/*", requireShop);
 app.use("/posts", requireShop);
 app.use("/posts/*", requireShop);
+app.use("/fabrics", requireShop);
+app.use("/fabrics/*", requireShop);
+app.use("/reports", requireShop);
+app.use("/reports/*", requireShop);
+app.use("/referrals", requireShop);
+app.use("/referrals/*", requireShop);
 app.use("/ai/*", requireShop);
 app.use("/ai/*", requireAiConsent);
 
@@ -65,9 +77,13 @@ app.route("/clients", fittingRoutes); // /clients/:clientId/fittings
 app.route("/clients", orderRoutes); // /clients/:clientId/orders[/:orderId]
 app.route("/clients", messageRoutes); // /clients/:clientId/messages
 app.route("/clients", appointmentRoutes); // /clients/:clientId/appointments[/:appointmentId]
+app.route("/clients", clientReferralRoutes); // /clients/:clientId/referral[/shared]
 app.route("/orders", shopOrderRoutes); // shop-wide list
 app.route("/appointments", shopAppointmentRoutes); // shop-wide agenda
 app.route("/posts", postRoutes); // content library + /posts/:id/media upload
+app.route("/fabrics", fabricRoutes); // fabric stock
+app.route("/reports", reportRoutes); // monthly report
+app.route("/referrals", referralRoutes); // Smart Referral overview, leads, rewards
 app.route("/ai", aiRoutes);
 
 app.notFound((c) => {

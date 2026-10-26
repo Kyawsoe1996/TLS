@@ -58,6 +58,9 @@ const PRIVACY_HTML = `
   <li><strong>Appointments.</strong> Each fitting, collection or consultation you schedule with a client: the date and time, the order it relates to, your notes and whether a reminder was sent.</li>
   <li><strong>Emails you send.</strong> When you email a client from the app (win-back, order ready, follow-up, appointment reminder, review request) we keep a copy on the client's file: the address it went to, the subject, the text, whether it was delivered and the provider's reference.</li>
   <li><strong>AI outputs.</strong> The fit analyses, marketing posts and email drafts generated for you, so you can find them again.</li>
+  <li><strong>Fabric stock.</strong> The fabrics you list as in stock (name, supplier, colour, width, metres left, cost) and each change of length, including the orders cut from them.</li>
+  <li><strong>Payments.</strong> Each amount you record as received against an order, so the monthly report can total what came in. No card or bank details: payments are taken outside the app.</li>
+  <li><strong>Referral invitations.</strong> If you use Smart Referral, each client gets a personal invitation link and we count how often it was shared. A friend who opens the link and asks for a fitting gives us their name, phone number or LINE ID and preferred time, with their consent on that page; we keep it so you can contact them and, if you add them as a client, note who introduced them and the reward that goes with it.</li>
   <li><strong>Posts and media.</strong> The posts in your content library and any photo or video you attach to them, plus the progress photos you attach to orders.</li>
   <li><strong>Technical data.</strong> Clerk keeps the session and device information needed to keep you signed in. Cloudflare, which hosts our API, keeps request logs (time, route, response status) for security and debugging, and Upstash keeps per-account counters for the daily usage limits. No advertising or analytics trackers.</li>
 </ul>
@@ -83,7 +86,7 @@ const PRIVACY_HTML = `
 <p>You are responsible for making sure you're allowed to record your clients' details and measurements in the app. Please only enter what you need to serve them.</p>
 
 <h2>Deleting your data</h2>
-<p>You can delete your account at any time from inside the app: <strong>Settings &rarr; Delete account</strong>. This permanently erases your shop and its details, all client records, all fittings and measurements, all orders with their progress photos, all appointments, the copies of emails you sent, all AI outputs, your posts and their photos and videos, and your sign-in account. It cannot be undone. Backups held by our database provider are purged within 30 days.</p>
+<p>You can delete your account at any time from inside the app: <strong>Settings &rarr; Delete account</strong>. This permanently erases your shop and its details, all client records, all fittings and measurements, all orders with their progress photos and payments, all appointments, the copies of emails you sent, all AI outputs, your fabric stock, your referral invitations and the friends who answered them, your posts and their photos and videos, and your sign-in account. It cannot be undone. Backups held by our database provider are purged within 30 days.</p>
 
 <h2>Security</h2>
 <p>Data is sent over encrypted connections (HTTPS) and stored with providers that encrypt data at rest. Access to the API always requires your signed-in session.</p>

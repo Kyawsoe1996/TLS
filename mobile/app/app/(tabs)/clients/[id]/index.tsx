@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
 
 import {
@@ -22,10 +22,12 @@ import {
   useMessages,
   useOrders,
 } from "@/components/clients";
+import { InviteSheet, RewardRow, useClientReferral, useMarkRewardGiven } from "@/components/referrals";
 import { Button, Card, EmptyState, Eyebrow, Screen, SectionTitle, type IoniconName } from "@/components/ui";
 import { colors, fonts, typography } from "@/constants/theme";
 import { formatDate, formatMonthsSince, monthsSince } from "@/lib/format";
 import { showError } from "@/lib/toast";
+import { useShop } from "@/lib/useShop";
 
 /** How many past appointments the client file shows before pointing at the count. */
 const PAST_APPOINTMENTS_SHOWN = 3;
@@ -39,13 +41,18 @@ export default function ClientDetailScreen() {
   const fittingsQuery = useFittings(id);
   const messagesQuery = useMessages(id);
   const appointmentsQuery = useAppointments(id);
+  // Smart Referral: the client's link stats and rewards as an ambassador (fetched once the client is on screen).
+  const referralQuery = useClientReferral(id, { enabled: !!clientQuery.data });
+  const markGiven = useMarkRewardGiven();
+  const shop = useShop().data ?? null;
+  const [inviteOpen, setInviteOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const client = clientQuery.data;
 
   const onRefresh = async () => {
     setRefreshing(true);
     try {
-      await Promise.all([clientQuery.refetch(), ordersQuery.refetch(), fittingsQuery.refetch(), messagesQuery.refetch(), appointmentsQuery.refetch()]);
+      await Promise.all([clientQuery.refetch(), ordersQuery.refetch(), fittingsQuery.refetch(), messagesQuery.refetch(), appointmentsQuery.refetch(), referralQuery.refetch()]);
     } finally {
       setRefreshing(false);
     }
@@ -91,6 +98,8 @@ export default function ClientDetailScreen() {
   const fittings = fittingsQuery.data ?? [];
   const messages = messagesQuery.data ?? [];
   const { upcoming, past } = splitUpcomingPast(appointmentsQuery.data ?? []);
+  const referral = referralQuery.data;
+  const showReferrals = !!referral && (referral.friendsBooked > 0 || referral.rewards.length > 0);
 
   return (
     <Screen
@@ -153,11 +162,48 @@ export default function ClientDetailScreen() {
         <Button variant="gold" icon="cube-outline" title="New order" fullWidth onPress={() => router.push(clientRoutes.newOrder(id))} />
         <Button variant="secondary" icon="body-outline" title="New fitting" fullWidth onPress={() => router.push(clientRoutes.newFitting(id))} />
         <Button variant="secondary" icon="calendar-outline" title="Schedule" fullWidth onPress={() => router.push(clientRoutes.newAppointment(id))} />
+        <Button variant="secondary" icon="gift-outline" title="Invite a friend" fullWidth onPress={() => setInviteOpen(true)} testID="client-invite" />
         <View style={styles.actionRow}>
           <Button variant="secondary" icon="mail-outline" title="Win-back email" style={styles.grow} onPress={() => router.push(clientRoutes.winback(id))} />
           <Button variant="ghost" icon="pencil-outline" title="Edit" onPress={() => router.push(clientRoutes.edit(id))} />
         </View>
       </View>
+
+      {showReferrals ? (
+        <View>
+          <SectionTitle title="Referrals" />
+          <Card style={styles.referralCard}>
+            <View style={styles.referralStats}>
+              <View style={styles.referralStat}>
+                <Text style={styles.referralValue}>{referral.friendsBooked}</Text>
+                <Text style={typography.small}>{referral.friendsBooked === 1 ? "Friend booked" : "Friends booked"}</Text>
+              </View>
+              <View style={styles.referralStat}>
+                <Text style={styles.referralValue}>{referral.becameClients}</Text>
+                <Text style={typography.small}>Became {referral.becameClients === 1 ? "a client" : "clients"}</Text>
+              </View>
+            </View>
+            {referral.rewards.length > 0 ? (
+              <>
+                <View style={styles.divider} />
+                <Eyebrow tone="muted">{firstName}&apos;s rewards</Eyebrow>
+                {referral.rewards.map((reward, i) => (
+                  <Fragment key={reward.id}>
+                    {i > 0 ? <View style={styles.divider} /> : null}
+                    <RewardRow
+                      reward={reward}
+                      clientOffer={shop?.referralClientOffer ?? null}
+                      showAmbassador={false}
+                      onMarkGiven={(rewardId) => markGiven.mutate(rewardId)}
+                      marking={markGiven.isPending && markGiven.variables === reward.id}
+                    />
+                  </Fragment>
+                ))}
+              </>
+            ) : null}
+          </Card>
+        </View>
+      ) : null}
 
       <View>
         <SectionTitle title="Appointments" right={upcoming.length > 0 ? <Text style={typography.small}>{upcoming.length} upcoming</Text> : undefined} />
@@ -265,6 +311,8 @@ export default function ClientDetailScreen() {
           </View>
         )}
       </View>
+
+      <InviteSheet visible={inviteOpen} clientId={id} clientName={client.name} onClose={() => setInviteOpen(false)} />
     </Screen>
   );
 }
@@ -349,6 +397,10 @@ const styles = StyleSheet.create({
   actions: { gap: 10 },
   actionRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   grow: { flex: 1 },
+  referralCard: { gap: 10 },
+  referralStats: { flexDirection: "row", gap: 12 },
+  referralStat: { flex: 1, gap: 2 },
+  referralValue: typography.kpi,
   list: { gap: 10 },
   pastEyebrow: { marginTop: 6 },
   simulatedHint: { ...typography.small, paddingHorizontal: 4, marginTop: 2 },

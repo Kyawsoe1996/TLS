@@ -18,6 +18,9 @@ const order: Order = {
   deposit: 9000,
   balance: 9000,
   reviewRequestedAt: null,
+  fabricId: null,
+  metresNeeded: null,
+  metresTakenAt: null,
   photos: [],
   createdAt: "2026-10-12T03:00:00.000Z",
   updatedAt: "2026-10-20T03:00:00.000Z",
@@ -32,6 +35,7 @@ const client: Client = {
   lineId: null,
   notes: null,
   lastOrderAt: null,
+  referredByClientId: null,
   createdAt: "2026-10-01T00:00:00.000Z",
   inactive: false,
 };
@@ -48,6 +52,8 @@ const shop: Shop = {
   replyToEmail: "hello@example.com",
   googleReviewUrl: null,
   aiConsentAt: null,
+  referralFriendOffer: null,
+  referralClientOffer: null,
   createdAt: "2026-09-30T00:00:00.000Z",
 };
 

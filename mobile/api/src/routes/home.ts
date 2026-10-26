@@ -14,7 +14,7 @@ homeRoutes.get("/", async (c) => {
   const shop = c.get("shop");
 
   const window = upcomingWindow();
-  const [clients, fittings, inactive, ordersOpen, ordersDueSoon, ordersOverdue, appointmentsCount, appointmentsNext] = await db.batch(
+  const [clients, fittings, inactive, ordersOpen, ordersDueSoon, ordersOverdue, appointmentsCount, appointmentsNext, fabricsLow, leadsNew] = await db.batch(
     [
       { sql: "SELECT count(*) AS n FROM clients WHERE shop_id = ?", args: [shop.id] },
       {
@@ -45,6 +45,8 @@ homeRoutes.get("/", async (c) => {
               ORDER BY a.starts_at ASC LIMIT ?`,
         args: [shop.id, window.from, window.to, UPCOMING_LIMIT],
       },
+      { sql: "SELECT count(*) AS n FROM fabrics WHERE shop_id = ? AND metres_left < low_at_metres", args: [shop.id] },
+      { sql: "SELECT count(*) AS n FROM referral_leads WHERE shop_id = ? AND status = 'new'", args: [shop.id] },
     ],
     "read",
   );
@@ -62,6 +64,8 @@ homeRoutes.get("/", async (c) => {
       const name = row["client_name"];
       return rowToAppointment(row, { clientName: name == null ? "" : String(name) });
     }),
+    fabricsLow: countOf(fabricsLow),
+    referralLeadsNew: countOf(leadsNew),
   };
   return c.json(body);
 });
