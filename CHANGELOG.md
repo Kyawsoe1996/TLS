@@ -5,6 +5,24 @@ All notable changes to TLS, newest first. Written in plain language so anyone on
 ## Unreleased
 
 ### Added
+- **Deposit receipt.** Once an order has a price and something paid, the Payment card offers "Share
+  receipt": the phone builds a one-page A5 PDF (the shop's name, district, address, phone and reply-to
+  email from Shop details; the client; the garment and fabric; price, paid to date and balance due or
+  "Paid in full"; a reference made from the order id) and opens the share sheet, so it goes to the
+  client by LINE, WhatsApp, Mail or Files. Right after "Record payment" the receipt also carries that
+  payment as its own line ("Payment receipt"); otherwise it is a "Statement of payments". Everything
+  happens on the phone (`expo-print` renders the HTML, `expo-sharing` opens the sheet,
+  `expo-file-system` names the file `Receipt-<shop>-<date>.pdf`): no server, no cost, no new
+  permission. The modules are native, so they load on demand (`lib/receipt.ts`) and the button is
+  hidden in a build made before they were added; development builds and the next store build need a
+  rebuild to show it. Node tests cover the receipt content.
+- **`progress-deck` agent and `/weekly-update` command.** `.claude/agents/progress-deck.md` builds or
+  refreshes the boss presentation as a Slides artifact in the house style (navy, ivory, gold;
+  Cormorant Garamond and DM Sans) from the changelog, the git log for the period, the memory notes
+  and fresh simulator screenshots, and `.claude/skills/weekly-update/SKILL.md` runs it with a period
+  argument (`/weekly-update 21-27 Oct`, plus a deck link to update an earlier one). Same idea as the
+  `app-store-reviewer` agent: one file that captures how the deck is made so later weeks are one
+  command.
 - **Measurement history.** A fitting now shows "Changes since last fitting" when the client has an
   earlier fitting of the same garment: each measurement before → after with the difference, and a
   "Fit note" written on the phone (no AI call) that names anything that moved 1 cm or more and what

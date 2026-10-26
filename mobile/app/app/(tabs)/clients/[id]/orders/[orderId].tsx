@@ -38,6 +38,7 @@ import { colors, fonts, typography } from "@/constants/theme";
 import { useApi } from "@/lib/api";
 import { formatDate, formatThb } from "@/lib/format";
 import { queryKeys } from "@/lib/queryKeys";
+import { buildReceipt, receiptAvailable, shareReceipt, type ReceiptPayment } from "@/lib/receipt";
 import { confirm, showError } from "@/lib/toast";
 import { useShop } from "@/lib/useShop";
 
@@ -244,7 +245,7 @@ function OrderDetails({ order, client, onDeleted }: { order: Order; client: Clie
 
       <OrderPhotos order={order} clientName={client?.name} disabled={deleteMutation.isPending} />
 
-      <PaymentCard order={order} disabled={deleteMutation.isPending} onSaved={onSaved} />
+      <PaymentCard order={order} client={client} disabled={deleteMutation.isPending} onSaved={onSaved} />
 
       {order.status === "ready" ? (
         <>
@@ -363,19 +364,49 @@ function paymentBody(body: { price?: number | null; deposit?: number | null }): 
 
 /**
  * Price / deposit / balance for the shop's records. "Record payment" adds an amount to the deposit (capped at the
- * price); "Edit price" rewrites both. Without a price it only offers to add one.
+ * price); "Edit price" rewrites both. Without a price it only offers to add one. Once something has been paid,
+ * "Share receipt" makes a PDF on the phone (the shop's details, the garment, what was received, the balance) and
+ * opens the share sheet; right after "Record payment" the receipt also shows that payment as its own line.
  */
-function PaymentCard({ order, disabled, onSaved }: { order: Order; disabled: boolean; onSaved: (saved: Order) => void }) {
+function PaymentCard({
+  order,
+  client,
+  disabled,
+  onSaved,
+}: {
+  order: Order;
+  client: Client | undefined;
+  disabled: boolean;
+  onSaved: (saved: Order) => void;
+}) {
   const api = useApi();
+  const shop = useShop().data ?? null;
   const [mode, setMode] = useState<PaymentMode>("view");
   const [amount, setAmount] = useState<number | null>(null);
   const [priceDraft, setPriceDraft] = useState<number | null>(order.price);
   const [depositDraft, setDepositDraft] = useState<number | null>(order.deposit);
   const [error, setError] = useState<string | null>(null);
+  // The payment just recorded on this screen, so the receipt can name it; cleared when the figures are edited.
+  const [lastPayment, setLastPayment] = useState<ReceiptPayment | null>(null);
+  const [sharing, setSharing] = useState(false);
 
   const price = order.price;
   const deposit = order.deposit ?? 0;
   const balance = orderBalance(order);
+  const canReceipt = receiptAvailable() && price !== null && deposit > 0;
+
+  const share = async () => {
+    const data = buildReceipt(order, client, shop, lastPayment);
+    if (!data) return;
+    setSharing(true);
+    try {
+      await shareReceipt(data);
+    } catch (err) {
+      showError(err, "Couldn't make the receipt");
+    } finally {
+      setSharing(false);
+    }
+  };
 
   const mutation = useMutation({
     mutationFn: (body: UpdateOrderRequest) => api.updateOrder(order.clientId, order.id, body),
@@ -407,17 +438,20 @@ function PaymentCard({ order, disabled, onSaved }: { order: Order; disabled: boo
   const saveRecord = () => {
     if (price === null) return;
     if (amount === null || amount <= 0) return setError("Enter the amount received.");
-    mutation.mutate(paymentBody({ deposit: Math.min(price, deposit + amount) }));
+    const received = Math.min(amount, Math.max(0, price - deposit));
+    mutation.mutate(paymentBody({ deposit: Math.min(price, deposit + amount) }), {
+      onSuccess: () => setLastPayment({ amount: received, at: new Date().toISOString() }),
+    });
   };
 
   const saveEdit = () => {
     if (priceDraft === null) {
       // No price means nothing to owe against: clear the deposit with it.
-      mutation.mutate(paymentBody({ price: null, deposit: null }));
+      mutation.mutate(paymentBody({ price: null, deposit: null }), { onSuccess: () => setLastPayment(null) });
       return;
     }
     if (depositDraft !== null && depositDraft > priceDraft) return setError("The deposit can't be more than the price.");
-    mutation.mutate(paymentBody({ price: priceDraft, deposit: depositDraft }));
+    mutation.mutate(paymentBody({ price: priceDraft, deposit: depositDraft }), { onSuccess: () => setLastPayment(null) });
   };
 
   const saving = mutation.isPending;
@@ -511,11 +545,28 @@ function PaymentCard({ order, disabled, onSaved }: { order: Order; disabled: boo
             strong
           />
         </View>
+        {lastPayment ? (
+          <Text style={typography.small} testID="payment-recorded">
+            {formatThb(lastPayment.amount)} received today. Share the receipt with the client.
+          </Text>
+        ) : null}
         <View style={styles.paymentActions}>
           {!settled ? (
             <Button size="sm" variant="secondary" icon="cash-outline" title="Record payment" onPress={startRecord} disabled={locked} testID="payment-record" />
           ) : null}
-          <Button size="sm" variant="ghost" icon="pencil-outline" title="Edit price" onPress={startEdit} disabled={locked} testID="payment-edit" />
+          {canReceipt ? (
+            <Button
+              size="sm"
+              variant={lastPayment ? "gold" : "secondary"}
+              icon="receipt-outline"
+              title="Share receipt"
+              onPress={() => void share()}
+              loading={sharing}
+              disabled={locked}
+              testID="payment-receipt"
+            />
+          ) : null}
+          <Button size="sm" variant="ghost" icon="pencil-outline" title="Edit price" onPress={startEdit} disabled={locked || sharing} testID="payment-edit" />
         </View>
       </>
     );
