@@ -1,6 +1,6 @@
 # Privacy Policy – Magick Tailor
 
-**Effective date:** 19 October 2026
+**Effective date:** 26 October 2026
 **Operator:** General Magick Industries Pte Ltd ("we", "us")
 **Contact:** account@globalmagicko.com
 
@@ -30,6 +30,8 @@ Magick Tailor is an app for tailor shops. It stores the shop's client, fitting a
 
 **Payments.** Each amount you record as received against an order, so the monthly report can total what came in during a month. No card or bank details are involved: payments are taken outside the app.
 
+**Your public website.** If you switch on the free website in Settings, we publish a small site at your chosen address (a home page, your work, your services and an about page) that anyone can open and search engines can index. It shows your shop name, district and city, the headline, About text, tailor photo and LINE ID you enter, your opening hours, address, phone and Google review link if you have added them, the portfolio pieces you choose (their photos, which can come from an order's progress photos, a post or an upload, with the title, cloth, style and line you write, and for a piece made from an order that order's progress photos and how long it took), the services and prices you list, the colours and names of up to four fabrics in your stock, and the rating and reviews you paste in. Only paste real reviews you may show, with the reviewer's name as they gave it. It never shows client names or contact details. A visitor who asks for a fitting there gives us their name, phone number or LINE ID, and optionally the garment and a message, with their consent on that page; we keep it so you can contact them and, if you add them as a client, copy those details onto the client record. Switching the website off takes the site down at once (copies cached by browsers expire within five minutes). If you use "Write with AI" for a piece, its title, garment type, cloth and style are sent to Google Gemini (see §2).
+
 **Referral invitations.** If you use Smart Referral, each client gets a personal invitation link and we count how often it was shared from the app. A friend who opens the link and asks for a fitting gives us their name, their phone number or LINE ID and a preferred time, with their consent on that page; we keep it so you can contact them and, if you add them as a client, we note which client introduced them and the reward that goes with it.
 
 **Technical data.** Cloudflare, which hosts our API, keeps request logs (time, route, response status) for security and debugging. Rate-limit counters are kept per account by Upstash. We do not use advertising or analytics SDKs and do not build behavioural profiles.
@@ -38,7 +40,7 @@ Magick Tailor is an app for tailor shops. It stores the shop's client, fitting a
 
 - To run the app: show you your clients, fittings, orders, appointments, messages and generated content.
 - To send emails to your clients, only when you tap Send on a drafted email. Review-request emails (a thank-you with your Google review link after delivery) are sent on your behalf like every other email.
-- To generate AI text: the relevant fields (for example a fitting's measurements, style, fabric and posture note, or a client's name and last purchase for a win-back email) are sent to Google's Gemini API and the reply is stored for you. If you dictate measurements, they are turned into text on the phone and only that text (never audio) may be sent to Google Gemini, and only when the app can't read it by itself; the transcript is not stored.
+- To generate AI text: the relevant fields (for example a fitting's measurements, style, fabric and posture note, a client's name and last purchase for a win-back email, or a website piece's title, garment type, cloth and style) are sent to Google's Gemini API and the reply is stored for you. If you dictate measurements, they are turned into text on the phone and only that text (never audio) may be sent to Google Gemini, and only when the app can't read it by itself; the transcript is not stored.
 - To keep the service reliable: rate limiting, abuse prevention and debugging.
 - To contact you about your account or this policy at the email you signed up with.
 
@@ -65,7 +67,7 @@ Google processes the inputs of each AI request under the Gemini API terms that a
 
 Your data is kept for as long as your account exists.
 
-**Delete your account in the app:** Settings → Delete account. This permanently erases the shop and its details, every client, fitting, order (with its progress photos and payments) and appointment record, the copies of emails you sent, all AI outputs, your fabric stock, your referral invitations and the friends who answered them, your posts and their photos and videos, and your login with Clerk. It cannot be undone. Backups held by our database provider are purged on their normal schedule, within 30 days.
+**Delete your account in the app:** Settings → Delete account. This permanently erases the shop and its details, every client, fitting, order (with its progress photos and payments) and appointment record, the copies of emails you sent, all AI outputs, your fabric stock, your referral invitations and the friends who answered them, your website (its portfolio, uploaded photos, services and reviews) and the enquiries visitors sent through it, your posts and their photos and videos, and your login with Clerk. It cannot be undone. Backups held by our database provider are purged on their normal schedule, within 30 days.
 
 You can also delete individual clients (which deletes their fittings, orders with their photos, appointments and messages), individual order photos and individual posts at any time.
 

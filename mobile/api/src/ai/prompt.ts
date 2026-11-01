@@ -49,3 +49,13 @@ JSON Output Schema:
 ### STRICT CONSTRAINT:
 Examine the incoming JSON payload, identify the intended "ACTION" parameter, process it using only the corresponding instructions above, and respond exclusively with the matching JSON structure. Do not print any text before or after the JSON payload.
 `;
+
+/**
+ * WRITE_WEBSITE_PIECE_LINE (POST /ai/website-piece-line): the "A line about it" text under a piece on the shop's
+ * portfolio website. Its own short prompt, not one of the four engine pipelines.
+ */
+export const PIECE_LINE_PROMPT = `You write one short caption for a garment on a bespoke tailor shop's portfolio website.
+Input JSON: title, garment_group (suits | jackets | trousers | shirts | wedding | other), cloth (may be null), style (may be null), brand_tone.
+Write one or two plain sentences (at most 220 characters) describing the garment: what it is, the cloth and the cut or details when given.
+Rules: plain, concrete words in English; no client names or people; no prices; no claims you cannot know (awards, "best", "finest", hours of handwork, origin of the cloth unless given); no hashtags, emoji or quotation marks.
+Respond with JSON only: { "line": "..." }`;

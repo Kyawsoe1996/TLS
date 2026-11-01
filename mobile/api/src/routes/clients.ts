@@ -6,7 +6,7 @@ import type {
   ListClientsResponse,
   UpdateClientRequest,
 } from "../../../shared/types";
-import { type Db, getClientRow, inactiveCutoff, newId, nowIso, rowToClient } from "../db";
+import { type Db, getClientRow, inactiveCutoff, newId, nowIso, rowToClient, unusedMediaKeys } from "../db";
 import type { AppEnv } from "../env";
 import { badRequest, notFound } from "../errors";
 import { deleteMediaObjects, mediaStore } from "../media";
@@ -161,7 +161,7 @@ clientRoutes.patch("/:id", async (c) => {
   return c.json(body);
 });
 
-/** DELETE /clients/:id -> 204 (also deletes the client's appointments, messages, orders with their photos, and fittings) */
+/** DELETE /clients/:id -> 204 (also deletes the client's appointments, messages, orders with their photos, and fittings; unlinks website enquiries) */
 clientRoutes.delete("/:id", async (c) => {
   const db = c.get("db");
   const shop = c.get("shop");
@@ -184,13 +184,24 @@ clientRoutes.delete("/:id", async (c) => {
       { sql: "DELETE FROM referral_rewards WHERE (ambassador_client_id = ? OR friend_client_id = ?) AND shop_id = ?", args: [id, id, shop.id] },
       { sql: "DELETE FROM referral_leads WHERE (referrer_client_id = ? OR client_id = ?) AND shop_id = ?", args: [id, id, shop.id] },
       { sql: "UPDATE clients SET referred_by_client_id = NULL WHERE referred_by_client_id = ? AND shop_id = ?", args: [id, shop.id] },
+      // A website enquiry made into this client keeps its record but loses the link (back to contacted, so it can be added again).
+      {
+        sql: `UPDATE website_enquiries SET client_id = NULL, status = CASE status WHEN 'added' THEN 'contacted' ELSE status END, updated_at = ?
+              WHERE client_id = ? AND shop_id = ?`,
+        args: [nowIso(), id, shop.id],
+      },
+      // Website pieces made from this client's orders stay (no client name is on them); only the order link goes.
+      {
+        sql: "UPDATE website_pieces SET order_id = NULL WHERE shop_id = ? AND order_id IN (SELECT id FROM orders WHERE client_id = ? AND shop_id = ?)",
+        args: [shop.id, id, shop.id],
+      },
       { sql: "DELETE FROM orders WHERE client_id = ? AND shop_id = ?", args: [id, shop.id] },
       { sql: "DELETE FROM fittings WHERE client_id = ? AND shop_id = ?", args: [id, shop.id] },
       { sql: "DELETE FROM clients WHERE id = ? AND shop_id = ?", args: [id, shop.id] },
     ],
     "write",
   );
-  await deleteMediaObjects(mediaStore(c.env), photoRows.rows.map((row) => row["media_key"] as string | null));
+  await deleteMediaObjects(mediaStore(c.env), await unusedMediaKeys(db, shop.id, photoRows.rows.map((row) => row["media_key"] as string | null)));
   return c.body(null, 204);
 });
 

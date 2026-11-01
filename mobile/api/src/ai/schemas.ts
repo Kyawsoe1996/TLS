@@ -73,3 +73,12 @@ export const parsedMeasurementsSchema = z.object({
         .slice(0, MAX_UNRECOGNISED),
     ),
 }) satisfies z.ZodType<AiParseMeasurementsResponse, unknown>;
+
+/** WRITE_WEBSITE_PIECE_LINE: one or two sentences, trimmed and capped at the piece line limit. */
+export const pieceLineSchema = z.object({
+  line: z
+    .string()
+    .trim()
+    .min(1)
+    .transform((v) => v.replace(/^["'“”]+|["'“”]+$/g, "").slice(0, 300)),
+});

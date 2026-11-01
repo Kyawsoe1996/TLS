@@ -10,6 +10,8 @@ import {
   type AiSeoRequest,
   type AiSeoResponse,
   type AiWinbackRequest,
+  type AiWebsitePieceLineRequest,
+  type AiWebsitePieceLineResponse,
   type AiWinbackResponse,
   type CompetitorTier,
   GARMENT_TYPES,
@@ -22,7 +24,8 @@ import { FEATURES } from "../../../shared/features";
 import { runPipeline } from "../ai/gemini";
 import { findNearbyTailors } from "../ai/maps";
 import { parseDictatedMeasurements } from "../ai/measurements";
-import { fitAnalysisSchema, postSchema, seoSchema, winbackSchema } from "../ai/schemas";
+import { fitAnalysisSchema, pieceLineSchema, postSchema, seoSchema, winbackSchema } from "../ai/schemas";
+import { PIECE_LINE_PROMPT } from "../ai/prompt";
 import {
   type Db,
   getClientRow,
@@ -92,6 +95,8 @@ const aiParseMeasurementsSchema = z.object({
   garmentType: oneOf(GARMENT_TYPES),
   language: oneOf(TRANSCRIPT_LANGUAGES).optional(),
 }) satisfies z.ZodType<AiParseMeasurementsRequest, unknown>;
+
+const aiPieceLineSchema = z.object({ pieceId: requiredText(64) }) satisfies z.ZodType<AiWebsitePieceLineRequest, unknown>;
 
 // ---------- Helpers ----------
 
@@ -300,6 +305,37 @@ aiRoutes.post("/parse-measurements", async (c) => {
   await enforceAiRateLimit(c);
 
   const body: AiParseMeasurementsResponse = await parseDictatedMeasurements(c.env, input);
+  return c.json(body);
+});
+
+/**
+ * POST /ai/website-piece-line { pieceId } -> { line }: one or two plain sentences about a portfolio piece for the
+ * website, from its garment group, title, cloth and style only (no client details exist on a piece). Not saved: the
+ * owner reads it, edits it and saves it with the piece. Counts towards the AI limit.
+ */
+aiRoutes.post("/website-piece-line", async (c) => {
+  const db = c.get("db");
+  const shop = c.get("shop");
+  const { pieceId } = await parseBody(c, aiPieceLineSchema);
+  const rs = await db.execute({
+    sql: "SELECT title, category, cloth, style FROM website_pieces WHERE id = ? AND shop_id = ?",
+    args: [pieceId, shop.id],
+  });
+  const piece = rs.rows[0];
+  if (!piece) throw notFound("Piece not found.");
+
+  await enforceAiRateLimit(c);
+
+  const payload = {
+    ACTION: "WRITE_WEBSITE_PIECE_LINE",
+    title: String(piece["title"] ?? ""),
+    garment_group: String(piece["category"] ?? "other"),
+    cloth: piece["cloth"] == null ? null : String(piece["cloth"]),
+    style: piece["style"] == null ? null : String(piece["style"]),
+    brand_tone: shop.tone,
+  };
+  const result = await runPipeline(c.env, payload, pieceLineSchema, { system: PIECE_LINE_PROMPT, temperature: 0.6 });
+  const body: AiWebsitePieceLineResponse = { line: result.line };
   return c.json(body);
 });
 

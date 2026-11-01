@@ -9,12 +9,13 @@ import {
   type PostStatus,
   type UpdatePostRequest,
 } from "../../../shared/types";
-import { type Db, getPostRow, newId, nowIso, rowToPost } from "../db";
+import { type Db, getPostRow, newId, nowIso, rowToPost, unusedMediaKeys } from "../db";
 import type { AppEnv } from "../env";
 import { badRequest, notFound, payloadTooLarge } from "../errors";
 import {
   declaredLength,
   deleteMediaObject,
+  deleteMediaObjects,
   mediaByteLimit,
   mediaKindFor,
   mediaStore,
@@ -206,7 +207,8 @@ postRoutes.delete("/:id", async (c) => {
   if (!existing) throw notFound("Post not found.");
 
   await db.execute({ sql: "DELETE FROM posts WHERE id = ? AND shop_id = ?", args: [id, shop.id] });
-  await deleteMediaObject(mediaStore(c.env), existing["media_key"] as string | null);
+  // Kept when a website piece still shows it.
+  await deleteMediaObjects(mediaStore(c.env), await unusedMediaKeys(db, shop.id, [existing["media_key"] as string | null]));
   return c.body(null, 204);
 });
 
@@ -342,7 +344,7 @@ postRoutes.put("/:id/media", async (c) => {
   });
   // The previous file is unreachable now that the row points elsewhere; remove it best effort.
   const previousKey = existing["media_key"] as string | null;
-  if (previousKey && previousKey !== key) await deleteMediaObject(mediaStore(c.env), previousKey);
+  if (previousKey && previousKey !== key) await deleteMediaObjects(mediaStore(c.env), await unusedMediaKeys(db, shop.id, [previousKey]));
 
   const row = await getPostRow(db, shop.id, id);
   if (!row) throw notFound("Post not found.");
@@ -368,7 +370,7 @@ postRoutes.delete("/:id/media", async (c) => {
             WHERE id = ? AND shop_id = ?`,
       args: [nowIso(), id, shop.id],
     });
-    await deleteMediaObject(mediaStore(c.env), key);
+    await deleteMediaObjects(mediaStore(c.env), await unusedMediaKeys(db, shop.id, [key]));
   }
 
   const row = await getPostRow(db, shop.id, id);

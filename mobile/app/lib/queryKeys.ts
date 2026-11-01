@@ -36,4 +36,10 @@ export const queryKeys = {
   referrals: ["referrals"] as const,
   referralLead: (id: string) => ["referrals", "lead", id] as const,
   clientReferral: (clientId: string) => ["clients", "detail", clientId, "referral"] as const,
+  /** Free website: the settings (GET /website), the enquiries list and one enquiry (both under the website prefix). */
+  website: ["website"] as const,
+  websiteEnquiries: ["website", "enquiries"] as const,
+  websiteEnquiry: (id: string) => ["website", "enquiries", id] as const,
+  /** The portfolio manager (GET /website/portfolio): pieces, cover and what can be added. */
+  websitePortfolio: ["website", "portfolio"] as const,
 };

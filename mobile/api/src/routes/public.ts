@@ -44,7 +44,7 @@ ${body}
 
 const PRIVACY_HTML = `
 <h1>Privacy Policy</h1>
-<p class="meta">Magick Tailor - the app for bespoke tailor shops. Provided by General Magick Industries Pte Ltd. Last updated: 19 October 2026.</p>
+<p class="meta">Magick Tailor - the app for bespoke tailor shops. Provided by General Magick Industries Pte Ltd. Last updated: 26 October 2026.</p>
 
 <p>This policy explains, in plain English, what information the Magick Tailor app stores, who helps us process it, and how you stay in control of it.</p>
 
@@ -60,6 +60,7 @@ const PRIVACY_HTML = `
   <li><strong>AI outputs.</strong> The fit analyses, marketing posts and email drafts generated for you, so you can find them again.</li>
   <li><strong>Fabric stock.</strong> The fabrics you list as in stock (name, supplier, colour, width, metres left, cost) and each change of length, including the orders cut from them.</li>
   <li><strong>Payments.</strong> Each amount you record as received against an order, so the monthly report can total what came in. No card or bank details: payments are taken outside the app.</li>
+  <li><strong>Your public website.</strong> If you switch on the free website in Settings, we publish a small site at your chosen address (a home page, your work, your services and an about page) that anyone can open and search engines can index. It shows your shop name and district, the headline, About text, tailor photo and LINE ID you enter, your opening hours, address, phone and Google review link if you have added them, the portfolio pieces you choose (their photos, which can come from an order's progress photos, a post or an upload, with the title, cloth, style and line you write, and for a piece made from an order that order's progress photos and how long it took), the services and prices you list, the colours and names of up to four fabrics in your stock, and the rating and reviews you paste in. Only paste real reviews you may show, with the reviewer's name as they gave it. It never shows client names or contact details. A visitor who asks for a fitting there gives us their name, phone number or LINE ID, and optionally the garment and a message, with their consent on that page; we keep it so you can contact them and, if you add them as a client, copy those details onto the client record. Switching the website off takes the site down. If you use "Write with AI" for a piece, its title, garment type, cloth and style are sent to Google Gemini.</li>
   <li><strong>Referral invitations.</strong> If you use Smart Referral, each client gets a personal invitation link and we count how often it was shared. A friend who opens the link and asks for a fitting gives us their name, phone number or LINE ID and preferred time, with their consent on that page; we keep it so you can contact them and, if you add them as a client, note who introduced them and the reward that goes with it.</li>
   <li><strong>Posts and media.</strong> The posts in your content library and any photo or video you attach to them, plus the progress photos you attach to orders.</li>
   <li><strong>Technical data.</strong> Clerk keeps the session and device information needed to keep you signed in. Cloudflare, which hosts our API, keeps request logs (time, route, response status) for security and debugging, and Upstash keeps per-account counters for the daily usage limits. No advertising or analytics trackers.</li>
@@ -86,7 +87,7 @@ const PRIVACY_HTML = `
 <p>You are responsible for making sure you're allowed to record your clients' details and measurements in the app. Please only enter what you need to serve them.</p>
 
 <h2>Deleting your data</h2>
-<p>You can delete your account at any time from inside the app: <strong>Settings &rarr; Delete account</strong>. This permanently erases your shop and its details, all client records, all fittings and measurements, all orders with their progress photos and payments, all appointments, the copies of emails you sent, all AI outputs, your fabric stock, your referral invitations and the friends who answered them, your posts and their photos and videos, and your sign-in account. It cannot be undone. Backups held by our database provider are purged within 30 days.</p>
+<p>You can delete your account at any time from inside the app: <strong>Settings &rarr; Delete account</strong>. This permanently erases your shop and its details, all client records, all fittings and measurements, all orders with their progress photos and payments, all appointments, the copies of emails you sent, all AI outputs, your fabric stock, your referral invitations and the friends who answered them, your website (its portfolio, uploaded photos, services and reviews) and the enquiries visitors sent through it, your posts and their photos and videos, and your sign-in account. It cannot be undone. Backups held by our database provider are purged within 30 days.</p>
 
 <h2>Security</h2>
 <p>Data is sent over encrypted connections (HTTPS) and stored with providers that encrypt data at rest. Access to the API always requires your signed-in session.</p>

@@ -227,6 +227,14 @@ export function newOrderPhotoKey(shopId: string, orderId: string, contentType: s
   return `${shopId}/orders/${orderId}/${crypto.randomUUID()}.${EXTENSIONS[contentType] ?? "bin"}`;
 }
 
+/**
+ * A fresh, unguessable object key for a photo uploaded to the website (a portfolio piece, or the tailor's photo on
+ * About): `<shopId>/website/<folder>/<uuid>.<ext>`, under the shop prefix like everything else.
+ */
+export function newWebsitePhotoKey(shopId: string, folder: string, contentType: string): string {
+  return `${shopId}/website/${folder}/${crypto.randomUUID()}.${EXTENSIONS[contentType] ?? "bin"}`;
+}
+
 /** Optional numeric upload header (X-Media-Width etc.): absent -> null, present but not a number -> 400. */
 export function numberHeader(value: string | undefined, name: string): number | null {
   if (value === undefined || value.trim() === "") return null;

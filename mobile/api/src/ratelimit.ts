@@ -10,6 +10,8 @@ export const AI_DAILY_LIMIT = 30;
 export const EMAIL_DAILY_LIMIT = 60;
 /** Sliding window: 10 referral-form submissions per client address per hour (the public /r/:code page). */
 export const REFERRAL_HOURLY_LIMIT = 10;
+/** Sliding window: 10 booking-form submissions per client address per hour (the public /s/:slug website). */
+export const WEBSITE_HOURLY_LIMIT = 10;
 
 interface Bucket {
   /** Redis key prefix - keeps each quota separate. */
@@ -39,6 +41,12 @@ const BUCKETS = {
     window: "1 h",
     message: "Too many requests from this address. Please try again in an hour.",
   },
+  website: {
+    prefix: "tls:website",
+    limit: WEBSITE_HOURLY_LIMIT,
+    window: "1 h",
+    message: "Too many requests from this address. Please try again in an hour.",
+  },
 } as const satisfies Record<string, Bucket>;
 type BucketName = keyof typeof BUCKETS;
 
@@ -51,7 +59,7 @@ function getLimiter(env: Bindings, name: BucketName): Ratelimit | null {
   if (!url || !token) {
     if (!warnedMissing) {
       console.warn(
-        "[ratelimit] UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN not set - AI, email and referral-form rate limiting is DISABLED.",
+        "[ratelimit] UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN not set - AI, email, referral-form and website-form rate limiting is DISABLED.",
       );
       warnedMissing = true;
     }
@@ -112,3 +120,8 @@ export const enforceEmailRateLimit = (c: Context<AppEnv>): Promise<void> => enfo
  * e.g. the cf-connecting-ip header). Throws 429 rate_limited.
  */
 export const enforceReferralRateLimit = (c: Context<AppEnv>, ip: string): Promise<void> => enforceRateLimit(c, "referral", `ip:${ip}`);
+
+/**
+ * Enforce the public website booking form's per-address quota (`ip` as for the referral form). Throws 429 rate_limited.
+ */
+export const enforceWebsiteRateLimit = (c: Context<AppEnv>, ip: string): Promise<void> => enforceRateLimit(c, "website", `ip:${ip}`);

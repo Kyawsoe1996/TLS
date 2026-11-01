@@ -5,6 +5,22 @@ All notable changes to TLS, newest first. Written in plain language so anyone on
 ## Unreleased
 
 ### Added
+- **The free website is now a portfolio site.** Instead of one page, a shop's website has five: Home (a big cover
+  photo, a headline the owner writes, the services, four pieces of work, how it works, a review and how to find the
+  shop), Work (every piece, filterable by suits, jackets, trousers and so on), a page for each piece (its photos,
+  cloth, style, the month it was made, the workshop photos of its order from cloth to collection, and "Book one like
+  this"), Services (what the shop makes with "from ฿…" prices, swatches of the cloth in the shop now and what every
+  garment includes) and About (the shop's story with a tailor photo, the rating and reviews, the booking form and the
+  opening hours). In the app, Your free website gets a Look picker (Atelier navy and gold, Ivory, Noir) and a list of
+  sections to edit or switch off. Portfolio lets the owner pick the work clients see from order photos, posts or new
+  uploads, set the cover, write a line about each piece (or let AI suggest one), and reorder or remove them. The
+  owner lists services with prices and pastes in reviews. Client names never appear on the site. (Migration 0013:
+  look, headline, about heading, includes, rating, cover, tailor photo and sections on the shop; `website_pieces`,
+  `website_piece_photos`, `website_services`, `website_reviews`; routes `/website/portfolio`, `/website/pieces`,
+  `/website/services`, `/website/reviews`, `/website/tailor-photo`, `POST /ai/website-piece-line`, public
+  `/s/:slug/work`, `/s/:slug/work/:pieceId`, `/s/:slug/services`, `/s/:slug/about`.) Photos taken from an order or a
+  post are shared with it, so deleting the order or post keeps a piece's photos, and taking a piece off the website
+  never deletes the order's photos.
 - **Fabric stock.** A Fabrics screen next to Orders (and a tile on Home) lists the cloth on the shelf in metres:
   name, mill, colour, kind, width, metres left, a "warn me below" level, cost per metre and a swatch colour.
   Each fabric shows what it is still enough for (jacket 2 m, trousers 1.3 m, suit 3.3 m, shirt 2 m), its
@@ -26,6 +42,16 @@ All notable changes to TLS, newest first. Written in plain language so anyone on
   sent you?" on New client covers friends who walk in without the link. (Migration 0011: offers on the shop,
   code / shares / referred-by on clients, `referral_leads`, `referral_rewards`; routes `/referrals`,
   `/clients/:id/referral`, public `/r/:code`.)
+- **Free shop website.** Settings → Your free website: one switch gives a shop without a website its own page
+  (`<API>/s/<name>`), built from what is already in the app: shop name and district, a short About text, opening
+  hours, the address with a map link, Call and LINE buttons, the garments the shop delivers, recent order photos,
+  the posts it shared and its Google reviews link. The screen shows the link with Copy / Share / Open, lets the
+  owner change the address part, and ticks what the page shows with "Add …" hints for missing shop details.
+  Visitors can ask for a fitting on the page; the request appears under Enquiries (and on Home as "Website
+  enquiries · Reply today"), where the shop marks it contacted, dismisses it or adds the person as a client in
+  one tap. The page is meant to be found on Google (description and preview tags, cached for five minutes); the
+  form is rate limited and has a hidden bot trap. (Migration 0012: website columns on the shop,
+  `website_enquiries`; routes `/website`, public `/s/:slug`.)
 - **Native modules loaded on demand no longer red-screen a build that lacks them.** The PDF, speech and
   notification loaders (`lib/pdf.ts`, `lib/speech.ts`, `lib/notifications.ts`) now ask Expo whether the
   native module exists (`requireOptionalNativeModule`) before requiring the package. A `require` that

@@ -14,7 +14,8 @@ export const AI_CONSENT_MESSAGE =
   "Magick Tailor writes fitting notes, posts and emails with Google Gemini. To do that it sends Google the details " +
   "involved: the client's first name, measurements, style, fabric and posture note for a fitting; the client's " +
   "first name, last order and your offer for a win-back email; your shop's name, district, tone and topic for a " +
-  "post. Google processes them under the Gemini API terms and does not get your clients' contact details.\n\n" +
+  "post; a website piece's title, garment, cloth and style for its line. Google processes them under the Gemini API " +
+  "terms and does not get your clients' contact details.\n\n" +
   "Nothing is sent until you tap Continue. You can read more under Settings → Privacy.";
 
 /**

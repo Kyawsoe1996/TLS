@@ -24,6 +24,7 @@ import {
   nowIso,
   rowToOrder,
   startOfTodayUtc,
+  unusedMediaKeys,
 } from "../db";
 import type { AppEnv } from "../env";
 import { badRequest, notFound, payloadTooLarge } from "../errors";
@@ -368,11 +369,14 @@ orderRoutes.delete("/:clientId/orders/:orderId", async (c) => {
       { sql: "DELETE FROM order_payments WHERE order_id = ? AND shop_id = ?", args: [orderId, shop.id] },
       // Stock history keeps the movement (the cloth was cut); only the link to the gone order is dropped.
       { sql: "UPDATE fabric_movements SET order_id = NULL WHERE order_id = ? AND shop_id = ?", args: [orderId, shop.id] },
+      // A website piece made from the order stays (with its photos, which share the files); only the link goes.
+      { sql: "UPDATE website_pieces SET order_id = NULL WHERE order_id = ? AND shop_id = ?", args: [orderId, shop.id] },
       { sql: "DELETE FROM orders WHERE id = ? AND client_id = ? AND shop_id = ?", args: [orderId, clientId, shop.id] },
     ],
     "write",
   );
-  await deleteMediaObjects(mediaStore(c.env), photoRows.rows.map((row) => row["media_key"] as string | null));
+  const unused = await unusedMediaKeys(db, shop.id, photoRows.rows.map((row) => row["media_key"] as string | null));
+  await deleteMediaObjects(mediaStore(c.env), unused);
   return c.body(null, 204);
 });
 
@@ -474,7 +478,8 @@ orderRoutes.delete("/:clientId/orders/:orderId/photos/:photoId", async (c) => {
     ],
     "write",
   );
-  await deleteMediaObject(mediaStore(c.env), photo["media_key"] as string | null);
+  // Kept when a website piece still shows it.
+  await deleteMediaObjects(mediaStore(c.env), await unusedMediaKeys(db, shop.id, [photo["media_key"] as string | null]));
 
   return c.json(await orderResponse(c, orderId));
 });

@@ -107,6 +107,14 @@ function RootNavigator() {
           <Stack.Screen name="onboarding" />
           <Stack.Screen name="shop-details" />
           <Stack.Screen name="reminders" />
+          <Stack.Screen name="website" />
+          <Stack.Screen name="website/enquiries" />
+          <Stack.Screen name="website/enquiries/[enquiryId]" />
+          <Stack.Screen name="website/portfolio" />
+          <Stack.Screen name="website/services" />
+          <Stack.Screen name="website/reviews" />
+          <Stack.Screen name="website/cover" />
+          <Stack.Screen name="website/about" />
         </Stack.Protected>
         <Stack.Protected guard={!signedIn}>
           <Stack.Screen name="(auth)" />

@@ -6,6 +6,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { AppointmentRow, clientRoutes } from "@/components/clients";
 import { fabricRoutes } from "@/components/fabrics";
+import { websiteRoutes } from "@/components/website";
 import { Button, Card, ErrorBanner, Eyebrow, KpiList, Screen, SectionTitle, type IoniconName } from "@/components/ui";
 import { FEATURES } from "@/constants/features";
 import { colors, fonts, typography } from "@/constants/theme";
@@ -47,6 +48,8 @@ export default function HomeScreen() {
   const appointmentsThisWeek = home?.appointmentsThisWeek ?? 0;
   const fabricsLow = home?.fabricsLow ?? 0;
   const referralLeadsNew = home?.referralLeadsNew ?? 0;
+  const websiteEnquiriesNew = home?.websiteEnquiriesNew ?? 0;
+  const websiteOn = shopQuery.data?.websiteEnabled ?? false;
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -111,6 +114,19 @@ export default function HomeScreen() {
             accent: referralLeadsNew > 0 ? "danger" : false,
             onPress: () => router.push(REFERRALS),
           },
+          ...(websiteEnquiriesNew > 0 || websiteOn
+            ? [
+                {
+                  key: "websiteEnquiries",
+                  icon: "globe-outline" as IoniconName,
+                  label: "Website enquiries",
+                  value: kpi(home?.websiteEnquiriesNew),
+                  note: websiteEnquiriesNew > 0 ? "Reply today" : undefined,
+                  accent: websiteEnquiriesNew > 0 ? ("danger" as const) : false,
+                  onPress: () => router.push(websiteRoutes.enquiries),
+                },
+              ]
+            : []),
         ]}
       />
 

@@ -3,8 +3,8 @@ import { Stack } from "expo-router";
 import { colors } from "@/constants/theme";
 
 // Nested stack: index (hub) → content / seo.
-// `anchor` keeps index.tsx at the bottom of the stack even when another tab (Home) pushes a deeper
-// screen directly, so the back button and popToTopOnBlur in (tabs)/_layout.tsx always land on it.
+// `anchor` makes index.tsx the stack's first screen. A push from another tab (Home) does not load it underneath
+// (that needs withAnchor), so (tabs)/_layout.tsx rebuilds the stack on a tab press when the list is missing.
 export const unstable_settings = { anchor: "index" };
 
 export default function GrowLayout() {

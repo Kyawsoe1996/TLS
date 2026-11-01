@@ -60,6 +60,26 @@ import type {
   ReferralOverviewResponse,
   ReferralRewardResponse,
   ReferralSharedResponse,
+  // Free website
+  AddWebsiteEnquiryResponse,
+  ListWebsiteEnquiriesResponse,
+  SetWebsiteEnquiryStatusRequest,
+  UpdateWebsiteRequest,
+  WebsiteEnquiryResponse,
+  WebsiteResponse,
+  // Portfolio website
+  AiWebsitePieceLineResponse,
+  CreateWebsitePieceRequest,
+  CreateWebsiteReviewRequest,
+  CreateWebsiteServiceRequest,
+  UpdateWebsitePieceRequest,
+  UpdateWebsiteReviewRequest,
+  UpdateWebsiteServiceRequest,
+  WebsitePieceResponse,
+  WebsitePortfolioResponse,
+  WebsiteReviewResponse,
+  WebsiteServiceResponse,
+  WebsiteServicesResponse,
 } from "@shared/types";
 
 /** Where `wrangler dev` listens; only used as a fallback in development builds. */
@@ -261,6 +281,25 @@ export function createApi(getToken: GetToken) {
     return send<OrderResponse>(buildUrl(`${orderPath(clientId, orderId)}/photos`), { method: "PUT", headers, body: blob });
   }
 
+  /**
+   * Raw-body photo upload for the website (PUT /website/pieces/:id/photos, PUT /website/tailor-photo): same pattern as
+   * uploadOrderPhoto — the image is the body, its type in Content-Type, its size in X-Media-*.
+   */
+  async function uploadWebsitePhoto<T>(path: string, file: MediaFile): Promise<T> {
+    let blob: Blob;
+    try {
+      blob = await (await fetch(file.uri)).blob();
+    } catch {
+      throw new ApiClientError(0, "network", "Couldn't read the photo from your phone. Try picking it again.");
+    }
+    const headers = await authHeaders();
+    headers["Content-Type"] = file.mimeType;
+    if (file.width) headers["X-Media-Width"] = String(Math.round(file.width));
+    if (file.height) headers["X-Media-Height"] = String(Math.round(file.height));
+    return send<T>(buildUrl(path), { method: "PUT", headers, body: blob });
+  }
+  const piecePath = (id: string) => `/website/pieces/${encodeURIComponent(id)}`;
+
   return {
     /** Raw typed request — for routes not covered by the helpers below. */
     request,
@@ -377,6 +416,48 @@ export function createApi(getToken: GetToken) {
     getClientReferral: (clientId: string) => request<ClientReferralResponse>(`${clientPath(clientId)}/referral`),
     /** Counts a Share tap (called when the share sheet closes). */
     markReferralShared: (clientId: string) => request<ReferralSharedResponse>(`${clientPath(clientId)}/referral/shared`, { method: "POST" }),
+
+    // ---- Free website ----
+    /** The website settings (the API makes the address part from the shop name on the first call). */
+    getWebsite: () => request<WebsiteResponse>("/website"),
+    /** 400 "That address is taken." when another shop has the slug. */
+    updateWebsite: (body: UpdateWebsiteRequest) => request<WebsiteResponse>("/website", { method: "PUT", body }),
+    listWebsiteEnquiries: () => request<ListWebsiteEnquiriesResponse>("/website/enquiries"),
+    getWebsiteEnquiry: (id: string) => request<WebsiteEnquiryResponse>(`/website/enquiries/${encodeURIComponent(id)}`),
+    /** Makes a client from the enquiry → 201 { enquiry, client }. */
+    addWebsiteEnquiry: (id: string) => request<AddWebsiteEnquiryResponse>(`/website/enquiries/${encodeURIComponent(id)}/add`, { method: "POST" }),
+    setWebsiteEnquiryStatus: (id: string, status: SetWebsiteEnquiryStatusRequest["status"]) =>
+      request<WebsiteEnquiryResponse>(`/website/enquiries/${encodeURIComponent(id)}/status`, { method: "POST", body: { status } }),
+
+    // ---- Portfolio website ----
+    /** Pieces in order, the cover, and the order / post photos that can be added. */
+    getWebsitePortfolio: () => request<WebsitePortfolioResponse>("/website/portfolio"),
+    /** From an order (its photos, garment, cloth, month), a post (its photo, title) or empty (for uploads). */
+    createWebsitePiece: (body: CreateWebsitePieceRequest) => request<WebsitePieceResponse>("/website/pieces", { method: "POST", body }),
+    updateWebsitePiece: (id: string, body: UpdateWebsitePieceRequest) => request<WebsitePieceResponse>(piecePath(id), { method: "PATCH", body }),
+    /** Uploaded photos go too; order and post photos stay with their order / post. */
+    deleteWebsitePiece: (id: string) => request<void>(piecePath(id), { method: "DELETE" }),
+    reorderWebsitePieces: (ids: string[]) => request<void>("/website/pieces/reorder", { method: "POST", body: { ids } }),
+    uploadWebsitePiecePhoto: (id: string, file: MediaFile) => uploadWebsitePhoto<WebsitePieceResponse>(`${piecePath(id)}/photos`, file),
+    deleteWebsitePiecePhoto: (id: string, photoId: string) =>
+      request<WebsitePieceResponse>(`${piecePath(id)}/photos/${encodeURIComponent(photoId)}`, { method: "DELETE" }),
+    createWebsiteService: (body: CreateWebsiteServiceRequest) => request<WebsiteServiceResponse>("/website/services", { method: "POST", body }),
+    /** Adds Two-piece suit, Shirt and Alterations (no prices) when the list is empty. */
+    addDefaultWebsiteServices: () => request<WebsiteServicesResponse>("/website/services/defaults", { method: "POST" }),
+    updateWebsiteService: (id: string, body: UpdateWebsiteServiceRequest) =>
+      request<WebsiteServiceResponse>(`/website/services/${encodeURIComponent(id)}`, { method: "PATCH", body }),
+    deleteWebsiteService: (id: string) => request<void>(`/website/services/${encodeURIComponent(id)}`, { method: "DELETE" }),
+    reorderWebsiteServices: (ids: string[]) => request<void>("/website/services/reorder", { method: "POST", body: { ids } }),
+    createWebsiteReview: (body: CreateWebsiteReviewRequest) => request<WebsiteReviewResponse>("/website/reviews", { method: "POST", body }),
+    updateWebsiteReview: (id: string, body: UpdateWebsiteReviewRequest) =>
+      request<WebsiteReviewResponse>(`/website/reviews/${encodeURIComponent(id)}`, { method: "PATCH", body }),
+    deleteWebsiteReview: (id: string) => request<void>(`/website/reviews/${encodeURIComponent(id)}`, { method: "DELETE" }),
+    reorderWebsiteReviews: (ids: string[]) => request<void>("/website/reviews/reorder", { method: "POST", body: { ids } }),
+    uploadWebsiteTailorPhoto: (file: MediaFile) => uploadWebsitePhoto<WebsiteResponse>("/website/tailor-photo", file),
+    deleteWebsiteTailorPhoto: () => request<WebsiteResponse>("/website/tailor-photo", { method: "DELETE" }),
+    /** One or two sentences about a piece from its garment, cloth and style (Gemini). Not saved. */
+    aiWebsitePieceLine: (pieceId: string) =>
+      request<AiWebsitePieceLineResponse>("/ai/website-piece-line", { method: "POST", body: { pieceId } }),
 
     // ---- Account ----
     deleteAccount: () => request<void>("/account", { method: "DELETE" }),

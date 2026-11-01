@@ -35,6 +35,12 @@ export interface Shop {
   // writes, e.g. "A complimentary shirt with your first suit"). Null until the shop sets the offer up.
   referralFriendOffer: string | null;
   referralClientOffer: string | null;
+  // Free website (GET/PUT /website): the public page at <API>/s/<websiteSlug>. The slug is made from the shop
+  // name the first time GET /website is called (null until then); the page answers 404 while websiteEnabled is false.
+  websiteSlug: string | null;
+  websiteEnabled: boolean;
+  websiteAbout: string | null; // "About the shop" paragraph on the page
+  websiteLineId: string | null; // shown as a LINE button (line.me/ti/p/~<id>)
   createdAt: ISODate;
 }
 
@@ -77,6 +83,7 @@ export interface HomeResponse {
   upcomingAppointments: Appointment[]; // the first 5 of those, soonest first, with clientName
   fabricsLow: number; // fabrics whose metresLeft is below their lowAtMetres (Fabric stock)
   referralLeadsNew: number; // friends who asked for a fitting through a referral link and aren't handled yet
+  websiteEnquiriesNew: number; // visitors who asked for a fitting on the shop's free website and aren't handled yet
 }
 
 // ---------- Clients ----------
@@ -551,7 +558,264 @@ export interface ReferralRewardResponse {
  * page; rate limited per address.
  */
 
+// ---------- Free website ----------
+export const WEBSITE_ENQUIRY_STATUSES = ["new", "contacted", "added", "dismissed"] as const;
+export type WebsiteEnquiryStatus = (typeof WEBSITE_ENQUIRY_STATUSES)[number];
+/** Address part rules (API and app/lib/website.ts): 3-40 of a-z, 0-9 and "-", starting and ending with a letter or digit. */
+export const WEBSITE_LIMITS = {
+  slugMax: 40,
+  aboutMax: 600,
+  lineIdMax: 60,
+  // Portfolio website (0013)
+  headlineMax: 90,
+  aboutHeadingMax: 80,
+  includesMax: 6,
+  includeMax: 120,
+  piecesMax: 40,
+  photosPerPiece: 8,
+  pieceTitleMax: 80,
+  pieceLineMax: 300,
+  clothMax: 120,
+  styleMax: 120,
+  servicesMax: 20,
+  serviceNameMax: 60,
+  serviceLineMax: 160,
+  reviewsMax: 12,
+  quoteMax: 500,
+  authorMax: 60,
+  sourceMax: 40,
+} as const;
+
+/** The website's look: Atelier = navy + gold (default), Ivory = light ivory hero with navy text, Noir = near-black + warm white. */
+export const WEBSITE_THEMES = ["atelier", "ivory", "noir"] as const;
+export type WebsiteTheme = (typeof WEBSITE_THEMES)[number];
+
+/** Garment groups for the Work page's filter chips. */
+export const WEBSITE_PIECE_CATEGORIES = ["suits", "jackets", "trousers", "shirts", "wedding", "other"] as const;
+export type WebsitePieceCategory = (typeof WEBSITE_PIECE_CATEGORIES)[number];
+
+/** Sections the owner can switch off (all on by default). */
+export interface WebsiteSections {
+  fabrics: boolean; // "Cloth in the shop now" on Services (hidden anyway when there are no fabrics with a swatch)
+  process: boolean; // "How it works" on Home
+  booking: boolean; // the booking form on About (Book buttons then call / LINE instead)
+}
+
+/** Where a portfolio photo came from. Order and post photos share the file; uploads belong to the piece. */
+export const WEBSITE_PHOTO_SOURCES = ["order", "post", "upload"] as const;
+export type WebsitePhotoSource = (typeof WEBSITE_PHOTO_SOURCES)[number];
+
+export interface WebsitePiecePhoto {
+  id: string;
+  url: string; // absolute (API_URL + /media/…)
+  source: WebsitePhotoSource;
+  sourceId: string | null; // order photo id or post id
+  width: number | null;
+  height: number | null;
+}
+
+/** A piece of work on the website. Never shows a client name: title and line are the owner's own words. */
+export interface WebsitePiece {
+  id: string;
+  title: string;
+  category: WebsitePieceCategory;
+  cloth: string | null;
+  style: string | null;
+  line: string | null; // "A line about it"
+  madeAt: ISODate | null; // the month it was made
+  orderId: string | null; // the order it came from (null for posts / uploads, or once the order is deleted)
+  photos: WebsitePiecePhoto[]; // in order; the first is the thumbnail
+  createdAt: ISODate;
+  updatedAt: ISODate;
+}
+
+/** A service on the Services page: "Two-piece suit · from ฿18,000 · one line". */
+export interface WebsiteService {
+  id: string;
+  name: string;
+  fromPrice: number | null; // baht; null = no price shown
+  line: string | null;
+}
+
+/** A review the owner pasted in, shown as a quote card. */
+export interface WebsiteReview {
+  id: string;
+  quote: string;
+  author: string;
+  source: string; // default "Google"
+}
+
+/** A visitor who asked for a fitting on the shop's public page (POST /s/:slug). */
+export interface WebsiteEnquiry {
+  id: string;
+  name: string;
+  contact: string; // phone or LINE id, as typed
+  garment: string | null; // e.g. "Suit", from the form's list
+  preferred: ReferralPreferred | null; // same choices as Smart Referral: this_week | next_week | any
+  message: string | null;
+  status: WebsiteEnquiryStatus;
+  clientId: string | null; // once added as a client
+  createdAt: ISODate;
+  updatedAt: ISODate;
+}
+
+/** GET /website (makes the slug on first call) and PUT /website → the settings screen */
+export interface WebsiteResponse {
+  enabled: boolean;
+  slug: string;
+  url: string; // absolute public link, e.g. https://api…/s/kssoe
+  about: string | null;
+  lineId: string | null;
+  enquiriesNew: number;
+  enquiriesTotal: number;
+  // Shop details the page would show but the shop hasn't added yet, in this order when missing:
+  // "opening hours", "address", "phone", "Google review link".
+  missing: string[];
+  // Portfolio website
+  theme: WebsiteTheme;
+  headline: string | null; // null = "Made to measure in <district>"
+  aboutHeading: string | null; // null = "About <shop>"
+  includes: string[] | null; // "Every garment includes"; null = the default three lines
+  rating: number | null; // e.g. 4.9 ("4.9 on Google"); null hides it
+  coverPieceId: string | null;
+  coverUrl: string | null; // the cover piece's first photo
+  tailorPhotoUrl: string | null;
+  sections: WebsiteSections;
+  services: WebsiteService[]; // in order
+  reviews: WebsiteReview[]; // in order
+  piecesCount: number;
+  fabricsCount: number; // fabrics with a swatch colour ("Cloth in the shop now" shows up to 4)
+}
+/**
+ * PUT /website — every field optional; about / lineId / headline / aboutHeading: "" clears. Slug: 400 when invalid,
+ * reserved or taken. includes: [] or null = back to the defaults. coverPieceId must be one of the shop's pieces.
+ */
+export interface UpdateWebsiteRequest {
+  enabled?: boolean;
+  slug?: string;
+  about?: string;
+  lineId?: string;
+  theme?: WebsiteTheme;
+  headline?: string;
+  aboutHeading?: string;
+  includes?: string[] | null;
+  rating?: number | null; // 1.0-5.0
+  coverPieceId?: string | null;
+  sections?: Partial<WebsiteSections>;
+}
+
+/** An order with photos the owner can turn into a piece (GET /website/portfolio → candidates.orders). */
+export interface PortfolioOrderCandidate {
+  orderId: string;
+  garment: string;
+  fabric: string | null;
+  madeAt: ISODate; // delivered date, else created date
+  photos: { id: string; url: string; stage: OrderStatus }[]; // oldest first
+  pieceId: string | null; // the piece already made from it
+}
+/** A shared or draft post with a photo (candidates.posts). */
+export interface PortfolioPostCandidate {
+  postId: string;
+  title: string;
+  photoUrl: string;
+  pieceId: string | null;
+}
+/** GET /website/portfolio → the pieces in order, the cover, and what can be added. */
+export interface WebsitePortfolioResponse {
+  pieces: WebsitePiece[];
+  coverPieceId: string | null;
+  candidates: { orders: PortfolioOrderCandidate[]; posts: PortfolioPostCandidate[] };
+}
+/**
+ * POST /website/pieces → 201 { piece }. With orderId: the order's photos (newest first, so the finished garment leads)
+ * and its garment / fabric / month. With postId: the post's photo and title. Neither: an empty piece for uploads.
+ * 400 at WEBSITE_LIMITS.piecesMax pieces. The first piece becomes the cover when there is none.
+ */
+export interface CreateWebsitePieceRequest {
+  orderId?: string;
+  postId?: string;
+  title?: string;
+}
+/** PATCH /website/pieces/:id — any subset; "" / null clears the optional ones. */
+export interface UpdateWebsitePieceRequest {
+  title?: string;
+  category?: WebsitePieceCategory;
+  cloth?: string | null;
+  style?: string | null;
+  line?: string | null;
+  madeAt?: ISODate | null;
+}
+/**
+ * POST /website/pieces → 201, PATCH /website/pieces/:id, PUT /website/pieces/:id/photos (raw image body like order
+ * photos: Content-Type image/jpeg|png|webp, optional X-Media-Width / X-Media-Height; 201; 400 at photosPerPiece),
+ * DELETE /website/pieces/:id/photos/:photoId → { piece }.
+ * DELETE /website/pieces/:id → 204 (uploaded files go too; order and post photos stay with their order / post).
+ */
+export interface WebsitePieceResponse {
+  piece: WebsitePiece;
+}
+/** POST /website/pieces/reorder, /website/services/reorder, /website/reviews/reorder { ids } → 204. Ids not sent keep their place after. */
+export interface WebsiteReorderRequest {
+  ids: string[];
+}
+/** POST /website/services → 201 { service }; PATCH /website/services/:id → { service }; DELETE → 204. */
+export interface CreateWebsiteServiceRequest {
+  name: string;
+  fromPrice?: number | null;
+  line?: string | null;
+}
+export type UpdateWebsiteServiceRequest = Partial<CreateWebsiteServiceRequest>;
+export interface WebsiteServiceResponse {
+  service: WebsiteService;
+}
+/** POST /website/services/defaults → { services }: adds Two-piece suit, Shirt and Alterations (no prices) when the list is empty. */
+export interface WebsiteServicesResponse {
+  services: WebsiteService[];
+}
+/** POST /website/reviews → 201 { review }; PATCH /website/reviews/:id → { review }; DELETE → 204. */
+export interface CreateWebsiteReviewRequest {
+  quote: string;
+  author: string;
+  source?: string; // default "Google"
+}
+export type UpdateWebsiteReviewRequest = Partial<CreateWebsiteReviewRequest>;
+export interface WebsiteReviewResponse {
+  review: WebsiteReview;
+}
+/** PUT /website/tailor-photo (raw image body, like piece photos) and DELETE /website/tailor-photo → WebsiteResponse. */
+/** GET /website/enquiries → new first, then the rest; newest first; up to 100 */
+export interface ListWebsiteEnquiriesResponse {
+  enquiries: WebsiteEnquiry[];
+}
+/** GET /website/enquiries/:id, POST /website/enquiries/:id/status { status: "contacted" | "dismissed" | "new" } → { enquiry } */
+export interface WebsiteEnquiryResponse {
+  enquiry: WebsiteEnquiry;
+}
+export interface SetWebsiteEnquiryStatusRequest {
+  status: "contacted" | "dismissed" | "new";
+}
+/** POST /website/enquiries/:id/add → 201 { enquiry, client } — makes a client from the enquiry */
+export interface AddWebsiteEnquiryResponse {
+  enquiry: WebsiteEnquiry;
+  client: Client;
+}
+/**
+ * Public, no auth (HTML, 404 page unless the website is on, GETs cached 5 minutes):
+ * GET /s/:slug (Home), /s/:slug/work (?c=<category>), /s/:slug/work/:pieceId, /s/:slug/services, /s/:slug/about
+ * (with the booking form at #book; ?piece=<title> prefills the message).
+ * POST /s/:slug and POST /s/:slug/about (form fields name, contact, garment, preferred, message, consent, and a
+ * `website` honeypot that must stay empty) → a thank-you page; rate limited per address.
+ */
+
 // ---------- AI ----------
+/** POST /ai/website-piece-line { pieceId } → { line }: one or two plain sentences about the piece (garment, cloth, style). Not saved. */
+export interface AiWebsitePieceLineRequest {
+  pieceId: string;
+}
+export interface AiWebsitePieceLineResponse {
+  line: string;
+}
+
 // All AI routes are rate limited per user (429 rate_limited) and may return 502 ai_failed.
 
 /** POST /ai/fit → runs pipeline 1 on a saved fitting and stores the result on it */

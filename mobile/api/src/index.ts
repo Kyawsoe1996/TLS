@@ -22,6 +22,9 @@ import referralPublicRoutes from "./routes/referralPublic";
 import referralRoutes, { clientReferralRoutes } from "./routes/referrals";
 import reportRoutes from "./routes/reports";
 import shopRoutes from "./routes/shop";
+import websiteRoutes from "./routes/website";
+import websiteContentRoutes from "./routes/websiteContent";
+import websitePublicRoutes from "./routes/websitePublic";
 
 const app = new Hono<AppEnv>();
 
@@ -37,10 +40,11 @@ app.use(
 );
 
 // Public: GET /health, GET /privacy, GET /support, GET /media/<key>, GET|POST /r/<code> (the friend's referral
-// page) — registered before auth so they bypass it.
+// page), GET|POST /s/<slug> (the shop's free website) — registered before auth so they bypass it.
 app.route("/", publicRoutes);
 app.route("/media", mediaRoutes);
 app.route("/r", referralPublicRoutes);
+app.route("/s", websitePublicRoutes);
 
 // Everything below requires a Clerk session token.
 app.use("*", requireAuth);
@@ -68,6 +72,8 @@ app.use("/reports", requireShop);
 app.use("/reports/*", requireShop);
 app.use("/referrals", requireShop);
 app.use("/referrals/*", requireShop);
+app.use("/website", requireShop);
+app.use("/website/*", requireShop);
 app.use("/ai/*", requireShop);
 app.use("/ai/*", requireAiConsent);
 
@@ -84,6 +90,8 @@ app.route("/posts", postRoutes); // content library + /posts/:id/media upload
 app.route("/fabrics", fabricRoutes); // fabric stock
 app.route("/reports", reportRoutes); // monthly report
 app.route("/referrals", referralRoutes); // Smart Referral overview, leads, rewards
+app.route("/website", websiteRoutes); // free website settings + enquiries
+app.route("/website", websiteContentRoutes); // portfolio pieces, services, reviews, tailor photo
 app.route("/ai", aiRoutes);
 
 app.notFound((c) => {

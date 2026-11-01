@@ -65,6 +65,17 @@ npx wrangler deploy
     API domain (`/r/<code>`) that collects a friend's name and phone / LINE id with their consent; that is the same
     "Contact Info" already declared, now also entered by the friend. Run migrations 0009–0011 on `magicktls-prod`
     before the worker deploy that carries these routes.
+  - Free shop website (1.2+): no new permission. The shop's page at `/s/<slug>` on the API domain shows details
+    the shop chose to publish, and its booking form collects a visitor's name, phone / LINE id, garment, preferred
+    time and message with their consent: the same "Contact Info" / "Other User Content" already declared. Run
+    migration **0012** (`0012_website.sql`) on `magicktls-prod` before the worker deploy that carries `/website`
+    and `/s/:slug` (the shop row mapper reads the new columns, so the deploy must not go out first).
+  - Portfolio website (1.2+): no new permission (photos are picked with the existing photo-library permission).
+    Run migration **0013** (`0013_portfolio.sql`) on `magicktls-prod` before the worker deploy that carries
+    `/website/portfolio`, `/website/pieces`, `/website/services`, `/website/reviews`, `/website/tailor-photo`,
+    `/ai/website-piece-line` and the new `/s/:slug/...` pages: the public pages and every media delete read the new
+    tables, so the deploy must not go out first. The photos and reviews the owner publishes are "Other User
+    Content" already declared.
   - Deposit receipts (1.1+): `expo-print` renders the PDF on the phone and `expo-sharing` hands it to the share sheet; the file lives in the app's own cache. No permission, no network, nothing new under App Privacy (the receipt only repeats data already declared: shop details, client name, order price and deposit). It needs a build made after 2026-10-20, because the modules are native.
 - Local SEO uses Gemini's **Google Maps grounding**. Before submitting, read the "Grounding with Google Maps" section of the Gemini API terms (ai.google.dev/gemini-api/terms): check the monthly usage allowance for your tier, and exclude the terms' prohibited territories from the store availability lists.
 

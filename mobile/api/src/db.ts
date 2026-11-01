@@ -34,6 +34,9 @@ import {
   type ReferralReward,
   type ReferralRewardStatus,
   type Shop,
+  WEBSITE_ENQUIRY_STATUSES,
+  type WebsiteEnquiry,
+  type WebsiteEnquiryStatus,
 } from "../../shared/types";
 import type { Bindings } from "./env";
 import { serverError } from "./errors";
@@ -171,6 +174,10 @@ export function rowToShop(row: Row): Shop {
     aiConsentAt: textOrNull(row, "ai_consent_at"),
     referralFriendOffer: textOrNull(row, "referral_friend_offer"),
     referralClientOffer: textOrNull(row, "referral_client_offer"),
+    websiteSlug: textOrNull(row, "website_slug"),
+    websiteEnabled: (numberOrNull(row, "website_enabled") ?? 0) === 1,
+    websiteAbout: textOrNull(row, "website_about"),
+    websiteLineId: textOrNull(row, "website_line_id"),
     createdAt: text(row, "created_at"),
   };
 }
@@ -253,6 +260,25 @@ export function rowToReferralLead(row: Row): ReferralLead {
     contact: text(row, "contact"),
     preferred: isReferralPreferred(preferred) ? preferred : null,
     status: text(row, "status") as ReferralLeadStatus,
+    clientId: textOrNull(row, "client_id"),
+    createdAt: text(row, "created_at"),
+    updatedAt: text(row, "updated_at"),
+  };
+}
+
+const isWebsiteEnquiryStatus = (v: string): v is WebsiteEnquiryStatus => (WEBSITE_ENQUIRY_STATUSES as readonly string[]).includes(v);
+
+export function rowToWebsiteEnquiry(row: Row): WebsiteEnquiry {
+  const preferred = text(row, "preferred");
+  const status = text(row, "status");
+  return {
+    id: text(row, "id"),
+    name: text(row, "name"),
+    contact: text(row, "contact"),
+    garment: textOrNull(row, "garment"),
+    preferred: isReferralPreferred(preferred) ? preferred : null,
+    message: textOrNull(row, "message"),
+    status: isWebsiteEnquiryStatus(status) ? status : "new",
     clientId: textOrNull(row, "client_id"),
     createdAt: text(row, "created_at"),
     updatedAt: text(row, "updated_at"),
@@ -553,4 +579,35 @@ export async function getReferralRewardRow(db: Db, shopId: string, rewardId: str
     args: [rewardId, shopId],
   });
   return rs.rows[0] ?? null;
+}
+
+/** One enquiry from the shop's public website. */
+export async function getWebsiteEnquiryRow(db: Db, shopId: string, enquiryId: string): Promise<Row | null> {
+  const rs = await db.execute({
+    sql: "SELECT * FROM website_enquiries WHERE id = ? AND shop_id = ?",
+    args: [enquiryId, shopId],
+  });
+  return rs.rows[0] ?? null;
+}
+
+// ---------- Shared media files ----------
+
+/**
+ * The keys among `keys` that nothing in the shop points at any more: no order photo, post, website portfolio photo or
+ * website tailor photo. A website piece made from an order or a post shares that file (same key), so every delete
+ * path asks this after removing its own rows and before deleting files.
+ */
+export async function unusedMediaKeys(db: Db, shopId: string, keys: (string | null | undefined)[]): Promise<string[]> {
+  const wanted = [...new Set(keys.filter((k): k is string => !!k))];
+  if (wanted.length === 0) return [];
+  const marks = wanted.map(() => "?").join(", ");
+  const rs = await db.execute({
+    sql: `SELECT media_key AS k FROM order_photos WHERE shop_id = ? AND media_key IN (${marks})
+          UNION SELECT media_key FROM posts WHERE shop_id = ? AND media_key IN (${marks})
+          UNION SELECT media_key FROM website_piece_photos WHERE shop_id = ? AND media_key IN (${marks})
+          UNION SELECT website_tailor_photo_key FROM shops WHERE id = ? AND website_tailor_photo_key IN (${marks})`,
+    args: [shopId, ...wanted, shopId, ...wanted, shopId, ...wanted, shopId, ...wanted],
+  });
+  const used = new Set(rs.rows.map((row) => String(row["k"])));
+  return wanted.filter((k) => !used.has(k));
 }

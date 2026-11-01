@@ -17,3 +17,7 @@ dist/
 # misc
 .DS_Store
 *.log
+
+# Market research for the decks: kept locally, never committed
+reports/
+research_notes/

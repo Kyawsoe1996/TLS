@@ -9,6 +9,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { Tag } from "@/components/clients";
 import { Button, Card, Eyebrow, Screen } from "@/components/ui";
+import { websiteRoutes } from "@/components/website";
 import { colors, fonts, typography } from "@/constants/theme";
 import { API_URL, useApi } from "@/lib/api";
 import { confirm, showError } from "@/lib/toast";
@@ -64,7 +65,7 @@ export default function SettingsScreen() {
   const onDeleteAccount = async () => {
     const ok = await confirm({
       title: "Delete account?",
-      message: "This permanently deletes your shop, clients, fittings, orders, appointments, sent emails, posts and sign-in. It can't be undone.",
+      message: "This permanently deletes your shop, clients, fittings, orders, appointments, sent emails, posts, website enquiries and sign-in. It can't be undone.",
       confirmText: "Delete",
       destructive: true,
     });
@@ -155,6 +156,14 @@ export default function SettingsScreen() {
       <Card padding={0}>
         <SettingsRow icon="notifications-outline" label="Reminders" onPress={() => router.push("/reminders")} trailing="chevron" />
         <View style={styles.divider} />
+        <SettingsRow
+          icon="globe-outline"
+          label="Your free website"
+          onPress={() => router.push(websiteRoutes.settings)}
+          trailing="chevron"
+          state={shop ? (shop.websiteEnabled ? "On" : "Off") : undefined}
+        />
+        <View style={styles.divider} />
         <SettingsRow icon="shield-checkmark-outline" label="Privacy policy" onPress={() => void openLink("/privacy")} />
         <View style={styles.divider} />
         <SettingsRow icon="help-circle-outline" label="Support" onPress={() => void openLink("/support")} />
@@ -188,12 +197,15 @@ function SettingsRow({
   label,
   onPress,
   trailing = "open",
+  state,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
   onPress: () => void;
   /** "open" for a web page in the browser, "chevron" for a screen in the app. */
   trailing?: "open" | "chevron";
+  /** Short muted text before the trailing icon, e.g. "On". */
+  state?: string;
 }) {
   return (
     <Pressable
@@ -203,6 +215,7 @@ function SettingsRow({
     >
       <Ionicons name={icon} size={20} color={colors.goldDark} />
       <Text style={styles.rowLabel}>{label}</Text>
+      {state ? <Text style={styles.rowState}>{state}</Text> : null}
       <Ionicons name={trailing === "chevron" ? "chevron-forward" : "open-outline"} size={18} color={colors.muted} />
     </Pressable>
   );
@@ -231,6 +244,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, minHeight: 52 },
   rowPressed: { backgroundColor: colors.cardSoft },
   rowLabel: { flex: 1, fontFamily: fonts.bodyMedium, fontSize: 15, color: colors.ink },
+  rowState: { fontFamily: fonts.body, fontSize: 14, color: colors.muted },
   divider: { height: 1, backgroundColor: colors.line, marginHorizontal: 16 },
   accountCard: { gap: 6 },
   signOut: { marginTop: 10 },
