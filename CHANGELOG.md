@@ -4,6 +4,12 @@ All notable changes to TLS, newest first. Written in plain language so anyone on
 
 ## Unreleased
 
+### Changed
+- **Facebook sign-in is hidden for 1.1.** Sign in and Create account offer Apple, Google and the email code.
+  Facebook comes back once Meta's business verification and App Review are done (`facebookSignIn` in
+  `mobile/shared/features.ts`; `socialSignIn` switches all social buttons off at once).
+- **Version 1.1.0** in `app.json`.
+
 ### Added
 - **The free website is now a portfolio site.** Instead of one page, a shop's website has five: Home (a big cover
   photo, a headline the owner writes, the services, four pieces of work, how it works, a review and how to find the

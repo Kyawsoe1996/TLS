@@ -240,3 +240,30 @@ the reviewer account, manual release. Version 1.0 submitted to App Review.
 ## Next release in one screen
 
 1. Bump `version` in `app.json`. 2. `npx expo-doctor && npx tsc --noEmit`. 3. `eas build -p all --profile production`. 4. `eas submit -p ios --latest`, `eas submit -p android --latest`. 5. Update What's New in both consoles. 6. Submit for review.
+
+## Release 1.1 (prepared 2026-11-03)
+
+1.0 is live since 2026-10-31 (tag `v1.0.0`). 1.1 ships everything after it: round 5 (measurement history, order
+photos, review requests, reminders, voice fitting, day view), deposit receipts, fabric stock, monthly reports,
+Smart Referral and the free portfolio website, plus Sign in with Apple and Google. Facebook stays hidden
+(`FEATURES.facebookSignIn = false`) until Meta's business verification and App Review are done.
+
+The new worker is backward compatible with the live 1.0 app (since `v1.0.0` the contract and the schema only
+gained fields, tables and routes), so the server can go out before the 1.1 build is approved.
+
+1. `turso auth login` (company account), then from `mobile/api`:
+   `TURSO_DATABASE_URL=$(turso db show magicktls-prod --url) TURSO_AUTH_TOKEN=$(turso db tokens create magicktls-prod -e 1h) npm run db:migrate`
+   → applies 0008–0013 and skips 0001–0007. Run it **before** the deploy.
+2. `npx wrangler deploy` (company account `globalmagicko`). Check `https://api.magicktls.generalmagickindustries.com/health`
+   (200), `/privacy` (200), an unauthenticated `/shop` (401), `/s/nobody` (404 page), and sign in on the live 1.0
+   app: Home, a client and an order still load.
+3. Clerk production, **before the build is tested**: section 3's Google and Apple steps (custom credentials, the
+   iOS native app with Team ID `K936SW2MTN` and the bundle id, and `tls://sso-callback` in the mobile OAuth redirect
+   allowlist). Facebook is skipped for 1.1.
+4. `cd mobile/app && eas build -p ios --profile production --auto-submit` (version 1.1.0, build number from EAS).
+5. TestFlight (internal group) on a real iPhone: sign in with Apple, with Google and by email code, dictate a fitting (microphone + speech
+   prompts), set a reminder (notification prompt), add an order photo, record a payment and share the receipt,
+   add a fabric, open the monthly report, invite a friend and open the link, switch the website on and open it.
+6. App Store Connect, version 1.1: What's New text; App Privacy unchanged except confirm Audio Data stays "not
+   collected" (speech is transcribed on the phone); review notes: the demo account, and where the microphone and
+   notification prompts appear (New fitting → Dictate; Settings → Reminders). Submit for review, manual release.

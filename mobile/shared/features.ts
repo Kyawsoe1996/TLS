@@ -18,4 +18,15 @@ export const FEATURES = {
    * photo-library permission it can't use.
    */
   postMedia: true,
+  /**
+   * "Continue with Apple / Google" on Sign in and Create account (Clerk; production credentials in
+   * release-checklist section 3). Off: no social buttons or "or" divider, email code only. Apple must stay
+   * available whenever any other social login is shown (guideline 4.8), so never ship Google without Apple.
+   */
+  socialSignIn: true,
+  /**
+   * "Continue with Facebook". Off for 1.1: Facebook Login only works for everyone once Meta's business
+   * verification and App Review are done and the Meta app is Live. Needs `socialSignIn` on as well.
+   */
+  facebookSignIn: false,
 } as const;

@@ -2,6 +2,7 @@ import { isClerkAPIResponseError, useSignIn } from "@clerk/clerk-expo";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { FEATURES } from "@/constants/features";
 import { AuthField, AuthScreen, CodeInput, PrivacyLine, SocialSignIn, SwitchLine } from "@/components/auth";
 import { Button, ErrorBanner } from "@/components/ui";
 import { colors, fonts } from "@/constants/theme";
@@ -110,7 +111,7 @@ export default function SignInScreen() {
     <AuthScreen
       eyebrow="Welcome back"
       title="Sign in"
-      subtitle="Pick the account you use, or get a one-time code by email."
+      subtitle={FEATURES.socialSignIn ? "Pick the account you use, or get a one-time code by email." : "Enter your email and we\u2019ll send you a one-time code."}
       footer={
         <>
           <SwitchLine question="New to Magick Tailor?" linkLabel="Create an account" href="/(auth)/sign-up" />

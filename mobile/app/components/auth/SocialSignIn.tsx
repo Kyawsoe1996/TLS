@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { Platform, StyleSheet, Text, View } from "react-native";
 
 import { Button } from "@/components/ui";
+import { FEATURES } from "@/constants/features";
 import { colors, fonts } from "@/constants/theme";
 import { errorMessage } from "@/lib/toast";
 
@@ -27,11 +28,16 @@ export interface SocialSignInProps {
 }
 
 /**
- * Sign in with Apple (native sheet, iOS only), Google and Facebook (Clerk's browser flow), drawn as
+ * Sign in with Apple (native sheet, iOS only), Google and, when FEATURES.facebookSignIn is on, Facebook (Clerk's browser flow), drawn as
  * white pills on the ivory auth screens. On success Clerk's session becomes active and the root
  * layout's guard moves the user on (onboarding when they have no shop yet).
  */
-export function SocialSignIn({ onError, disabled = false }: SocialSignInProps) {
+export function SocialSignIn(props: SocialSignInProps) {
+  // FEATURES.socialSignIn is a build-time constant, so the hooks inside SocialButtons never change order.
+  return FEATURES.socialSignIn ? <SocialButtons {...props} /> : null;
+}
+
+function SocialButtons({ onError, disabled = false }: SocialSignInProps) {
   const { startSSOFlow } = useSSO();
   const { startAppleAuthenticationFlow } = useSignInWithApple();
   const [busy, setBusy] = useState<Provider | null>(null);
@@ -73,7 +79,11 @@ export function SocialSignIn({ onError, disabled = false }: SocialSignInProps) {
       if (code === "ERR_REQUEST_CANCELED") return;
       if (code === "ERR_REQUEST_UNKNOWN" || code === "ERR_REQUEST_NOT_HANDLED" || /not available/i.test(errorMessage(err, ""))) {
         // No Apple ID on the device, or a build without the entitlement: iOS has already shown its own prompt.
-        onError("Sign in with Apple isn't available on this device. Use Google, Facebook or your email.");
+        onError(
+          FEATURES.facebookSignIn
+            ? "Sign in with Apple isn't available on this device. Use Google, Facebook or your email."
+            : "Sign in with Apple isn't available on this device. Use Google or your email.",
+        );
         return;
       }
       onError(errorMessage(err, "Sign-in didn't finish. Please try again."));
@@ -113,17 +123,19 @@ export function SocialSignIn({ onError, disabled = false }: SocialSignInProps) {
         style={styles.pill}
         testID="sign-in-google"
       />
-      <Button
-        title="Continue with Facebook"
-        iconNode={<Ionicons name="logo-facebook" size={20} color="#1877F2" />}
-        variant="secondary"
-        onPress={() => void run("facebook")}
-        loading={busy === "facebook"}
-        disabled={inactive && busy !== "facebook"}
-        fullWidth
-        style={styles.pill}
-        testID="sign-in-facebook"
-      />
+      {FEATURES.facebookSignIn ? (
+        <Button
+          title="Continue with Facebook"
+          iconNode={<Ionicons name="logo-facebook" size={20} color="#1877F2" />}
+          variant="secondary"
+          onPress={() => void run("facebook")}
+          loading={busy === "facebook"}
+          disabled={inactive && busy !== "facebook"}
+          fullWidth
+          style={styles.pill}
+          testID="sign-in-facebook"
+        />
+      ) : null}
       <View style={styles.divider}>
         <View style={styles.rule} />
         <Text style={styles.or}>or</Text>
