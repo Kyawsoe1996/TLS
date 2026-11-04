@@ -19,5 +19,5 @@ dist/
 *.log
 
 # Market research for the decks: kept locally, never committed
-reports/
-research_notes/
+/reports/
+/research_notes/
